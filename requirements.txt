@@ -1,0 +1,9 @@
+numpy
+matplotlib
+EDFlib
+mne
+mne_bids
+pandas
+xarray
+scipy
+mne_icalabel
