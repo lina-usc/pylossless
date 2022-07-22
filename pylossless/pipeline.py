@@ -1,15 +1,14 @@
 # coding: utf-8
-
+import mne_bids
 import numpy as np
 import json
 from pathlib import Path
 
 # BIDS
 import mne
-from mne_bids import BIDSPath, write_raw_bids
 
 # Co-Registration
-from mne.channels.montage import _BUILT_IN_MONTAGES, read_custom_montage
+from mne.channels.montage import read_custom_montage
 from mne.coreg import Coregistration
 
 # nearest neighbours
@@ -23,6 +22,7 @@ from tqdm.notebook import tqdm
 # ICA
 from mne.preprocessing import ICA
 
+from .config import read_json
 
 class FlaggedChs(dict):
 
@@ -383,60 +383,9 @@ def marks_flag_gap(raw, min_gap_ms, included_annot_type=None,
                            orig_time=raw.annotations.orig_time)
 
 
-def save_json(init_variables, file_name='init_variables.json'):
-    with open(file_name, "w") as init_variables_file:
-        json.dump(init_variables, init_variables_file,
-                  indent=4, sort_keys=True)
-
-
-def read_json(file_name):
-    with open(file_name, "r") as init_variables_file:
-        return json.load(init_variables_file)
-
-
-def create_init_variables_json(path_in, id_, run, session):
-    init_variables = {'path_in': path_in,
-                      'id': id_,
-                      'run': run,
-                      'session': session
-                      }
-    save_json(init_variables)
-
-
-def make_bids_compliant(init_variables, project_config, overwrite=True):
-
-    # read in file
-    raw = mne.io.read_raw_egi(init_variables['path_in'], preload=True)
-    raw.crop(tmax=300)
-
-    # events and event ID's for events sidecar
-    events = mne.find_events(raw, stim_channel=['STI 014'])
-    event_ids = raw.event_id
-
-    # MNE-BIDS doesnt currently support RawMFF objects.
-    raw.save(init_variables['path_in'][:-18]+'_raw.fif', overwrite=True)
-    raw = mne.io.read_raw_fif(init_variables['path_in'][:-18]+'_raw.fif')
-
-    # we only want eeg channels in the channels sidecar
-    raw.pick_types(eeg=True, stim=False)
-    raw.rename_channels({'E129': 'Cz'})  # to make compatible with montage
-
-    bids_path = BIDSPath(subject=init_variables['id'],
-                         session=init_variables['session'],
-                         task=project_config['t_info']['task_name'],
-                         run=init_variables['run'],
-                         datatype='eeg',
-                         root='./bids_dataset')
-
-    return write_raw_bids(raw, bids_path=bids_path,
-                          events_data=events, event_id=event_ids,
-                          format='EDF', overwrite=overwrite,
-                          allow_preload=True)
-
-
 def set_montage(raw, config_fname='project_config.json'):
     chan_locs = read_json(file_name=config_fname)['chanlocs']
-    if chan_locs in _BUILT_IN_MONTAGES:
+    if chan_locs in mne.channels.montage.get_builtin_montages():
         # If chanlocs is a string of one the standard MNE montages
         montage = mne.channels.make_standard_montage(chan_locs)
     else:  # If the montage is a filepath of a custom montage
@@ -477,15 +426,15 @@ def warp_locs(self, raw):
 
 class LosslessPipeline():
 
-    def __init__(self, config_fname, init_fname='init_variables.json'):
+    def __init__(self, config_fname):
         self.flagged_chs = FlaggedChs()
         self.flagged_epochs = FlaggedEpochs()
         self.flagged_ics = FlaggedICs()
         self.config_fname = config_fname
         self.load_config()
-        self.init_variables = read_json(init_fname)
-        init_path = Path(self.config['out_path']) / self.init_variables['id']
-        init_path.mkdir(parents=True, exist_ok=True)
+        #self.init_variables = read_json(init_fname)
+        #init_path = Path(self.config['out_path']) / self.config["project"]['id']
+        #init_path.mkdir(parents=True, exist_ok=True)
         self.ica = None
 
     def load_config(self):
@@ -673,6 +622,8 @@ class LosslessPipeline():
         # icsd_epoch_flags=padflags(raw, icsd_epoch_flags,1,'value',.5);
 
     def run(self, raw):
+        raw.load_data()
+
         # Execute the staging script if specified.
         self.run_staging_script()
 
@@ -710,6 +661,10 @@ class LosslessPipeline():
         # TODO 2ND ICA excluding flagged component times
 
         self.flag_epoch_gap(raw)
+
+    def run_dataset(self, paths):
+        for path in paths:
+            self.run(mne_bids.read_raw_bids(path))
 
 
 """def pad_flags(raw, flags, npad, varargin):
