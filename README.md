@@ -39,7 +39,7 @@ Running the pipeline always requires 1) a dataset and 2) a configuration file de
 ll_default_config = ll.config.get_default_config()
 print(ll_default_config)
 
-ll.config.save_json(ll_default_config, "my_project_ll_config.json")
+ll.config.save_config(ll_default_config, "my_project_ll_config.yaml")
 ```
 More information about the description of the different fields can be found [here](./doc/config.md).
 
@@ -80,7 +80,7 @@ raw = mne_bids.read_raw_bids(bids_path)
 Great! We have our two ingredients (a dataset and a configuration file), and we can now run the pipeline on that dataset (actually, just one recording in that case)
 
 ```python
-pipeline = ll.LosslessPipeline('my_project_ll_config.json')
+pipeline = ll.LosslessPipeline('my_project_ll_config.yaml')
 pipeline.run(raw)
 
 ```

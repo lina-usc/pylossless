@@ -1,7 +1,6 @@
 # coding: utf-8
 import mne_bids
 import numpy as np
-import json
 from pathlib import Path
 
 # BIDS
@@ -22,7 +21,7 @@ from tqdm.notebook import tqdm
 # ICA
 from mne.preprocessing import ICA
 
-from .config import read_json
+from .config import read_config
 
 class FlaggedChs(dict):
 
@@ -383,8 +382,8 @@ def marks_flag_gap(raw, min_gap_ms, included_annot_type=None,
                            orig_time=raw.annotations.orig_time)
 
 
-def set_montage(raw, config_fname='project_config.json'):
-    chan_locs = read_json(file_name=config_fname)['chanlocs']
+def set_montage(raw, config_fname='project_config.yaml'):
+    chan_locs = read_config(file_name=config_fname)['chanlocs']
     if chan_locs in mne.channels.montage.get_builtin_montages():
         # If chanlocs is a string of one the standard MNE montages
         montage = mne.channels.make_standard_montage(chan_locs)
@@ -432,13 +431,13 @@ class LosslessPipeline():
         self.flagged_ics = FlaggedICs()
         self.config_fname = config_fname
         self.load_config()
-        #self.init_variables = read_json(init_fname)
+        #self.init_variables = read_config(init_fname)
         #init_path = Path(self.config['out_path']) / self.config["project"]['id']
         #init_path.mkdir(parents=True, exist_ok=True)
         self.ica = None
 
     def load_config(self):
-        self.config = json.load(Path(self.config_fname).open())
+        self.config = read_config(self.config_fname)
 
     def get_epochs(self, raw, detrend=None, preload=True):
         epoching_kwargs = self.config['epoching']['epochs_args']
