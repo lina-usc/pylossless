@@ -1,0 +1,135 @@
+######################### General properties #########################
+aref_trim: 30
+order: 1
+out_path: derivatives/EEG-IP-L
+ref_loc_file: derivatives/EEG-IP-L/code/misc/standard_1020_ll_ref19.elc
+save_f_res: 1
+sd_t_pad: 1
+in_path: []
+montage_info: [0.0, -16.0, 0.0, -0.02, 0.0, -1.58, 10.7, 11.5, 11.5]
+
+
+################## General info about the project ####################
+project:
+  readme: '# Q1K ACAR Dataset'
+  chanlocs: GSN-HydroCel-129
+  
+  coordsys:
+    EEGCoordinateSystem: Other
+    EEGCoordinateUnits: metres
+    
+  general_info:
+    authors: [Q1K Neuroimaging group]
+    institution_Name: McGill University
+    institution_address: 3775 Rue University, Montreal, QC
+    dataset_doi: []
+    funding: Azrieli Foundationt
+    how_to_acknowledge: tba
+    license: ''
+    name: Q1K Mismatched Negativity
+    references_and_links: []
+
+  t_info:
+    EEG_placement_scheme: EGI 129
+    cap_manufacturer: EGI
+    cap_manufacturers_model_name: Hydrocel 129 Channel
+    hardware_filters: n/a
+    manufacturer: Electrical Geodesics
+    manufacturers_model_name: NetAmps300
+    power_line_frequency: 60
+    software_filters: n/a
+    software_versions: NetStation V4.5
+    
+
+############################## epoching ##############################
+epoching:
+  recur_sec: 1
+  
+  # See arguments definition from mne.Epochs
+  epochs_args:
+    baseline: null
+    tmax: 1
+    tmin: 0
+
+
+########################### EEG filtering ############################
+# See arguments definition from mne.io.Raw.filtter
+filter_args:
+  h_freq: 100
+  l_freq: 1
+
+
+############################## SLURM #################################
+# Options for running the pipeline on a cluster
+# through SLURM
+slurm_options:
+  account: def-emayada
+  job_name: pylossless
+  memory: 16g
+  mpi: false
+  num_tasks: 1
+  program_options: []
+  threads_per_task: []
+  time_limit: 2h
+
+
+################################ ICA #################################
+ica:
+  ic_ic_sd:
+    flag_crit: 0.2
+    flag_method: fixed
+    flag_vals: null
+    init_crit: 6
+    init_method: q
+    init_vals: [0.3, 0.7]
+
+  # See arguments definition from mne.preprocessing.ICA
+  ica_args:
+    method: fastica
+
+
+########################## Nearest neigbhor ##########################
+nearest_neighbors:
+  n_nbr_ch: 3
+  n_nbr_epoch: 3
+  
+
+####################### Pipeline steps config ########################
+bridge:
+  bridge_trim: 40
+  bridge_z: 6
+
+ch_ch_sd:
+  flag_crit: 0.2
+  flag_method: fixed
+  flag_vals: []
+  init_crit: 16
+  init_method: q
+  init_vals: [0.3, 0.7]
+
+ch_low_r:
+  flag_crit: 0.2
+  flag_method: fixed
+  flag_vals: []
+  init_crit: 16
+  init_method: q
+  init_vals: [0.3, 0.7]
+
+epoch_ch_sd:
+  flag_crit: 0.2
+  flag_method: fixed
+  flag_vals: []
+  init_crit: 16
+  init_method: null
+  init_vals: [0.3, 0.7]
+
+epoch_gap:
+  min_gap_ms: 2000
+
+epoch_low_r:
+  flag_crit: 0.2
+  flag_method: fixed
+  flag_vals: []
+  init_crit: 16
+  init_method: q
+  init_vals: [0.3, 0.7]

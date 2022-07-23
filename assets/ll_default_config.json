@@ -1,0 +1,114 @@
+{
+"project": {
+	"chanlocs": "GSN-HydroCel-129",
+	"coordsys": {
+		"EEGCoordinateSystem": "Other",
+		"EEGCoordinateUnits": "metres"
+	},
+	"general_info": {
+		"authors": [
+			"Q1K Neuroimaging group"
+		],
+		"dataset_doi": [
+			"tba"
+		],
+		"funding": "Azrieli Foundationt",
+		"how_to_acknowledge": "tba",
+		"license": "",
+		"name": "Q1K Mismatched Negativity",
+		"references_and_links": "tba"
+	},
+	"readme": "# Q1K ACAR Dataset\n\n",
+	"t_info": {
+		"EEG_placement_scheme": "EGI 129",
+		"EMG_channel_count": 0,
+		"EOG_channel_count": 0,
+		"cap_manufacturer": "EGI",
+		"cap_manufacturers_model_name": "Hydrocel 129 Channel",
+		"hardware_filters": "n/a",
+		"institution_Name": "McGill University",
+		"institution_address": "3775 Rue University, Montreal, QC",
+		"manufacturer": "Electrical Geodesics",
+		"manufacturers_model_name": "NetAmps300",
+		"misc_channel_count": 0,
+		"power_line_frequency": 60,
+		"software_filters": "n/a",
+		"software_versions": "NetStation V4.5",
+		"task_description": "tba",
+		"task_name": "mmn",
+		"trigger_channel_count": 0
+	}},
+"out_path": "derivatives/EEG-IP-L",
+"exec_func": "ef_sbatch",
+"ica" : {
+    "ica_args": {"method":"fastica"},
+    "ic_ic_sd": {
+     "init_method": "q",
+     "init_vals": [0.3, 0.7],
+     "init_crit": 6,
+     "flag_method": "fixed",
+     "flag_vals": null,
+     "flag_crit": 0.2}},
+"epoching": {
+	"recur_sec": 1,
+    "epochs_args":{
+        "tmin": 0,
+        "tmax": 1,
+        "baseline": null}},   
+"epoch_ch_sd": {
+	"init_method": null,
+	"init_vals": [0.3, 0.7],
+	"init_crit": 16,
+	"flag_method":"fixed",
+	"flag_vals": [],
+	"flag_crit": 0.2},
+"ch_ch_sd": {
+	"init_method" : "q",
+	"init_vals": [0.3, 0.7],
+	"init_crit": 16,
+	"flag_method": "fixed",
+	"flag_vals": [],
+	"flag_crit": 0.2},
+"filter_args": {
+	"l_freq": 1,
+	"h_freq": 100},
+"ch_low_r": {
+	"init_method" : "q",
+	"init_vals": [0.3, 0.7],
+	"init_crit": 16,
+	"flag_method": "fixed",
+	"flag_vals": [],
+	"flag_crit": 0.2},
+"bridge": {
+	"bridge_trim": 40,
+	"bridge_z": 6},
+"nearest_neighbors": {
+	"n_nbr_ch": 3,
+	"n_nbr_epoch": 3},
+"epoch_low_r": {
+	"init_method" : "q",
+	"init_vals": [0.3, 0.7],
+	"init_crit": 16,
+	"flag_method": "fixed",
+	"flag_vals": [],
+	"flag_crit": 0.2},
+"epoch_gap": {
+	"min_gap_ms": 2000},    
+"in_path":[],
+"montage_info":[0.000, -16.000, 0.000, -0.020, 0.000, -1.580, 10.700, 11.500, 11.500],
+"aref_trim": 30,
+"sd_t_pad": 1,
+"ref_loc_file": "derivatives/EEG-IP-L/code/misc/standard_1020_ll_ref19.elc",
+"save_f_res": 1,
+"staging_script":"derivatives/EEG-IP-L/code/scripts/ucsd1_staging.py",
+"order": 1,
+"slurm_options":{
+    "account": "def-emayada",
+    "memory": "16g",
+    "time_limit": "2h",
+    "mpi": false,
+    "num_tasks": 1,
+    "threads_per_task": [],
+    "program_options": [],
+    "job_name": "pylossless"}
+}
