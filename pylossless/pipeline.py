@@ -360,14 +360,14 @@ def marks_flag_gap(raw, min_gap_ms, included_annot_type=None,
                                'bad_pylossless_ic_sd1', 'bad_pylossless_gap')
 
     if len(raw.annotations) == 0:
-        return mne.Annotations([], [], [])
+        return mne.Annotations([], [], [], orig_time=raw.annotations.orig_time)
 
     ret_val = np.array([[annot['onset'], annot['duration']]
                         for annot in raw.annotations
                         if annot['description'] in included_annot_type]).T
 
     if len(ret_val) == 0:
-        return mne.Annotations([], [], [])
+        return mne.Annotations([], [], [], orig_time=raw.annotations.orig_time)
 
     onsets, durations = ret_val
     offsets = onsets + durations
@@ -380,16 +380,6 @@ def marks_flag_gap(raw, min_gap_ms, included_annot_type=None,
                            duration=gaps[gap_mask],
                            description=out_annot_name,
                            orig_time=raw.annotations.orig_time)
-
-
-def set_montage(raw, config_fname='project_config.yaml'):
-    chan_locs = read_config(file_name=config_fname)['chanlocs']
-    if chan_locs in mne.channels.montage.get_builtin_montages():
-        # If chanlocs is a string of one the standard MNE montages
-        montage = mne.channels.make_standard_montage(chan_locs)
-    else:  # If the montage is a filepath of a custom montage
-        montage = read_custom_montage(chan_locs)
-    raw.set_montage(montage)
 
 
 def coregister(raw_edf, fiducials="estimated",  # get fiducials from fsaverage
@@ -438,6 +428,17 @@ class LosslessPipeline():
 
     def load_config(self):
         self.config = read_config(self.config_fname)
+
+    def set_montage(self, raw):
+        chan_locs = self.config['project']['analysis_montage']
+        if chan_locs in mne.channels.montage.get_builtin_montages():
+            # If chanlocs is a string of one the standard MNE montages
+            montage = mne.channels.make_standard_montage(chan_locs)
+        else:  # If the montage is a filepath of a custom montage
+            raise ValueError('Montage should be one of the default MNE montages as'
+                             ' specified by mne.channels.get_builtin_montages()')
+            # montage = read_custom_montage(chan_locs)
+        raw.set_montage(montage, **self.config['project']['set_montage_kwargs'])
 
     def get_epochs(self, raw, detrend=None, preload=True):
         epoching_kwargs = self.config['epoching']['epochs_args']
@@ -612,7 +613,7 @@ class LosslessPipeline():
 
         # Create the windowing sd criteria
         kwargs = self.config['ica']['ic_ic_sd']
-        flag_epoch_ic_inds = marks_array2flags(epoch_ic_sd1.values.T,
+        flag_epoch_ic_inds = marks_array2flags(epoch_ic_sd1.T,
                                                flag_dim='epoch', **kwargs)[1]
 
         self.flagged_epochs.add_flag_cat('ic_sd1', flag_epoch_ic_inds,
@@ -622,6 +623,7 @@ class LosslessPipeline():
 
     def run(self, raw):
         raw.load_data()
+        self.set_montage(raw)
 
         # Execute the staging script if specified.
         self.run_staging_script()
