@@ -12,8 +12,19 @@ montage_info: [0.0, -16.0, 0.0, -0.02, 0.0, -1.58, 10.7, 11.5, 11.5]
 ################## General info about the project ####################
 project:
   readme: '# Q1K ACAR Dataset'
-  chanlocs: GSN-HydroCel-129
+
+  # Montage use to make file BIDS compliant.
+  # Can be path to digitized montage OR a string of one of mne's built in standard montages as specified by mne.channels.get_builtin_montages().
+  # Can be left empty if the input dataset is already in BIDS format.
+  bids_montage: GSN-HydroCel-129
+
+  # montage used while running the lossless pipeline.
+  # if empty, the pipeline will use the electrodes.tsv sidecar file, if created during the BIDS conversion.
+  # If specified, needs to be a string of one of mne's built in standard montages.
+  analysis_montage: ''
   
+  set_montage_kwargs: {}
+
   coordsys:
     EEGCoordinateSystem: Other
     EEGCoordinateUnits: metres

@@ -7,3 +7,4 @@ pandas
 xarray
 scipy
 mne_icalabel
+PyYAML
