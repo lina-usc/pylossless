@@ -558,12 +558,12 @@ class LosslessPipeline():
         self.flagged_chs.add_flag_cat(kind='bridge',
                                       bad_ch_names=bad_ch_names)
 
-    def flag_ch_rank(self, raw, data_r_ch):
+    def flag_ch_rank(self, raw, data_r_ch, pick_types='eeg'):
         '''Flags the channel that is the least unique,
         the channel to remove prior to ICA in
         order to account for the rereference rank deficiency.'''
 
-        epochs = self.get_epochs(raw)
+        epochs = self.get_epochs(raw).pick(pick_types)
         x = data_r_ch.sel(ref_chan=epochs.ch_names)
         inds = x.argmax(dim=["epoch", "ref_chan"])["ref_chan"]
         bad_ch_names = [str(x.ref_chan[inds].values)]
@@ -621,7 +621,14 @@ class LosslessPipeline():
 
         # icsd_epoch_flags=padflags(raw, icsd_epoch_flags,1,'value',.5);
 
-    def run(self, raw):
+    def save(self, raw, bids_path):
+        derivatives_path = bids_path.copy().update(extension='.fif', suffix='ll', root=bids_path.root / 'derivatives' / 'pylossless', check=False)
+        mne_bids.write_raw_bids(raw, derivatives_path, overwrite=True, format='EDF', allow_preload=True) #  TODO: address derivatives support in MNE bids.
+        # TODO epoch marks and ica marks are not currently saved into annotations
+        #raw.save(derivatives_path, overwrite=True, split_naming='bids')
+
+    def run(self, bids_path, save=True):
+        raw = mne_bids.read_raw_bids(bids_path)
         raw.load_data()
         self.set_montage(raw)
 
@@ -662,6 +669,9 @@ class LosslessPipeline():
         # TODO 2ND ICA excluding flagged component times
 
         self.flag_epoch_gap(raw)
+
+        if save:
+            self.save(raw, bids_path)
 
     def run_dataset(self, paths):
         for path in paths:
