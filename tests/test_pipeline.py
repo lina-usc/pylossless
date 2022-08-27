@@ -51,8 +51,9 @@ def load_openneuro_bids():
 
 def test_egi_mff():
     """Test running full pipeline on EGI MFF simple binary files."""
+    egi_mff_fname = data_path() / 'EGI' / 'test_egi.mff'
     bids_path = ll.bids.convert_recording_to_bids(mne.io.read_raw_egi,
-                        import_kwargs={'input_fname':test_egi_fpath},
+                        import_kwargs={'input_fname':egi_mff_fname},
                         bids_path_kwargs={'subject':'testegi','task':'test','root':'tmp_test_files'},
                         import_events=False,
                         overwrite=True)

@@ -316,15 +316,15 @@ def chan_neighbour_r(epochs, nneigbr, method):
     c_neigbr_r = xr.concat(r_list, dim='ref_chan')
 
     if method == 'max':
-        m_neigbr_r = xr.ufuncs.fabs(c_neigbr_r).max(dim='channel')
+       m_neigbr_r = xr.apply_ufunc(np.abs, c_neigbr_r).max(dim='channel')
 
     elif method == 'mean':
-        m_neigbr_r = xr.ufuncs.fabs(c_neigbr_r).mean(dim='channel')
+        m_neigbr_r = xr.apply_ufunc(np.abs, c_neigbr_r).mean(dim='channel')
 
     elif method == 'trimmean':
         trim_mean_10 = partial(scipy.stats.trim_mean,
                                proportiontocut=0.1, axis=0)
-        m_neigbr_r = xr.ufuncs.fabs(c_neigbr_r)\
+        m_neigbr_r = xr.apply_ufunc(np.abs, c_neigbr_r)\
                               .reduce(trim_mean_10, dim='channel')
 
     return m_neigbr_r.transpose("epoch", "ref_chan")
