@@ -13,5 +13,4 @@ PyYAML
 gunicorn>=19.8.1
 dash>=1.0.0
 mne>=0.19
-nibabel
 colorlover>=0.2.1
