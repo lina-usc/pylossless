@@ -55,6 +55,7 @@ class EEGVisualizer:
         self.raw = read_raw_bids(self.bids_path).pick('eeg')
 
     def change_dir(self, directory):
+        print(Path(directory))
         self.fname = list(Path(directory).glob('*.vhdr'))[0]  # TODO make permanent solution. cant assume vhdr all the time.
         self.load_raw()
 
@@ -114,7 +115,7 @@ def NamedSlider(name, **kwargs):
 
 
 app = dash.Dash(__name__)
-eeg_visualizer = EEGVisualizer('C:/Users/shuber10/Documents/github_repos/pylossless/sub-01/ses-01/eeg')
+eeg_visualizer = EEGVisualizer('./sub-01/ses-01/eeg')
 server = app.server
 
 @app.callback(
