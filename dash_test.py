@@ -45,7 +45,7 @@ class EEGVisualizer:
     @property
     def ch_slider_val(self):
         return self._ch_slider_val
-    
+
     @ch_slider_val.setter
     def ch_slider_val(self, value):
         self.update_layout(value)
@@ -82,8 +82,8 @@ class EEGVisualizer:
             self._ch_slider_val = ch_slider_val
 
         ch_names = self.raw.ch_names[self.ch_slider_val:
-                                     self.ch_slider_val +
-                                     self.n_sel_ch]  # basically names of first 20 channels
+                                     self.ch_slider_val + self.n_sel_ch]
+                                     # basically names of first 20 channels
 
         start, stop = self.raw.time_as_index([self.tmin, self.tmax])
         data, times = self.raw[:self.n_sel_ch, start:stop]
@@ -161,8 +161,11 @@ app.layout = html.Div([
                 min=0,
                 max=len(eeg_visualizer.raw.ch_names) - 20,
                 step=1,
-                marks={},
-                value=0)
+                marks=None,
+                value=0,
+                included=False,
+                updatemode='mouseup',
+                vertical=True)
 ])
 
 
