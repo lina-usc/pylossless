@@ -1,8 +1,7 @@
 from pathlib import Path
 
 import dash
-import dash_core_components as dcc
-import dash_html_components as html  # deprecated
+from dash import dcc, html
 from dash.dependencies import Input, Output, State
 
 # file selectioni
@@ -21,6 +20,37 @@ from dash import html
 from mne_bids import BIDSPath, read_raw_bids, get_bids_path_from_fname
 import mne
 
+
+axis_template_time = dict(
+    showspikes='across+toaxis',
+    spikedash='solid',
+    spikemode='across',
+    spikesnap='cursor',
+    showline=True,
+    showgrid=True,
+    zeroline=False,
+    showbackground=False,
+    backgroundcolor="rgb(200, 200, 230)",
+    gridcolor="white",
+    zerolinecolor="white")
+
+axis_template = dict(
+    showspikes=None,
+    title="",
+    zeroline=False,
+    showline=False,
+    showgrid=False,
+    showticklabels=False,
+    showlabel=False,
+    showbackground=True,
+    backgroundcolor="rgb(0, 0, 0)",
+    gridcolor="rgb(0, 0, 0)",
+    zerolinecolor="rgb(0, 0, 0)",
+    tickmode='array',
+    tickvals=[])
+
+
+
 class EEGVisualizer:
 
     def __init__(self, directory):
@@ -32,6 +62,7 @@ class EEGVisualizer:
         self.n_sel_ch = 20  # n of channels to display in plot
         self.tmin = 0  # min time to disp on plot
         self.tmax = 10  # max time to disp on plot
+        self.ystep = 1e-3
         self.layout = None
         self.traces = None
         self._ch_slider_val = 0
@@ -53,6 +84,7 @@ class EEGVisualizer:
     def load_raw(self):
         self.bids_path = get_bids_path_from_fname(self.fname)
         self.raw = read_raw_bids(self.bids_path).pick('eeg')
+        self.raw.load_data().filter(0.1, 40)
 
     def change_dir(self, directory):
         print(Path(directory))
@@ -62,51 +94,65 @@ class EEGVisualizer:
     def initialize_layout(self):
         start, stop = self.raw.time_as_index([self.tmin, self.tmax])
         data, times = self.raw[:self.n_sel_ch, start:stop]
-        step = 1. / self.n_sel_ch
-        kwargs = dict(domain=[1 - step, 1], showticklabels=False, zeroline=False, showgrid=False)
+        self.layout = go.Layout(
+                                width = 1500,
+                                height=600,
+                                xaxis={'zeroline': False,
+                                       'showgrid': False},
+                                yaxis={'showgrid': False,
+                                       'showline': False,
+                                       'zeroline': False,
+                                       'autorange': False,  #'reversed',
+                                       'scaleratio': 0.5,
+                                       "tickmode": "array","tickvals": [],
+                                       'range':[-self.ystep*self.n_sel_ch, self.ystep]},
+                                showlegend=False)
+        trace_kwargs = {'mode':'lines', 'line':dict(color='black', width=1)}
 
         # create objects for layout and traces
-        self.layout = go.Layout(yaxis=go.YAxis(kwargs), showlegend=False)
-        self.traces = [go.Scatter(x=times, y=data.T[:, 0])]
+        self.traces = [] #[go.Scatter(x=times, y=data.T[:, 0], **trace_kwargs)]
 
         # loop over the channels
-        for ii in range(1, self.n_sel_ch):
-            kwargs.update(domain=[1 - (ii + 1) * step, 1 - ii * step])
-            self.layout.update({f'yaxis{ii + 1}': go.YAxis(kwargs), 'showlegend': False})
-            self.traces.append(go.Scatter(x=times, y=data.T[:, ii], yaxis=f'y{ii + 1}'))
+        for ii in range(self.n_sel_ch):
+            self.traces.append(go.Scatter(x=times, y=data.T[:, ii] - ii * self.ystep, **trace_kwargs)) #yaxis=f'y{ii + 1}'
+            #self.layout.update({f'y{ii + 1}':dict(layer='above traces', overlaying='y', showticklabels=False)})
         self.timeseries_graph.figure['layout'] = self.layout
-        self.timeseries_graph.figure['data'] = go.Data(self.traces)
+        self.timeseries_graph.figure['data'] = self.traces
 
     def update_layout(self, ch_slider_val=None):
         if ch_slider_val is not None:
             self._ch_slider_val = ch_slider_val
 
-        ch_names = self.raw.ch_names[self.ch_slider_val:
-                                     self.ch_slider_val + self.n_sel_ch]
+        first_sel_ch = self.ch_slider_val
+        last_sel_ch = self.ch_slider_val + self.n_sel_ch
+
+        start_samp, stop_samp = self.raw.time_as_index([self.tmin, self.tmax])
+
+        ch_names = self.raw.ch_names[first_sel_ch:last_sel_ch]
                                      # basically names of first 20 channels
 
-        start, stop = self.raw.time_as_index([self.tmin, self.tmax])
-        data, times = self.raw[:self.n_sel_ch, start:stop]
+        data, times = self.raw[first_sel_ch:last_sel_ch, start_samp:stop_samp]
 
         # update the trace  ... couldu  do trace.x in trace?
-        for signal, trace, in zip(data, self.traces):
+        for i, (signal, trace) in enumerate(zip(data, self.traces)):
             trace.x = times
-            trace.y = signal
-        self.timeseries_graph.figure['data'] = go.Data(self.traces)
-
+            trace.y = signal - i * self.ystep
+        self.timeseries_graph.figure['data'] = self.traces
         # add channel names using Annotations
-        annotations = go.Annotations([go.Annotation(x=-0.06, y=0, xref='paper', yref=f'y{ii + 1}',
+        '''annotations = go.Annotations([go.Annotation(x=-0.06, y=0, xref='paper', yref=f'y{ii + 1}',
                                                     text=ch_name, font=go.Font(size=9), showarrow=False)
                                       for ii, ch_name in enumerate(ch_names)])
         self.layout.update(annotations=annotations)
 
         # set the size of the figure and plot it
-        self.layout.update(autosize=False, width=1000, height=600)
+        self.layout.update(autosize=False, width=1000, height=600)'''
 
 
-def NamedSlider(name, **kwargs):
+def NamedSlider(name, style=None, **kwargs):
+    if style is None:
+        style={"padding": "20px 10px 25px 4px"}
     return html.Div(
-        style={"padding": "20px 10px 25px 4px"},
+        style=style,
         children=[
             html.P(f"{name}:"),
             html.Div(style={"margin-left": "6px"}, children=dcc.Slider(**kwargs)),
@@ -125,7 +171,7 @@ server = app.server
 )
 def channel_slider_change(value):
     global eeg_visualizer
-    eeg_visualizer.ch_slider_val = value
+    eeg_visualizer.ch_slider_val = (len(eeg_visualizer.raw.ch_names) - eeg_visualizer.n_sel_ch) - value 
     return eeg_visualizer.timeseries_graph.figure # go.Data(eeg_visualizer.traces)
 
 
@@ -156,13 +202,13 @@ app.layout = html.Div([
               html.Div([]),
               html.Div([])
               ]),
-    NamedSlider(name="Time",
+    NamedSlider(name="Channel",
                 id="slider-channel",
                 min=0,
-                max=len(eeg_visualizer.raw.ch_names) - 20,
+                max=len(eeg_visualizer.raw.ch_names) - eeg_visualizer.n_sel_ch,
                 step=1,
                 marks=None,
-                value=0,
+                value=len(eeg_visualizer.raw.ch_names) - eeg_visualizer.n_sel_ch,
                 included=False,
                 updatemode='mouseup',
                 vertical=True)
