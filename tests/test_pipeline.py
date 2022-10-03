@@ -1,6 +1,7 @@
 from pathlib import Path
 from time import sleep
 import pytest
+import shutil
 
 import pylossless as ll
 
@@ -66,6 +67,7 @@ def test_egi_mff():
     pipeline = ll.LosslessPipeline('project_ll_config_test_egi.yaml')
     pipeline.run(bids_path, save=False)
     Path('project_ll_config_test_egi.yaml').unlink()
+    shutil.rmtree(bids_path.root)
 
 
 @pytest.mark.parametrize('dataset', ['openneuro'])
