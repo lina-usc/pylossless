@@ -7,7 +7,7 @@ from setuptools import setup
 
 
 if __name__ == "__main__":
-    hard_dependencies = ('numpy', 'scipy', 'mne', 'mne-bids')
+    hard_dependencies = ('numpy', 'scipy', 'mne', 'mne-bids','pandas', 'xarray','pyaml')
     install_requires = list()
     with open('requirements.txt', 'r') as fid:
         for line in fid:
