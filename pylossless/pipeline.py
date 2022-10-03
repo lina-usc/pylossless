@@ -20,6 +20,7 @@ from tqdm.notebook import tqdm
 
 # ICA
 from mne.preprocessing import ICA
+from mne_icalabel import label_components
 
 from .config import Config
 
@@ -424,7 +425,9 @@ class LosslessPipeline():
         #self.init_variables = read_config(init_fname)
         #init_path = Path(self.config['out_path']) / self.config["project"]['id']
         #init_path.mkdir(parents=True, exist_ok=True)
-        self.ica = None
+        self.ica1 = None
+        self.ica2 = None
+        self.ic_labels = None
 
     def load_config(self):
         self.config = Config(self.config_fname).read()
@@ -600,16 +603,23 @@ class LosslessPipeline():
         annots = marks_flag_gap(raw, self.config['epoch_gap']['min_gap_ms'])
         raw.set_annotations(raw.annotations + annots)
 
-    def run_ica(self, raw):
-        ica_kwargs = self.config['ica']['ica_args']
+    def run_ica(self, raw, run):
+        ica_kwargs = self.config['ica']['ica_args'][run]
         if 'max_iter' not in ica_kwargs:
             ica_kwargs['max_iter'] = 'auto'
         if 'random_state' not in ica_kwargs:
             ica_kwargs['random_state'] = 97
 
         epochs = self.get_epochs(raw)
-        self.ica = ICA(**ica_kwargs)
-        self.ica.fit(epochs)
+        if run == 'run1':
+            self.ica1 = ICA(**ica_kwargs)
+            self.ica1.fit(epochs)
+
+        elif run == 'run2':
+            self.ica2 = ICA(**ica_kwargs)
+            self.ica2.fit(epochs)
+            self.ic_labels = label_components(epochs, self.ica2,
+                                              method="iclabel")
 
     def flag_epoch_ic_sd1(self, raw):
         '''Calculates the IC standard Deviation by epoch window. Flags windows with
@@ -617,7 +627,7 @@ class LosslessPipeline():
 
         # Calculate IC sd by window
         epochs = self.get_epochs(raw)
-        epoch_ic_sd1 = chan_variance(epochs, kind='ica', ica=self.ica)
+        epoch_ic_sd1 = chan_variance(epochs, kind='ica', ica=self.ica1)
 
         # Create the windowing sd criteria
         kwargs = self.config['ica']['ic_ic_sd']
@@ -669,12 +679,13 @@ class LosslessPipeline():
         self.flag_epoch_gap(raw)
 
         # Run ICA
-        self.run_ica(raw)
+        self.run_ica(raw, 'run1')
 
         # Calculate IC SD
         self.flag_epoch_ic_sd1(raw)
 
         # TODO 2ND ICA excluding flagged component times
+        self.run_ica(raw, 'run2')
 
         self.flag_epoch_gap(raw)
 
