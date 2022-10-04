@@ -32,6 +32,8 @@ def convert_recording_to_bids(import_func, import_kwargs, bids_path_kwargs,
 
     if "datatype" not in bids_path_kwargs:
         bids_path_kwargs["datatype"] = datatype
+    if "suffix" not in bids_path_kwargs:
+        bids_path_kwargs["suffix"] = datatype
     if "root" not in bids_path_kwargs:
         bids_path_kwargs["root"] = bids_root
 
