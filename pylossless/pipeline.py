@@ -1,4 +1,5 @@
 # coding: utf-8
+from mne.utils import logger
 import mne_bids
 import numpy as np
 from pathlib import Path
@@ -707,7 +708,15 @@ class LosslessPipeline():
         self.flag_ch_sd(raw)
 
         # Filter
-        raw.filter(**self.config['filter_args'])
+        raw.filter(**self.config['filtering']['filter_args'])
+
+        if 'notch_filter_args' in self.config['filtering']:
+            notch_args = self.config['filtering']['notch_filter_args']
+            # in raw.notch_filter, freqs=None is ok if method=spectrum_fit
+            if notch_args['freqs'] is None and 'method' not in notch_args:
+                logger.debug('No notch filter arguments provided. Skipping')
+            else:
+                raw.notch_filter(**notch_args)
 
         # calculate nearest neighbort r values
         data_r_ch = self.flag_ch_low_r(raw)
