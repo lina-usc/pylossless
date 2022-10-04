@@ -64,10 +64,13 @@ epoching:
 
 
 ########################### EEG filtering ############################
-# See arguments definition from mne.io.Raw.filtter
-filter_args:
-  h_freq: 100
-  l_freq: 1
+# See arguments definition from mne.io.Raw.filter & mne.io.Raw.notch_filter
+filtering:
+  filter_args:
+    h_freq: 100
+    l_freq: 1
+  notch_filter_args:
+    freqs: []
 
 
 ############################## SLURM #################################
