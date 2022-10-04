@@ -45,7 +45,6 @@ def convert_recording_to_bids(import_func, import_kwargs, bids_path_kwargs,
     """
 
     bids_path = get_bids_path(bids_path_kwargs, datatype, bids_root)
-
     if import_events:
         raw, events, event_id = import_func(**import_kwargs)
     else:
