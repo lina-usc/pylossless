@@ -20,6 +20,8 @@ from tqdm.notebook import tqdm
 
 # ICA
 from mne.preprocessing import ICA
+from mne_icalabel import label_components
+from mne_icalabel.annotation import write_components_tsv
 
 from .config import read_config
 
@@ -316,15 +318,15 @@ def chan_neighbour_r(epochs, nneigbr, method):
     c_neigbr_r = xr.concat(r_list, dim='ref_chan')
 
     if method == 'max':
-        m_neigbr_r = xr.ufuncs.fabs(c_neigbr_r).max(dim='channel')
+       m_neigbr_r = xr.apply_ufunc(np.abs, c_neigbr_r).max(dim='channel')
 
     elif method == 'mean':
-        m_neigbr_r = xr.ufuncs.fabs(c_neigbr_r).mean(dim='channel')
+        m_neigbr_r = xr.apply_ufunc(np.abs, c_neigbr_r).mean(dim='channel')
 
     elif method == 'trimmean':
         trim_mean_10 = partial(scipy.stats.trim_mean,
                                proportiontocut=0.1, axis=0)
-        m_neigbr_r = xr.ufuncs.fabs(c_neigbr_r)\
+        m_neigbr_r = xr.apply_ufunc(np.abs, c_neigbr_r)\
                               .reduce(trim_mean_10, dim='channel')
 
     return m_neigbr_r.transpose("epoch", "ref_chan")
@@ -424,7 +426,9 @@ class LosslessPipeline():
         #self.init_variables = read_config(init_fname)
         #init_path = Path(self.config['out_path']) / self.config["project"]['id']
         #init_path.mkdir(parents=True, exist_ok=True)
-        self.ica = None
+        self.ica1 = None
+        self.ica2 = None
+        self.ic_labels = None
 
     def load_config(self):
         self.config = read_config(self.config_fname)
@@ -558,12 +562,12 @@ class LosslessPipeline():
         self.flagged_chs.add_flag_cat(kind='bridge',
                                       bad_ch_names=bad_ch_names)
 
-    def flag_ch_rank(self, raw, data_r_ch):
+    def flag_ch_rank(self, raw, data_r_ch, pick_types='eeg'):
         '''Flags the channel that is the least unique,
         the channel to remove prior to ICA in
         order to account for the rereference rank deficiency.'''
 
-        epochs = self.get_epochs(raw)
+        epochs = self.get_epochs(raw).pick(pick_types)
         x = data_r_ch.sel(ref_chan=epochs.ch_names)
         inds = x.argmax(dim=["epoch", "ref_chan"])["ref_chan"]
         bad_ch_names = [str(x.ref_chan[inds].values)]
@@ -592,16 +596,25 @@ class LosslessPipeline():
         annots = marks_flag_gap(raw, self.config['epoch_gap']['min_gap_ms'])
         raw.set_annotations(raw.annotations + annots)
 
-    def run_ica(self, raw):
-        ica_kwargs = self.config['ica']['ica_args']
+    def run_ica(self, raw, run):
+        ica_kwargs = self.config['ica']['ica_args'][run]
         if 'max_iter' not in ica_kwargs:
             ica_kwargs['max_iter'] = 'auto'
         if 'random_state' not in ica_kwargs:
             ica_kwargs['random_state'] = 97
 
         epochs = self.get_epochs(raw)
-        self.ica = ICA(**ica_kwargs)
-        self.ica.fit(epochs)
+        if run == 'run1':
+            self.ica1 = ICA(**ica_kwargs)
+            self.ica1.fit(epochs)
+
+        elif run == 'run2':
+            self.ica2 = ICA(**ica_kwargs)
+            self.ica2.fit(epochs)
+            self.ic_labels = label_components(epochs, self.ica2,
+                                              method="iclabel")
+        else:
+            raise ValueError("The `run` argument must be 'run1' or 'run2'")
 
     def flag_epoch_ic_sd1(self, raw):
         '''Calculates the IC standard Deviation by epoch window. Flags windows with
@@ -609,7 +622,7 @@ class LosslessPipeline():
 
         # Calculate IC sd by window
         epochs = self.get_epochs(raw)
-        epoch_ic_sd1 = chan_variance(epochs, kind='ica', ica=self.ica)
+        epoch_ic_sd1 = chan_variance(epochs, kind='ica', ica=self.ica1)
 
         # Create the windowing sd criteria
         kwargs = self.config['ica']['ic_ic_sd']
@@ -621,7 +634,40 @@ class LosslessPipeline():
 
         # icsd_epoch_flags=padflags(raw, icsd_epoch_flags,1,'value',.5);
 
-    def run(self, raw):
+    def save(self, raw, bids_path):
+        lossless_suffix = bids_path.suffix + '_ll'
+        lossless_root = bids_path.root / 'derivatives' / 'pylossless'
+        derivatives_path = bids_path.copy().update(suffix=lossless_suffix,
+                                                   root=lossless_root,
+                                                   check=False
+                                                   )
+        mne_bids.write_raw_bids(raw,
+                                derivatives_path,
+                                overwrite=True,
+                                format='EDF',
+                                allow_preload=True)
+                                #  TODO address derivatives support in MNE bids.
+
+        # Save ICAs
+        for this_ica, self_ica, in zip(['ica1', 'ica2'],
+                                       [self.ica1, self.ica2]):
+            ica_bidspath = derivatives_path.copy().update(extension='.fif',
+                                                          suffix=this_ica,
+                                                          check=False)
+            self_ica.save(ica_bidspath)
+
+        # Save IC labels
+        iclabels_bidspath = derivatives_path.copy().update(extension='.tsv',
+                                                           suffix='iclabels',
+                                                           check=False)
+        write_components_tsv(self.ica2, iclabels_bidspath)
+
+
+        # TODO epoch marks and ica marks are not currently saved into annotations
+        #raw.save(derivatives_path, overwrite=True, split_naming='bids')
+
+    def run(self, bids_path, save=True):
+        raw = mne_bids.read_raw_bids(bids_path)
         raw.load_data()
         self.set_montage(raw)
 
@@ -654,14 +700,18 @@ class LosslessPipeline():
         self.flag_epoch_gap(raw)
 
         # Run ICA
-        self.run_ica(raw)
+        self.run_ica(raw, 'run1')
 
         # Calculate IC SD
         self.flag_epoch_ic_sd1(raw)
 
         # TODO 2ND ICA excluding flagged component times
+        self.run_ica(raw, 'run2')
 
         self.flag_epoch_gap(raw)
+
+        if save:
+            self.save(raw, bids_path)
 
     def run_dataset(self, paths):
         for path in paths:

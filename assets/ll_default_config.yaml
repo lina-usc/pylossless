@@ -96,7 +96,12 @@ ica:
 
   # See arguments definition from mne.preprocessing.ICA
   ica_args:
-    method: fastica
+    run1:
+      method: fastica
+    run2:
+      method: infomax
+      fit_params:
+        extended: True
 
 
 ########################## Nearest neigbhor ##########################

@@ -1,13 +1,20 @@
 from pathlib import Path
 from time import sleep
 import pytest
+import shutil
 
 import pylossless as ll
 
 import mne_bids
+from mne_bids import write_raw_bids
 
 import openneuro
+
+import mne
 from mne.datasets import sample
+from mne.datasets.testing import data_path, requires_testing_data
+
+egi_mff_fname = data_path() / 'EGI' / 'test_egi.mff'
 
 def load_openneuro_bids():
     ll_default_config = ll.config.get_default_config()
@@ -43,14 +50,35 @@ def load_openneuro_bids():
     raw = mne_bids.read_raw_bids(bids_path)
     return raw, ll_default_config
 
+def test_egi_mff():
+    """Test running full pipeline on EGI MFF simple binary files."""
+    egi_mff_fname = data_path() / 'EGI' / 'test_egi.mff'
+    bids_path = ll.bids.convert_recording_to_bids(mne.io.read_raw_egi,
+                        import_kwargs={'input_fname':egi_mff_fname},
+                        bids_path_kwargs={'subject':'testegi','task':'test','root':'tmp_test_files'},
+                        import_events=False,
+                        overwrite=True)
+
+    ll_default_config = ll.config.get_default_config()
+    ll_default_config['project']['analysis_montage'] = 'GSN-HydroCel-129'
+    ll_default_config['project']['set_montage_kwargs'] = {'match_alias':True}
+    ll.config.save_config(ll_default_config, "project_ll_config_test_egi.yaml")
+
+    pipeline = ll.LosslessPipeline('project_ll_config_test_egi.yaml')
+    pipeline.run(bids_path, save=False)
+    Path('project_ll_config_test_egi.yaml').unlink()
+    shutil.rmtree(bids_path.root)
+
 
 @pytest.mark.parametrize('dataset', ['openneuro'])
 def test_pipeline_run(dataset):
     """test running the pipeline."""
     if dataset == 'openneuro':
         raw, ll_default_config = load_openneuro_bids()
+    elif dataset == 'egi_mff':
+        raw, ll_default_config = load_test_egi_mff()
     
-    ll.config.save_config(ll_default_config, "my_project_ll_config.yaml")
+    ll.config.save_config(ll_default_config, "project_ll_config.yaml")
     pipeline = ll.LosslessPipeline('my_project_ll_config.yaml')
     pipeline.run(raw.pick('eeg', exclude=['EXG1', 'EXG2', 'EXG3', 'EXG4', 'EXG5', 'EXG6', 'EXG7', 'EXG8']))
     Path('my_project_ll_config.yaml').unlink() # delete config file we made
