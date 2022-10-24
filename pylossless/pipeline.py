@@ -621,6 +621,8 @@ class LosslessPipeline():
             self.ica2.fit(epochs)
             self.ic_labels = label_components(epochs, self.ica2,
                                               method="iclabel")
+        else:
+            raise ValueError("The `run` argument must be 'run1' or 'run2'")
 
     def flag_epoch_ic_sd1(self, raw):
         '''Calculates the IC standard Deviation by epoch window. Flags windows with
