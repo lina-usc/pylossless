@@ -71,9 +71,10 @@ class EEGVisualizer:
         #self._time_slider_val = 0
         self.timeseries_graph = dcc.Graph(id='eeg_ts',
                                           figure={'data': None,
-                                                  'layout': None})
+                                                  'layout': None},
+                                          style={"border":"2px dotted blue"})
         self.timeseries_div = html.Div([self.timeseries_graph],
-                                       className="six columns")
+                                       className="six columns", style={"border":"5px solid red", 'width':'50%'})
         self.initialize_layout()
 
     '''@property
@@ -106,8 +107,8 @@ class EEGVisualizer:
         start, stop = self.raw.time_as_index([self.win_start, self.win_size])
         data, times = self.raw[:self.n_sel_ch, start:stop]
         self.layout = go.Layout(
-                                width = 1500,
-                                height=600,
+                                width = 1200,
+                                height=400,
                                 xaxis={'zeroline': False,
                                        'showgrid': False,
                                        'title': "time (seconds)"},
@@ -120,7 +121,11 @@ class EEGVisualizer:
                                        "tickvals": np.arange(-self.n_sel_ch + 1, 1) * self.ystep,
                                        'ticktext': [''] * self.n_sel_ch,
                                        'range':[-self.ystep*self.n_sel_ch, self.ystep]},
-                                showlegend=False)
+                                showlegend=False,
+                                margin={'t':5,'b':25,'r':5},
+                                paper_bgcolor="LightSteelBlue",
+                                plot_bgcolor="LightSteelBlue"
+                                )
         trace_kwargs = {'mode':'lines', 'line':dict(color='black', width=1)}
 
         # create objects for layout and traces
@@ -163,14 +168,14 @@ class EEGVisualizer:
         self.layout.update(autosize=False, width=1000, height=600)'''
 
 
-def NamedSlider(name, style=None, **kwargs):
+def NamedSlider(name, style=None, **slider_kwargs):
     if style is None:
-        style={"padding": "20px 10px 25px 4px"}
+        style={"padding": "0px 10px 25px 4px"}
     return html.Div(
         style=style,
         children=[
             html.P(f"{name}:"),
-            html.Div(style={"margin-left": "6px"}, children=dcc.Slider(**kwargs)),
+            html.Div(style={"margin-left": "6px"}, children=dcc.Slider(**slider_kwargs)),
         ],
     )
 
@@ -222,7 +227,8 @@ channel_slider = NamedSlider(name="Channel",
                             value=len(eeg_visualizer.raw.ch_names) -1,
                             included=False,
                             updatemode='mouseup',
-                            vertical=True)
+                            vertical=True,
+                            verticalHeight=300)
 
 marks_keys = np.round(np.linspace(eeg_visualizer.raw.times[0], eeg_visualizer.raw.times[-1], 10))
 time_slider = NamedSlider(name="Time",
@@ -233,24 +239,46 @@ time_slider = NamedSlider(name="Time",
                             value=eeg_visualizer.win_start,
                             vertical=False,
                             included=False,
-                            updatemode='mouseup'  # updates while moving slider
+                            updatemode='drag',  # updates while moving slider
+                            style={"width":"1500px",
+                                    "padding":"25px 0px 0px 0px",
+                                    "marginTop":25}
                             )
 
 
 
 
-
-
+file_browser_css = {'display':'inline-block',
+                    'border':'2px dotted red',
+                    'margin':'0px 5px 0px 5px',
+                    'padding':'0px 2px 0px 2px'
+                    }
+dropdown_css = {'width':500,
+                'height':30,
+                'display':'inline-block',
+                'border':'2px dotted black',
+                'margin':'2px 0px 0px 2px',
+                'padding':'5px 2px 0px 2px'}
+project_dir = Path()
 
 app.layout = html.Div([
                         html.Div([
-                            html.Button('Submit', id='submit-val'),
-                            html.Div(id='container-button-basic',
-                                    children='Enter a value and press submit')
-                                ]),
-                        html.Div([eeg_visualizer.timeseries_div, channel_slider]),
-                        time_slider
-                      ])
+                                  html.Button('Select folder',
+                                              id='submit-val',
+                                              title=f'current folder: {project_dir.resolve()}',
+                                              style=file_browser_css),
+                                  dcc.Dropdown(id="file_dropdown",
+                                              options=file_dicts,
+                                              placeholder="Select a file",
+                                              style=dropdown_css),
+                                  html.Div(id='container-button-basic',
+                                children='Enter a value and press submit',
+                                style={'border':'2px solid blue'})
+                                ]
+                               ),
+                        html.Div([eeg_visualizer.timeseries_div, channel_slider], style={"border":"5px solid green"}),
+                        time_slider,
+                      ],style={"border":"5px solid black"})
 
 
 if __name__ == '__main__':
