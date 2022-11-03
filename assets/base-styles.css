@@ -55,7 +55,7 @@
   .three.columns                  { width: 22%;            }
   .four.columns                   { width: 33%;            }
   .five.columns                   { width: 39.3333333333%; }
-  .six.columns                    { width: 49.75%;          }
+  .six.columns                    { width: 65.8%;          }
   .seven.columns                  { width: 56.6666666667%; }
   .eight.columns                  { width: 66.5%;          }
   .nine.columns                   { width: 74.0%;          }
@@ -105,6 +105,7 @@
 /* Base Styles
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 /* NOTE
+SH note old body background color: 282b38 old color: a5b1cd
 html is set to 62.5% so that all the REM measurements throughout Skeleton
 are based on 10px sizing. So basically 1.5rem = 15px :) */
 html {
@@ -114,8 +115,8 @@ body {
   line-height: 1.6;
   font-weight: 400;
   font-family: "Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  color: #a5b1cd;
-  background-color: #282b38;
+  color: #000000;
+  background-color: #2c2c2c;
 }
 
 /* Typography
@@ -163,17 +164,18 @@ input[type="reset"],
 input[type="button"] {
   display: inline-block;
   height: 38px;
+  margin: 0px 0px 300px 0px;
   padding: 0 30px;
-  color: #555;
+  color: #9E9E9E;
   text-align: center;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 60;
   line-height: 38px;
   letter-spacing: .1rem;
-  text-transform: uppercase;
+  /*text-transform: uppercase;*/
   text-decoration: none;
   white-space: nowrap;
-  background-color: #282b38;
+  background-color: #b1b1b100;
   border-radius: 4px;
   border: 1px solid #bbb;
   cursor: pointer;
@@ -188,7 +190,7 @@ button:focus,
 input[type="submit"]:focus,
 input[type="reset"]:focus,
 input[type="button"]:focus {
-  color: #333;
+  color: rgb(33, 104, 236);
   border-color: #888;
   outline: 0; }
 .button.button-primary,
@@ -213,7 +215,12 @@ input[type="button"].button-primary:focus {
   background-color: #1EAEDB;
   border-color: #1EAEDB; }
 
-
+#submit-val {
+ display: inline-block;
+ position: relative;
+ top: 100%;
+ transform: translate(0, -25%);
+}
 /* Forms
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 input[type="email"],

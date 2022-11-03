@@ -20,11 +20,14 @@
 
 /* Banner
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
+
 .banner {
-    background-color: #2f3445; /* Machine Learning Color is orange */
-    padding: 3rem 0;
+    background-color: #2c2c2c;
+    padding: 1rem 0;
     width: 100%;
-    margin-bottom: 5rem;
+    height: 15%;
+    margin-bottom: 1rem;
+    border-bottom: .01rem solid #515151;
 }
 
 .banner h2 {
@@ -109,42 +112,51 @@
     }
 }
 
+
+#plots-container {
+    display: flex;
+}
+
 /* Dropdowns
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 .Select-control {
-    color: #a5b1cd;
+    color: #f54b08;
 }
-
+/* sets text color of dropdown options */
 .Select {
-    color: #a5b1cd;
+    color: #424242;
+    display: inline-block;
 }
-
+/* Sets color of dropdown options border */
 .Select-menu-outer {
-    background-color: #2f3445;
-    border: 1px solid gray;
+    background-color: #a5b1cd;
+    border: 1px solid #212121;
 }
-
+/* Sets color of dropdown & options fill */
 .Select div {
-    background-color: #2f3445;
+    background-color: #EAEAF2;
 }
-
+/* Sets fill color of the selected row in the dropdown options */
 .Select-menu-outer div:hover {
-    background-color: rgba(255, 255, 255, 0.01);
+    background-color: rgba(98, 125, 152, .1);
 }
-
+/* Sets font color of the text in the dropdown once a selection is made */
 .Select-value-label {
-    color: #a5b1cd !important;
+    color: #222222 !important;
 }
-
+/* sets the thin border for the text in the dropdown. height option here is hacky
+   way to get the border to fit the overall div. need to find a better solution. */
 .Select--single > .Select-control .Select-value, .Select-placeholder {
     border: 1px solid gray;
     border-radius: 4px;
+    height: 120%;
 }
 
 .card {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    /*border-bottom: 1px solid rgba(255, 255, 255, 0.1); */
     width: 80%;
-    padding: 2rem 0;
+    /* padding: 2rem 0; */
+    display: inline-block;
 }
 
 #last-card {
@@ -154,6 +166,11 @@
 .graph-title {
     font-size: 2rem;
     margin: 15% 0 0 25%;
+}
+
+#fileDropdown {
+    display: inline-block;
+    width: 80%
 }
 
 #button-zero-threshold {
@@ -253,15 +270,64 @@
     }
 }
 
+/* Slider Divs
+-------------------------------------------------- */
+
+.slider-div {
+    display: inline-block;
+    margin: 0px 0px 0px 0px;
+}
+
 /* Slider
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 
 .rc-slider-track {
-    background-color: #13c6e9;
+    background-color: #3B3B3B;
+    color: #222222;
+    padding: 25px 0px 25px 0px;
+    margin: 0px;
 }
 
 .rc-slider-handle {
-    border: solid 2px #13c6e9;
+    border: solid 2px #3B3B3B;
+    color: #222222;
+}
+
+#slider-time {
+    width: 90%;
+    margin: 0px 0px 0px 80px;
+}
+
+#slider-channel {
+    width: 90%;
+    padding: 25px 0px 25px 0px;
+}
+
+#slider-ica_source {
+    width: 90%;
+    padding: 25px 0px 25px 0px;
+}
+
+/* Timeseries Divs 
+-------------------------------------------------- */
+.timeseries-container {
+    width: 70%;
+    border: 2px solid red;
+
+}
+.outer-timeseries-div {
+    display: flex;
+    margin: 0px 0px 20px  0px;
+}
+.timeseries-div {
+    display: flex;
+    margin: 0px 0px 0px 0px;
+    padding: 0px 0px 0px 0px;
+}
+
+.dcc-graph-timeseries {
+    border-radius: 15px;
+    background-color: #FAFAFA;
 }
 
 /* Left column
