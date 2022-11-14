@@ -17,6 +17,7 @@ from plotly.graph_objs import Layout, YAxis, Scatter, Annotation, Annotations, D
 from dash import html
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 # loading raw object
 from mne_bids import BIDSPath, read_raw_bids, get_bids_path_from_fname
@@ -48,16 +49,113 @@ directory = './tmp_test_files/derivatives/pylossless/sub-00/eeg/'
 fname = list(Path(directory).glob('*.edf'))[0] 
 bids_path = get_bids_path_from_fname(fname)
 raw = read_raw_bids(bids_path).pick('eeg')
+ica_fpath = Path("./tmp_test_files\derivatives\pylossless\sub-00\eeg\sub-00_task-test_ica2.fif")
+ica = mne.preprocessing.read_ica(ica_fpath)
+info = mne.create_info(ica._ica_names,
+                       sfreq=raw.info['sfreq'],
+                       ch_types=['eeg'] * ica.n_components_)
+
+raw_ica = mne.io.RawArray(ica.get_sources(raw).get_data(), info)
 
 app = dash.Dash(__name__)
-#eeg_visualizer = EEGVisualizer('./tmp_test_files/derivatives/pylossless/sub-00/eeg') #./sub-01/ses-01/eeg
 
 ica_dash_ids = {'graph':'graph-ica',
                 'ch-slider':'ch-slider-ica',
                 'time-slider':'time-slider-ica',
                 'container-plot':'container-plot-ica'}
-ica_visualizer = MNEVisualizer(app, raw, dash_ids=ica_dash_ids)
-eeg_visualizer = MNEVisualizer(app, raw, time_slider=ica_visualizer.dash_ids['time-slider'])
+ica_visualizer = MNEVisualizer(app, raw_ica, dash_ids=ica_dash_ids)
+eeg_visualizer = MNEVisualizer(app, raw, time_slider=ica_visualizer.dash_ids['time-slider'], 
+                               dcc_graph_kwargs=dict(config={'modeBarButtonsToRemove':['zoom','pan']}))
+
+
+#############################################################################
+#############################################################################
+#############################################################################
+
+
+############################################################################
+import warnings
+from mne import create_info
+from mne.io import RawArray
+from mne.viz.topomap import _add_colorbar
+from mne.viz import plot_topomap
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+def plot_values_topomap(value_dict, montage, axes, colorbar=True, cmap='RdBu_r',
+                        vmin=None, vmax=None, names=None, image_interp='cubic', side_cb="right",
+                        sensors=True, show_names=True, **kwargs):
+    if names is None:
+        names = montage.ch_names
+
+    info = create_info(names, sfreq=256, ch_types="eeg")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        RawArray(np.zeros((len(names), 1)), info, copy=None, verbose=False).set_montage(montage)
+
+    im = plot_topomap([value_dict[ch] for ch in names], pos=info, show=False, image_interp=image_interp,
+                      sensors=sensors, res=64, axes=axes, names=names, show_names=show_names,
+                      vmin=vmin, vmax=vmax, cmap=cmap, **kwargs)
+
+    if colorbar:
+        try:
+            cbar, cax = _add_colorbar(axes, im[0], cmap, pad=.05,
+                                      format='%3.2f', side=side_cb)
+            axes.cbar = cbar
+            cbar.ax.tick_params(labelsize=12)
+
+        except TypeError:
+            pass
+
+    return im
+###########################################################################################################
+
+from itertools import product
+import plotly.express as px
+from plotly.subplots import make_subplots
+plt.switch_backend('agg')
+
+rows = 6
+cols = 4
+ply_fig = make_subplots(rows=rows, cols=cols, horizontal_spacing=0.01, 
+                        vertical_spacing=0.01)
+
+montage = raw.get_montage()
+
+margin_x = 10
+margin_y = 1
+offset = 0
+
+for no, (i, j) in enumerate(product(np.arange(rows), np.arange(cols))):
+    component = ica.get_components()[:, no+offset]
+    value_dict = dict(zip(ica.ch_names, component))
+
+    fig, ax = plt.subplots(dpi=25)
+    plot_values_topomap(value_dict, montage, ax, colorbar=False, show_names=False, names=ica.ch_names)
+    fig.tight_layout()
+    fig.canvas.draw()
+    data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+    data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))[margin_y:-margin_y, margin_x:-margin_x, :]
+    px_fig = px.imshow(data)
+
+    ply_fig.add_trace(px_fig.data[0], row=i+1, col=j+1)
+
+for i in range (1, rows*cols+1):
+  ply_fig['layout'][f'xaxis{i}'].update(showticklabels=False)
+  ply_fig['layout'][f'yaxis{i}'].update(showticklabels=False)
+
+
+ply_fig.update_layout(
+    autosize=False,
+    width=600,
+    height=800,)
+ply_fig['layout'].update(margin=dict(l=0,r=0,b=0,t=0))
+
+#ply_fig.show()
+
+#############################################################################
+#############################################################################
+#############################################################################
+
 
 
 
@@ -85,7 +183,6 @@ def _select_folder(n_clicks):
         eeg_visualizer.change_dir(directory)
         return directory
 
-
 ########################
 # Layout
 ########################
@@ -112,11 +209,7 @@ app.layout = html.Div([
                                 html.Div(id='plots-container', 
                                          children=[html.Div([eeg_visualizer.container_plot,
                                                    ica_visualizer.container_plot]),
-                                                   html.Div([], style={
-                                                                    'border':'2px solid red',
-                                                                    'width':'25%',
-                                                                    'height':'50%'
-                                                                    }
+                                                   html.Div(children=[dcc.Graph(figure=ply_fig)],
                                                             )
                                                    ]
                                         )

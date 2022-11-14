@@ -121,6 +121,10 @@ class EEGVisualizer:
         self.fname = list(Path(directory).glob('*.edf'))[0]  # TODO make permanent solution. cant assume vhdr all the time.
         self.load_raw()
 
+############################
+# Create Timeseries Layouts
+############################
+
     def initialize_layout(self):
         start, stop = self.raw.time_as_index([self.win_start, self.win_size])
         data, times = self.raw[:self.n_sel_ch, start:stop]
@@ -230,7 +234,9 @@ class EEGVisualizer:
 ####################
 
 app = dash.Dash(__name__)
-eeg_visualizer = EEGVisualizer('./tmp_test_files/derivatives/pylossless/sub-00/eeg') #./sub-01/ses-01/eeg
+#eeg_visualizer = EEGVisualizer('./tmp_test_files/derivatives/pylossless/sub-00/eeg') #./sub-01/ses-01/eeg
+eeg_visualizer = EEGVisualizer(app, raw) #./sub-01/ses-01/eeg
+
 server = app.server
 
 
