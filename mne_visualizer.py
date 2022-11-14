@@ -8,18 +8,22 @@ import numpy as np
 
 from collections import Iterable
 
+
 class MNEVisualizer:
 
-    def __init__(self, app, inst=None, dcc_graph_kwargs=None,
-                 dash_ids=None, ch_slider=None, time_slider=None):
+    def __init__(self, app, inst, dcc_graph_kwargs=None,
+                 dash_ids=None, ch_slider=None, time_slider=None,
+                 scalings='auto', zoom=2, remove_dc=True):
         self.app = app
+        self.scalings_arg = scalings
         self.inst = None
         if inst is not None:
             self.set_inst(inst)
         self.n_sel_ch = 20  # n of channels to display in plot
         self.win_start = 0  # min time to disp on plot
         self.win_size = 10  # max time to disp on plot
-        self.ystep = 1e-3
+        self.zoom = zoom
+        self.remove_dc = remove_dc
         self.layout = None
         self.traces = None
         self._ch_slider_val = 0
@@ -46,6 +50,50 @@ class MNEVisualizer:
     def set_inst(self, inst):
         self.inst = inst
         self.inst.load_data()
+        self.scalings = dict(mag=1e-12,
+                             grad=4e-11,
+                             eeg=20e-6,
+                             eog=150e-6,
+                             ecg=5e-4,
+                             emg=1e-3,
+                             ref_meg=1e-12,
+                             misc=1e-3,
+                             stim=1,
+                             resp=1,
+                             chpi=1e-4,
+                             whitened=1e2)
+        if self.scalings_arg == 'auto':
+            for kind in np.unique(self.inst.get_channel_types()):
+                self.scalings[kind] = np.percentile(self.inst.get_data(), 99.5)
+        else:
+            self.scalings.update(self.scalings_arg)
+
+    def _get_norm_factor(self, ch_type):
+        "will divide returned value to data for timeseries"
+        return 2 * self.scalings[ch_type] / self.zoom
+
+    def add_annot_shapes(self, annotations):
+        pass
+
+    def add_annotation(self, tmin, tmax, channel=None):
+        if channel is None:
+            pass
+
+        '''shape = shapes=[
+                dict(
+                    type="rect",
+                    xref="x",
+                    yref="y",
+                    x0="1.905",
+                    y0="-100",
+                    x1="2.07",
+                    y1="10",
+                    fillcolor="green",
+                    opacity=0.25,
+                    line_width=0,
+                    layer="below")]'''
+
+        pass
 
 
 ############################
@@ -62,20 +110,23 @@ class MNEVisualizer:
                                 xaxis={'zeroline': False,
                                        'showgrid': True,
                                        'title': "time (seconds)",
-                                       'gridcolor':'white'},
+                                       'gridcolor':'white',
+                                       'fixedrange':True},
                                 yaxis={'showgrid': True,
                                        'showline': True,
                                        'zeroline': False,
                                        'autorange': False,  #'reversed',
                                        'scaleratio': 0.5,
                                        "tickmode": "array",
-                                       "tickvals": np.arange(-self.n_sel_ch + 1, 1) * self.ystep,
+                                       "tickvals": np.arange(-self.n_sel_ch + 1, 1),
                                        'ticktext': [''] * self.n_sel_ch,
-                                       'range':[-self.ystep*self.n_sel_ch, self.ystep]},
+                                       'range':[-self.n_sel_ch, 1],
+                                       'fixedrange':True},
                                 showlegend=False,
                                 margin={'t': 25,'b': 25,'l': 35, 'r': 25},
                                 paper_bgcolor="rgba(0,0,0,0)",
                                 plot_bgcolor="#EAEAF2",
+                                shapes=[]
                                 )
 
         trace_kwargs = {'mode':'lines', 'line':dict(color='#222222', width=1)}
@@ -83,8 +134,9 @@ class MNEVisualizer:
         self.traces = []
 
         # loop over the channels
+        ch_types = self.inst.get_channel_types()
         for ii in range(self.n_sel_ch):
-            self.traces.append(go.Scatter(x=times, y=data.T[:, ii] - ii * self.ystep, **trace_kwargs))
+            self.traces.append(go.Scatter(x=times, y=data.T[:, ii]/self._get_norm_factor(ch_types[ii]) - ii, **trace_kwargs))
 
         self.graph.figure['layout'] = self.layout
         self.graph.figure['data'] = self.traces
@@ -108,13 +160,16 @@ class MNEVisualizer:
 
         data, times = self.inst[::-1, start_samp:stop_samp]
         data = data[first_sel_ch:last_sel_ch, :]
+        if self.remove_dc:
+            data -= np.nanmean(data, axis=1)[:, np.newaxis] 
 
         # Update the raw timeseries traces
         ch_names = self.inst.ch_names[::-1][first_sel_ch:last_sel_ch]
         self.layout.yaxis['ticktext'] = ch_names
-        for i, (ch_name, signal, trace) in enumerate(zip(ch_names, data, self.traces)):
+        ch_types = self.inst.get_channel_types()[::-1][first_sel_ch:last_sel_ch]
+        for i, (ch_name, signal, trace, ch_type) in enumerate(zip(ch_names, data, self.traces, ch_types)):
             trace.x = times
-            trace.y = signal - (self.n_sel_ch - i - 1) * self.ystep
+            trace.y = signal/self._get_norm_factor(ch_type) - (self.n_sel_ch - i - 1)
             trace.name = ch_name
         self.graph.figure['data'] = self.traces
 
@@ -133,9 +188,12 @@ class MNEVisualizer:
             args += [Input(self.use_time_slider, 'value')]
         else:
             args += [Input(self.dash_ids['time-slider'], 'value')]
+        args += [Input(self.dash_ids['graph'], "clickData")]
+        args += [Input(self.dash_ids['graph'], "hoverData")]
 
         @self.app.callback(*args, suppress_callback_exceptions=True)
-        def channel_slider_change(ch, time):
+        def channel_slider_change(ch, time, click_data, hover_data):
+            print(hover_data)
             
             self.update_layout(ch_slider_val=ch, time_slider_val=time)
             return self.graph.figure
