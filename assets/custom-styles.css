@@ -312,7 +312,7 @@
 -------------------------------------------------- */
 .timeseries-container {
     width: 70%;
-    border: 2px solid red;
+    /* border: 2px solid red; */
 
 }
 .outer-timeseries-div {
