@@ -650,6 +650,7 @@ class LosslessPipeline():
                                                    root=lossless_root,
                                                    check=False
                                                    )
+        print("#### HITTTTT")
         mne_bids.write_raw_bids(raw,
                                 derivatives_path,
                                 overwrite=True,
