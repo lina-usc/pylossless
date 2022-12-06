@@ -1,5 +1,7 @@
-from dash import dcc, html
+import dash
+from dash import dcc, html, no_update
 from dash.dependencies import Input, Output
+from dash_extensions import EventListener
 
 # time series plot
 import plotly.graph_objects as go
@@ -8,12 +10,15 @@ import numpy as np
 
 from collections import Iterable
 
+import mne
+
 
 class MNEVisualizer:
 
     def __init__(self, app, inst, dcc_graph_kwargs=None,
                  dash_ids=None, ch_slider=None, time_slider=None,
-                 scalings='auto', zoom=2, remove_dc=True):
+                 scalings='auto', zoom=2, remove_dc=True,
+                 annot_created_callback=None):
         self.app = app
         self.scalings_arg = scalings
         self.inst = None
@@ -27,7 +32,11 @@ class MNEVisualizer:
         self.layout = None
         self.traces = None
         self._ch_slider_val = 0
-        default_ids = ['graph', 'ch-slider', 'time-slider', 'container-plot']
+        self.annotating = False
+        self.annotating_start = None
+        self.annot_created_callback = annot_created_callback
+        self.new_annot_desc = 'selected_time'
+        default_ids = ['graph', 'ch-slider', 'time-slider', 'container-plot', 'keyboard','output']
         self.dash_ids = {id_:id_ for id_ in default_ids}
         if dash_ids is not None:
             self.dash_ids.update(dash_ids)
@@ -42,10 +51,12 @@ class MNEVisualizer:
                                         className='dcc-graph-div')
         self.use_ch_slider = ch_slider
         self.use_time_slider = time_slider
+        self.shift_down = False
         self.init_sliders()
         self.set_div()
         self.set_callback()
         self.initialize_layout()
+        self.initialize_keyboard()
 
     def set_inst(self, inst):
         self.inst = inst
@@ -73,27 +84,33 @@ class MNEVisualizer:
         return 2 * self.scalings[ch_type] / self.zoom
 
     def add_annot_shapes(self, annotations):
-        pass
+        shapes = []
+        for annot in annotations:
+            shape = dict(name=annot['description'],
+                         type="rect",
+                         xref="x",
+                         yref="y",
+                         x0=annot['onset'],
+                         y0=self.layout.yaxis['range'][0],
+                         x1=annot['onset'] + annot['duration'],
+                         y1=self.layout.yaxis['range'][1],
+                         fillcolor="green",
+                         opacity=0.25,
+                         line_width=0,
+                         layer="below")
+            shapes.append(shape)
+
+        self.layout.shapes = shapes
+    
+    def refresh_annotations(self):
+        tmin, tmax = self.win_start, self.win_start + self.win_size
+        annots = self.inst.annotations.copy().crop(tmin, tmax, use_orig_time=False)
+        self.add_annot_shapes(annots)
 
     def add_annotation(self, tmin, tmax, channel=None):
         if channel is None:
             pass
 
-        '''shape = shapes=[
-                dict(
-                    type="rect",
-                    xref="x",
-                    yref="y",
-                    x0="1.905",
-                    y0="-100",
-                    x1="2.07",
-                    y1="10",
-                    fillcolor="green",
-                    opacity=0.25,
-                    line_width=0,
-                    layer="below")]'''
-
-        pass
 
 
 ############################
@@ -111,7 +128,14 @@ class MNEVisualizer:
                                        'showgrid': True,
                                        'title': "time (seconds)",
                                        'gridcolor':'white',
-                                       'fixedrange':True},
+                                       'fixedrange':True,
+                                       'showspikes' : True,
+                                       'spikemode': 'across',
+                                       'spikesnap': 'cursor',
+                                       'showline': True,
+                                       'spikecolor':'black',
+                                       'spikedash':'dash'
+                                       },
                                 yaxis={'showgrid': True,
                                        'showline': True,
                                        'zeroline': False,
@@ -126,7 +150,8 @@ class MNEVisualizer:
                                 margin={'t': 25,'b': 25,'l': 35, 'r': 25},
                                 paper_bgcolor="rgba(0,0,0,0)",
                                 plot_bgcolor="#EAEAF2",
-                                shapes=[]
+                                shapes=[],
+                                hovermode='closest'
                                 )
 
         trace_kwargs = {'mode':'lines', 'line':dict(color='#222222', width=1)}
@@ -135,28 +160,51 @@ class MNEVisualizer:
 
         # loop over the channels
         ch_types = self.inst.get_channel_types()
-        for ii in range(self.n_sel_ch):
-            self.traces.append(go.Scatter(x=times, y=data.T[:, ii]/self._get_norm_factor(ch_types[ii]) - ii, **trace_kwargs))
+        ch_names = self.inst.ch_names[:self.n_sel_ch]
+        for ii, ch_name in enumerate(ch_names):  # range(self.n_sel_ch):
+            trace = go.Scatter(x=times,
+                               y=data.T[:, ii]/self._get_norm_factor(ch_types[ii]) - ii,
+                               name=ch_name,
+                               **trace_kwargs)
+            self.traces.append(trace)
 
         self.graph.figure['layout'] = self.layout
         self.graph.figure['data'] = self.traces
 
+        self.refresh_annotations()
+
+    def initialize_keyboard(self):
+        import json
+        events =[{"event": "keydown", "props": ["key", "shiftKey"]},
+                 {"event":"keyup", "props":["key","shiftKey"]}]
+        event_listener = EventListener(id=self.dash_ids['keyboard'], events=events)
+        self.app.layout.children.extend([event_listener, html.Div(id=self.dash_ids["output"])])
+        @self.app.callback(Output(self.dash_ids['output'], "children"), [Input(self.dash_ids['keyboard'], "event")])
+        def event_callback(event):
+            if event is None:
+                return ''
+            if event['key'] == 'Shift':
+                self.shift_down = event['shiftKey']
+            return ''
+
+    
     def update_layout(self,
                       ch_slider_val=None,
                       time_slider_val=None):
-        print(ch_slider_val)
 
         if ch_slider_val is not None:
             self._ch_slider_val = ch_slider_val
         if time_slider_val is not None:
             self.win_start = time_slider_val
 
+        tmin, tmax = self.win_start, self.win_start + self.win_size
+
         # Update selected channels
         first_sel_ch = self._ch_slider_val - self.n_sel_ch + 1
         last_sel_ch = self._ch_slider_val + 1  # +1 bc this is used in slicing below, & end is not inclued
 
         # Update times
-        start_samp, stop_samp = self.inst.time_as_index([self.win_start, self.win_start + self.win_size])
+        start_samp, stop_samp = self.inst.time_as_index([tmin, tmax])
 
         data, times = self.inst[::-1, start_samp:stop_samp]
         data = data[first_sel_ch:last_sel_ch, :]
@@ -173,6 +221,8 @@ class MNEVisualizer:
             trace.name = ch_name
         self.graph.figure['data'] = self.traces
 
+        self.refresh_annotations()
+
     ###############
     # CALLBACKS
     ###############
@@ -188,14 +238,62 @@ class MNEVisualizer:
             args += [Input(self.use_time_slider, 'value')]
         else:
             args += [Input(self.dash_ids['time-slider'], 'value')]
-        args += [Input(self.dash_ids['graph'], "clickData")]
-        args += [Input(self.dash_ids['graph'], "hoverData")]
+        args += [Input(self.dash_ids['graph'], "clickData"), Input(self.dash_ids['graph'], "hoverData")]
 
         @self.app.callback(*args, suppress_callback_exceptions=True)
         def channel_slider_change(ch, time, click_data, hover_data):
-            print(hover_data)
-            
-            self.update_layout(ch_slider_val=ch, time_slider_val=time)
+            ctx = dash.callback_context
+            assert(len(ctx.triggered) == 1)
+            if len(ctx.triggered[0]['prop_id'].split('.')) == 2:
+                object_, dash_event = ctx.triggered[0]["prop_id"].split('.')
+                if object_ == self.dash_ids['graph']:
+                    if self.shift_down:
+                        if dash_event == 'clickData':
+                            if self.annotating:
+                                # finishing an annotation
+                                self.layout.xaxis['spikedash'] = 'dash'
+                                self.layout.xaxis['spikecolor'] = 'black'
+                                new_annot = mne.Annotations(onset=[self.annotating_start],
+                                                        duration=[click_data['points'][0]['x'] - self.annotating_start],
+                                                        description=self.new_annot_desc,
+                                                        orig_time=self.inst.annotations.orig_time)
+                                if self.annot_created_callback is not None:
+                                    self.annot_created_callback(new_annot)
+                                else:
+                                    self.inst.set_annotations(self.inst.annotations + new_annot)
+                                    self.refresh_annotations()
+                            else:
+                                # starting an annotation
+                                self.annotating_start = click_data['points'][0]['x']
+                                self.layout.xaxis['spikedash'] = 'solid'
+                                self.layout.xaxis['spikecolor'] = 'red'
+                                shape = dict(type="rect",
+                                            xref="x",
+                                            yref="y",
+                                            x0=click_data['points'][0]['x'],
+                                            y0=self.layout.yaxis['range'][0],
+                                            x1=click_data['points'][0]['x'],
+                                            y1=self.layout.yaxis['range'][1],
+                                            fillcolor="red",
+                                            opacity=0.45,
+                                            line_width=0,
+                                            layer="below")
+                                self.layout.shapes += (shape,)
+
+                            self.annotating = not self.annotating
+                        elif dash_event == 'hoverData':
+                            if self.annotating:
+                                #self.annotating_current = hover_data['points'][0]['x']
+                                self.layout.shapes[-1].x1 = hover_data['points'][0]['x']
+                            else:
+                                return no_update
+                    else:
+                        print('CLICK', click_data)
+                        print('HOVER', hover_data)
+                        #self.select_trace()
+                        pass # for selecting traces
+                elif object_ in [self.dash_ids['ch-slider'], self.dash_ids['time-slider'], self.use_time_slider]:
+                    self.update_layout(ch_slider_val=ch, time_slider_val=time)
             return self.graph.figure
 
     def init_sliders(self):

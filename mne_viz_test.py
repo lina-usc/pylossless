@@ -49,6 +49,9 @@ directory = './tmp_test_files/derivatives/pylossless/sub-00/eeg/'
 fname = list(Path(directory).glob('*.edf'))[0] 
 bids_path = get_bids_path_from_fname(fname)
 raw = read_raw_bids(bids_path).pick('eeg')
+raw.set_annotations(mne.Annotations(onset=[2.], duration=[1.], description=['test_annot'], orig_time=raw.info['meas_date']))
+
+
 ica_fpath = Path("./tmp_test_files\derivatives\pylossless\sub-00\eeg\sub-00_task-test_ica2.fif")
 ica = mne.preprocessing.read_ica(ica_fpath)
 info = mne.create_info(ica._ica_names,
@@ -56,16 +59,32 @@ info = mne.create_info(ica._ica_names,
                        ch_types=['eeg'] * ica.n_components_)
 
 raw_ica = mne.io.RawArray(ica.get_sources(raw).get_data(), info)
+raw_ica.set_meas_date(raw.info['meas_date'])
+raw_ica.set_annotations(raw.annotations)
+
+def annot_created_callback(annotation):
+    raw.set_annotations(raw.annotations + annotation)
+    raw_ica.set_annotations(raw_ica.annotations + annotation)
+    ica_visualizer.refresh_annotations()
+    eeg_visualizer.refresh_annotations()
+
 
 app = dash.Dash(__name__)
+app.layout = html.Div([])
 
 ica_dash_ids = {'graph':'graph-ica',
                 'ch-slider':'ch-slider-ica',
                 'time-slider':'time-slider-ica',
-                'container-plot':'container-plot-ica'}
-ica_visualizer = MNEVisualizer(app, raw_ica, dash_ids=ica_dash_ids)
+                'container-plot':'container-plot-ica',
+                'keyboard':'keyboard-ica',
+                'output':'output-ica'}
+ica_visualizer = MNEVisualizer(app, raw_ica, dash_ids=ica_dash_ids, annot_created_callback=annot_created_callback)
 eeg_visualizer = MNEVisualizer(app, raw, time_slider=ica_visualizer.dash_ids['time-slider'], 
-                               dcc_graph_kwargs=dict(config={'modeBarButtonsToRemove':['zoom','pan']}))
+                               dcc_graph_kwargs=dict(config={'modeBarButtonsToRemove':['zoom','pan']}),
+                               annot_created_callback=annot_created_callback)
+
+ica_visualizer.new_annot_desc = 'bad_manual'
+eeg_visualizer.new_annot_desc = 'bad_manual'
 
 
 #############################################################################
@@ -188,7 +207,7 @@ def _select_folder(n_clicks):
 ########################
 
 
-app.layout = html.Div([
+layout =     html.Div([
                         html.Div([
                                     html.Button('Folder',
                                                 id='submit-val',
@@ -217,6 +236,7 @@ app.layout = html.Div([
                                 style={'display':'block'})
                         ], style={"display":"block"})
 
+app.layout.children.append(layout)
 
 if __name__ == '__main__':
     app.run_server(debug=True, use_reloader=False)
