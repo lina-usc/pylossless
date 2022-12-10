@@ -16,7 +16,7 @@ import mne
 class MNEVisualizer:
 
     def __init__(self, app, inst, dcc_graph_kwargs=None,
-                 dash_ids=None, ch_slider=None, time_slider=None,
+                 dash_id_suffix='', ch_slider=None, time_slider=None,
                  scalings='auto', zoom=2, remove_dc=True,
                  annot_created_callback=None):
         self.app = app
@@ -34,12 +34,11 @@ class MNEVisualizer:
         self._ch_slider_val = 0
         self.annotating = False
         self.annotating_start = None
+        self.annotation_inprogress = None
         self.annot_created_callback = annot_created_callback
         self.new_annot_desc = 'selected_time'
         default_ids = ['graph', 'ch-slider', 'time-slider', 'container-plot', 'keyboard','output']
-        self.dash_ids = {id_:id_ for id_ in default_ids}
-        if dash_ids is not None:
-            self.dash_ids.update(dash_ids)
+        self.dash_ids = {id_:(id_ + dash_id_suffix) for id_ in default_ids}
         self.dcc_graph_kwargs = dict(id=self.dash_ids['graph'],
                                      className='dcc-graph',
                                      figure={'data': None,
@@ -54,8 +53,8 @@ class MNEVisualizer:
         self.shift_down = False
         self.init_sliders()
         self.set_div()
-        self.set_callback()
         self.initialize_layout()
+        self.set_callback()
         self.initialize_keyboard()
 
     def set_inst(self, inst):
@@ -101,6 +100,8 @@ class MNEVisualizer:
             shapes.append(shape)
 
         self.layout.shapes = shapes
+        if self.annotating:
+            self.layout.shapes += (self.annotation_inprogress,)
     
     def refresh_annotations(self):
         tmin, tmax = self.win_start, self.win_start + self.win_size
@@ -118,8 +119,6 @@ class MNEVisualizer:
 ############################
 
     def initialize_layout(self):
-        start, stop = self.inst.time_as_index([self.win_start, self.win_size])
-        data, times = self.inst[:self.n_sel_ch, start:stop]
 
         self.layout = go.Layout(
                                 width = 1200,
@@ -156,38 +155,13 @@ class MNEVisualizer:
 
         trace_kwargs = {'mode':'lines', 'line':dict(color='#222222', width=1)}
         # create objects for layout and traces
-        self.traces = []
-
-        # loop over the channels
-        ch_types = self.inst.get_channel_types()
-        ch_names = self.inst.ch_names[:self.n_sel_ch]
-        for ii, ch_name in enumerate(ch_names):  # range(self.n_sel_ch):
-            trace = go.Scatter(x=times,
-                               y=data.T[:, ii]/self._get_norm_factor(ch_types[ii]) - ii,
-                               name=ch_name,
-                               **trace_kwargs)
-            self.traces.append(trace)
+        self.traces = [go.Scatter(x=[], y=[], name=ii, **trace_kwargs)
+                       for ii in range(self.n_sel_ch)]
 
         self.graph.figure['layout'] = self.layout
-        self.graph.figure['data'] = self.traces
 
-        self.refresh_annotations()
+        self.update_layout(ch_slider_val=self.channel_slider.max, time_slider_val=0)
 
-    def initialize_keyboard(self):
-        import json
-        events =[{"event": "keydown", "props": ["key", "shiftKey"]},
-                 {"event":"keyup", "props":["key","shiftKey"]}]
-        event_listener = EventListener(id=self.dash_ids['keyboard'], events=events)
-        self.app.layout.children.extend([event_listener, html.Div(id=self.dash_ids["output"])])
-        @self.app.callback(Output(self.dash_ids['output'], "children"), [Input(self.dash_ids['keyboard'], "event")])
-        def event_callback(event):
-            if event is None:
-                return ''
-            if event['key'] == 'Shift':
-                self.shift_down = event['shiftKey']
-            return ''
-
-    
     def update_layout(self,
                       ch_slider_val=None,
                       time_slider_val=None):
@@ -219,9 +193,27 @@ class MNEVisualizer:
             trace.x = times
             trace.y = signal/self._get_norm_factor(ch_type) - (self.n_sel_ch - i - 1)
             trace.name = ch_name
+            if ch_name in self.inst.info['bads']:
+                trace.line.color = 'red'
+            else:
+                trace.line.color = 'black'
         self.graph.figure['data'] = self.traces
 
+
         self.refresh_annotations()
+
+    def initialize_keyboard(self):
+        events =[{"event": "keydown", "props": ["key", "shiftKey"]},
+                 {"event":"keyup", "props":["key","shiftKey"]}]
+        event_listener = EventListener(id=self.dash_ids['keyboard'], events=events)
+        self.app.layout.children.extend([event_listener, html.Div(id=self.dash_ids["output"])])
+        @self.app.callback(Output(self.dash_ids['output'], "children"), [Input(self.dash_ids['keyboard'], "event")])
+        def event_callback(event):
+            if event is None:
+                return ''
+            if event['key'] == 'Shift':
+                self.shift_down = event['shiftKey']
+            return '' 
 
     ###############
     # CALLBACKS
@@ -238,7 +230,10 @@ class MNEVisualizer:
             args += [Input(self.use_time_slider, 'value')]
         else:
             args += [Input(self.dash_ids['time-slider'], 'value')]
-        args += [Input(self.dash_ids['graph'], "clickData"), Input(self.dash_ids['graph'], "hoverData")]
+        args += [Input(self.dash_ids['graph'], "clickData"),
+                 Input(self.dash_ids['graph'], "hoverData")]
+
+    
 
         @self.app.callback(*args, suppress_callback_exceptions=True)
         def channel_slider_change(ch, time, click_data, hover_data):
@@ -247,8 +242,8 @@ class MNEVisualizer:
             if len(ctx.triggered[0]['prop_id'].split('.')) == 2:
                 object_, dash_event = ctx.triggered[0]["prop_id"].split('.')
                 if object_ == self.dash_ids['graph']:
-                    if self.shift_down:
-                        if dash_event == 'clickData':
+                    if dash_event == 'clickData':
+                        if self.shift_down:
                             if self.annotating:
                                 # finishing an annotation
                                 self.layout.xaxis['spikedash'] = 'dash'
@@ -257,11 +252,13 @@ class MNEVisualizer:
                                                         duration=[click_data['points'][0]['x'] - self.annotating_start],
                                                         description=self.new_annot_desc,
                                                         orig_time=self.inst.annotations.orig_time)
+                                self.annotating = not self.annotating
                                 if self.annot_created_callback is not None:
                                     self.annot_created_callback(new_annot)
                                 else:
                                     self.inst.set_annotations(self.inst.annotations + new_annot)
-                                    self.refresh_annotations()
+                                    #self.refresh_annotations()
+                                    self.update_layout() # TODO replace update_layout to ensure refresh without updating whole layout
                             else:
                                 # starting an annotation
                                 self.annotating_start = click_data['points'][0]['x']
@@ -278,22 +275,32 @@ class MNEVisualizer:
                                             opacity=0.45,
                                             line_width=0,
                                             layer="below")
-                                self.layout.shapes += (shape,)
+                                self.annotation_inprogress = shape
+                                self.annotating = not self.annotating
+                                self.update_layout() # TODO replace update_layout to ensure refresh without updating whole layout
+                                #self.refresh_annotations()
 
-                            self.annotating = not self.annotating
-                        elif dash_event == 'hoverData':
-                            if self.annotating:
-                                #self.annotating_current = hover_data['points'][0]['x']
-                                self.layout.shapes[-1].x1 = hover_data['points'][0]['x']
+                        else: # not shift_down
+                            ch_name = self.traces[click_data["points"][0]["curveNumber"]].name
+                            if ch_name in self.inst.info['bads']:
+                                self.inst.info['bads'].pop()
                             else:
-                                return no_update
+                                self.inst.info['bads'].append(ch_name)
+                            self.update_layout()
+
+                    elif dash_event == 'hoverData':
+                        if self.annotating:
+                            #self.annotating_current = hover_data['points'][0]['x']
+                            self.annotation_inprogress['x1'] = hover_data['points'][0]['x']
+                            self.update_layout() # TODO replace update_layout to ensure refresh without updating whole layout
+                        else:
+                            return no_update
                     else:
-                        print('CLICK', click_data)
-                        print('HOVER', hover_data)
                         #self.select_trace()
-                        pass # for selecting traces
+                        pass # for selecting traces                    
                 elif object_ in [self.dash_ids['ch-slider'], self.dash_ids['time-slider'], self.use_time_slider]:
                     self.update_layout(ch_slider_val=ch, time_slider_val=time)
+
             return self.graph.figure
 
     def init_sliders(self):
