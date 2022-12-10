@@ -667,13 +667,13 @@ class LosslessPipeline():
                                                    root=lossless_root,
                                                    check=False
                                                    )
-        print("#### HITTTTT")
         mne_bids.write_raw_bids(raw,
                                 derivatives_path,
                                 overwrite=True,
                                 format='EDF',
                                 allow_preload=True)
                                 #  TODO address derivatives support in MNE bids.
+                                # use shutils ( or pathlib?) to rename file with ll suffix
 
         # Save ICAs
         for this_ica, self_ica, in zip(['ica1', 'ica2'],

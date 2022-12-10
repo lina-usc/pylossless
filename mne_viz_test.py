@@ -65,26 +65,23 @@ raw_ica.set_annotations(raw.annotations)
 def annot_created_callback(annotation):
     raw.set_annotations(raw.annotations + annotation)
     raw_ica.set_annotations(raw_ica.annotations + annotation)
-    ica_visualizer.refresh_annotations()
-    eeg_visualizer.refresh_annotations()
+    ica_visualizer.update_layout()
+    eeg_visualizer.update_layout()
 
 
 app = dash.Dash(__name__)
 app.layout = html.Div([])
 
-ica_dash_ids = {'graph':'graph-ica',
-                'ch-slider':'ch-slider-ica',
-                'time-slider':'time-slider-ica',
-                'container-plot':'container-plot-ica',
-                'keyboard':'keyboard-ica',
-                'output':'output-ica'}
-ica_visualizer = MNEVisualizer(app, raw_ica, dash_ids=ica_dash_ids, annot_created_callback=annot_created_callback)
+raw.info['bads'].append('E5')
+ica_visualizer = MNEVisualizer(app, raw_ica, dash_id_suffix='ica', annot_created_callback=annot_created_callback)
 eeg_visualizer = MNEVisualizer(app, raw, time_slider=ica_visualizer.dash_ids['time-slider'], 
                                dcc_graph_kwargs=dict(config={'modeBarButtonsToRemove':['zoom','pan']}),
                                annot_created_callback=annot_created_callback)
 
 ica_visualizer.new_annot_desc = 'bad_manual'
 eeg_visualizer.new_annot_desc = 'bad_manual'
+
+ica_visualizer.update_layout()
 
 
 #############################################################################
