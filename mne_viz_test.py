@@ -65,7 +65,8 @@ raw_ica.set_annotations(raw.annotations)
 def annot_created_callback(annotation):
     raw.set_annotations(raw.annotations + annotation)
     raw_ica.set_annotations(raw_ica.annotations + annotation)
-    ica_visualizer.update_layout()
+    ica_visualizer.update_layout(ch_slider_val=ica_visualizer.channel_slider.max,
+                                 time_slider_val=ica_visualizer.win_start)
     eeg_visualizer.update_layout()
 
 
