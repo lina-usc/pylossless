@@ -171,7 +171,7 @@ class MNEVisualizer:
                     y0=self.layout.yaxis['range'][0],
                     x1=annotation['onset'] + annotation['duration'],
                     y1=self.layout.yaxis['range'][1],
-                    fillcolor='green',
+                    fillcolor='red',
                     opacity=0.25 if annotation['duration'] else .75,
                     line_width=1,
                     line_color='black',

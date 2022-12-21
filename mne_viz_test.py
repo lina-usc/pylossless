@@ -45,17 +45,25 @@ comp_graph_kwargs = dict(id='comp_ts',
 
 from pathlib import Path
 
-directory = './tmp_test_files/derivatives/pylossless/sub-00/eeg/'
+'''directory = './tmp_test_files/derivatives/pylossless/sub-00/eeg/'
 fname = list(Path(directory).glob('*.edf'))[0] 
 bids_path = get_bids_path_from_fname(fname)
 raw = read_raw_bids(bids_path).pick('eeg')
 raw.set_annotations(mne.Annotations(onset=[2.5, 4],
                                     duration=[1., 0],
                                     description=['test_annot']*2,
-                                    orig_time=raw.info['meas_date']))
+                                    orig_time=raw.info['meas_date']))'''
 
 
-ica_fpath = Path("./tmp_test_files\derivatives\pylossless\sub-00\eeg\sub-00_task-test_ica2.fif")
+fname = Path('../Face13/derivatives/pylossless/sub-s02/eeg/sub-s02_task-faceO_eeg.edf')
+bids_path = get_bids_path_from_fname(fname)
+raw = read_raw_bids(bids_path).pick('eeg')
+raw.info['bads'].extend(['A27', 'A5', 'B10', 'B16', 'B17', 'B27', 'B28', 'C10',
+                         'C17','C18', 'C3', 'D1',])
+
+
+# ica_fpath = Path("./tmp_test_files\derivatives\pylossless\sub-00\eeg\sub-00_task-test_ica2.fif")
+ica_fpath = Path('../Face13/derivatives/pylossless/sub-s02/eeg/sub-s02_task-faceO_ica2.fif')
 ica = mne.preprocessing.read_ica(ica_fpath)
 info = mne.create_info(ica._ica_names,
                        sfreq=raw.info['sfreq'],
@@ -76,7 +84,7 @@ def annot_created_callback(annotation):
 app = dash.Dash(__name__)
 app.layout = html.Div([])
 
-raw.info['bads'].append('E5')
+#raw.info['bads'].append('E5')
 ica_visualizer = MNEVisualizer(app, raw_ica, dash_id_suffix='ica', annot_created_callback=annot_created_callback)
 eeg_visualizer = MNEVisualizer(app, raw, time_slider=ica_visualizer.dash_ids['time-slider'], 
                                dcc_graph_kwargs=dict(config={'modeBarButtonsToRemove':['zoom','pan']}),
