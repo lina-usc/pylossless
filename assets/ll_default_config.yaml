@@ -54,7 +54,7 @@ project:
 
 ############################## epoching ##############################
 epoching:
-  recur_sec: 1
+  overlap: 0
   
   # See arguments definition from mne.Epochs
   epochs_args:
@@ -139,7 +139,7 @@ epoch_ch_sd:
   flag_method: fixed
   flag_vals: []
   init_crit: 16
-  init_method: null
+  init_method: q
   init_vals: [0.3, 0.7]
 
 epoch_gap:

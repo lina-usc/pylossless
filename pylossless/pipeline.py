@@ -454,14 +454,15 @@ class LosslessPipeline():
             # montage = read_custom_montage(chan_locs)
 
     def get_epochs(self, raw, detrend=None, preload=True):
+        tmin = self.config['epoching']['epochs_args']['tmin']
+        tmax = self.config['epoching']['epochs_args']['tmax']
+        overlap = self.config['epoching']['overlap']
+        events = mne.make_fixed_length_events(raw, duration=tmax-tmin,
+                                       overlap=overlap)
+        
         epoching_kwargs = self.config['epoching']['epochs_args']
         if detrend is not None:
             epoching_kwargs['detrend'] = detrend
-        step = self.config['epoching']['recur_sec'] * raw.info['sfreq']
-        first_col = np.arange(0, len(raw.times), step).astype(int)
-        events = np.array([first_col,
-                           np.zeros_like(first_col),
-                           np.zeros_like(first_col)]).T
         epochs = mne.Epochs(raw, events=events,
                             preload=preload, **epoching_kwargs)
         epochs = (epochs.pick(picks=None, exclude='bads')
@@ -511,15 +512,15 @@ class LosslessPipeline():
         data_sd = epochs.get_data().std(axis=-1)
 
         # flag epochs for ch_sd
-        if self.config['epoch_ch_sd']['init_method'] is None:
-            flag_sd_t_inds = []
-
-        elif self.config['epoch_ch_sd']['init_method'] == 'q':
-            kwargs = self.config['epochs_ch_sd']
-            flag_sd_t_inds = marks_array2flags(data_sd, flag_dim='epoch',
-                                               **kwargs)[1]
-        else:
-            raise NotImplementedError
+        if 'epoch_ch_sd' in self.config:
+            if 'init_method' in self.config['epoch_ch_sd']:
+                if self.config['epoch_ch_sd']['init_method'] is None:
+                    del self.config['epoch_ch_sd']['init_method']
+                elif self.config['epoch_ch_sd']['init_method'] not in ('q','z','fixed'):         
+                    raise NotImplementedError
+        kwargs = self.config['epoch_ch_sd']
+        flag_sd_t_inds = marks_array2flags(data_sd, flag_dim='epoch',
+                                           **kwargs)[1]
 
         self.flagged_epochs.add_flag_cat('ch_sd', flag_sd_t_inds, raw, epochs)
 
@@ -691,16 +692,18 @@ class LosslessPipeline():
         # flag epochs and channels based on large Channel Stdev.
         self.flag_ch_sd(raw)
 
-        # Filter
+        # Filter lowpass/highpass
         raw.filter(**self.config['filtering']['filter_args'])
 
-        if 'notch_filter_args' in self.config['filtering']:
-            notch_args = self.config['filtering']['notch_filter_args']
-            # in raw.notch_filter, freqs=None is ok if method=spectrum_fit
-            if notch_args['freqs'] is None and 'method' not in notch_args:
-                logger.debug('No notch filter arguments provided. Skipping')
-            else:
-                raw.notch_filter(**notch_args)
+        # Filter notch
+        notch_args = self.config['filtering']['notch_filter_args']
+        spectrum_fit_method = ('method' in notch_args and
+                               notch_args['method'] == 'spectrum_fit')
+        if notch_args['freqs'] or spectrum_fit_method:
+            # in raw.notch_filter, freqs=None is ok if method=='spectrum_fit'
+            raw.notch_filter(**notch_args)
+        else:
+            logger.info('No notch filter arguments provided. Skipping')
 
         # calculate nearest neighbort r values
         data_r_ch = self.flag_ch_low_r(raw)
