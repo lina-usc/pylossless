@@ -10,7 +10,44 @@ import numpy as np
 
 from collections import Iterable
 
+from mne.io import BaseRaw
+from mne import  BaseEpochs, Evoked
 import mne
+from mne.utils import _validate_type
+
+
+DEFAULT_LAYOUT_XAXIS = {'zeroline': False,
+                        'showgrid': True,
+                        'title': "time (seconds)",
+                        'gridcolor':'white',
+                        'fixedrange':True,
+                        'showspikes' : True,
+                        'spikemode': 'across',
+                        'spikesnap': 'cursor',
+                        'showline': True,
+                        'spikecolor':'black',
+                        'spikedash':'dash'
+                        }
+
+DEFAULT_LAYOUT_YAXIS = {'showgrid': True,
+                        'showline': True,
+                        'zeroline': False,
+                        'autorange': False,  #'reversed',
+                        'scaleratio': 0.5,
+                        "tickmode": "array",
+                        'fixedrange':True}
+
+DEFAULT_LAYOUT = dict(width = 1200,
+                      height=400,
+                      xaxis=DEFAULT_LAYOUT_XAXIS,
+                      yaxis=DEFAULT_LAYOUT_YAXIS,
+                      showlegend=False,
+                      margin={'t': 25,'b': 25, 'l': 35, 'r': 25},
+                      paper_bgcolor="rgba(0,0,0,0)",
+                      plot_bgcolor="#EAEAF2",
+                      shapes=[],
+                      hovermode='closest')
+
 
 
 class MNEVisualizer:
@@ -19,17 +56,38 @@ class MNEVisualizer:
                  dash_id_suffix='', ch_slider=None, time_slider=None,
                  scalings='auto', zoom=2, remove_dc=True,
                  annot_created_callback=None):
+        """ text
+            Parameters
+            ----------
+            app : instance of Raw
+                A raw object to use the data from.
+            inst : int
+                must be an instance of mne.Raw, mne.Epochs, mne.Evoked
+            start : float
+                text
+            dcc_grpah_kwargs : float | None
+                text
+            dash_id_suffix : float
+                each component id in the users app file needs to be unique.
+                if using more than 1 MNEVisualizer object in a single application.
+            ch_slider : bool
+                text
+            time_slider : float
+                text
+            Returns
+            -------
+            """
+
         self.app = app
         self.scalings_arg = scalings
-        self.inst = None
-        if inst is not None:
-            self.set_inst(inst)
+        self.__inst = None        
         self.n_sel_ch = 20  # n of channels to display in plot
         self.win_start = 0  # min time to disp on plot
         self.win_size = 10  # max time to disp on plot
         self.zoom = zoom
         self.remove_dc = remove_dc
-        self.layout = None
+        #self.graph = None
+        #self.layout = None
         self.traces = None
         self._ch_slider_val = 0
         self.annotating = False
@@ -37,8 +95,11 @@ class MNEVisualizer:
         self.annotation_inprogress = None
         self.annot_created_callback = annot_created_callback
         self.new_annot_desc = 'selected_time'
-        default_ids = ['graph', 'ch-slider', 'time-slider', 'container-plot', 'keyboard','output']
+        
+        # setting component ids based on dash_id_suffix
+        default_ids = ['graph', 'ch-slider', 'time-slider', 'container-plot', 'keyboard', 'output']
         self.dash_ids = {id_:(id_ + dash_id_suffix) for id_ in default_ids}
+
         self.dcc_graph_kwargs = dict(id=self.dash_ids['graph'],
                                      className='dcc-graph',
                                      figure={'data': None,
@@ -48,17 +109,27 @@ class MNEVisualizer:
         self.graph = dcc.Graph(**self.dcc_graph_kwargs)
         self.graph_div = html.Div([self.graph],
                                         className='dcc-graph-div')
+
         self.use_ch_slider = ch_slider
         self.use_time_slider = time_slider
         self.shift_down = False
+        self.inst = inst
+
+        # initialization subroutines          
         self.init_sliders()
         self.set_div()
         self.initialize_layout()
         self.set_callback()
         self.initialize_keyboard()
 
-    def set_inst(self, inst):
-        self.inst = inst
+    @property
+    def inst(self):
+        return self.__inst
+
+    @inst.setter
+    def inst(self, inst):
+        _validate_type(inst, (BaseEpochs, BaseRaw, Evoked), 'inst')
+        self.__inst = inst
         self.inst.load_data()
         self.scalings = dict(mag=1e-12,
                              grad=4e-11,
@@ -82,24 +153,35 @@ class MNEVisualizer:
         "will divide returned value to data for timeseries"
         return 2 * self.scalings[ch_type] / self.zoom
 
-    def add_annot_shapes(self, annotations):
-        shapes = []
-        for annot in annotations:
-            shape = dict(name=annot['description'],
-                         type="rect",
-                         xref="x",
-                         yref="y",
-                         x0=annot['onset'],
-                         y0=self.layout.yaxis['range'][0],
-                         x1=annot['onset'] + annot['duration'],
-                         y1=self.layout.yaxis['range'][1],
-                         fillcolor="green",
-                         opacity=0.25,
-                         line_width=0,
-                         layer="below")
-            shapes.append(shape)
+    
+    def _get_annot_text(self, annotation):
+        return dict(x=annotation['onset'] + annotation['duration'] /2,
+                    y=self.layout.yaxis['range'][1],
+                    text=annotation['description'],
+                    showarrow=False,
+                    yshift=10,
+                    font={'color':'#F1F1F1'})
 
-        self.layout.shapes = shapes
+    def _get_annot_shape(self, annotation):
+        return dict(name=annotation['description'],
+                    type="rect",
+                    xref="x",
+                    yref="y",
+                    x0=annotation['onset'],
+                    y0=self.layout.yaxis['range'][0],
+                    x1=annotation['onset'] + annotation['duration'],
+                    y1=self.layout.yaxis['range'][1],
+                    fillcolor='green',
+                    opacity=0.25 if annotation['duration'] else .75,
+                    line_width=1,
+                    line_color='black',
+                    layer="below" if annotation['duration'] else 'above')
+
+    def add_annot_shapes(self, annotations):
+        self.layout.shapes = [self._get_annot_shape(annot)
+                              for annot in annotations]
+        self.layout.annotations = [self._get_annot_text(annot)
+                                   for annot in annotations]
         if self.annotating:
             self.layout.shapes += (self.annotation_inprogress,)
     
@@ -108,57 +190,35 @@ class MNEVisualizer:
         annots = self.inst.annotations.copy().crop(tmin, tmax, use_orig_time=False)
         self.add_annot_shapes(annots)
 
-    def add_annotation(self, tmin, tmax, channel=None):
-        if channel is None:
-            pass
-
 
 
 ############################
 # Create Timeseries Layouts
 ############################
 
+    @property
+    def layout(self):
+        return self.graph.figure['layout']
+    
+    @layout.setter
+    def layout(self, layout):
+        self.graph.figure['layout'] = layout
+
     def initialize_layout(self):
 
-        self.layout = go.Layout(
-                                width = 1200,
-                                height=400,
-                                xaxis={'zeroline': False,
-                                       'showgrid': True,
-                                       'title': "time (seconds)",
-                                       'gridcolor':'white',
-                                       'fixedrange':True,
-                                       'showspikes' : True,
-                                       'spikemode': 'across',
-                                       'spikesnap': 'cursor',
-                                       'showline': True,
-                                       'spikecolor':'black',
-                                       'spikedash':'dash'
-                                       },
-                                yaxis={'showgrid': True,
-                                       'showline': True,
-                                       'zeroline': False,
-                                       'autorange': False,  #'reversed',
-                                       'scaleratio': 0.5,
-                                       "tickmode": "array",
-                                       "tickvals": np.arange(-self.n_sel_ch + 1, 1),
-                                       'ticktext': [''] * self.n_sel_ch,
-                                       'range':[-self.n_sel_ch, 1],
-                                       'fixedrange':True},
-                                showlegend=False,
-                                margin={'t': 25,'b': 25,'l': 35, 'r': 25},
-                                paper_bgcolor="rgba(0,0,0,0)",
-                                plot_bgcolor="#EAEAF2",
-                                shapes=[],
-                                hovermode='closest'
-                                )
+        DEFAULT_LAYOUT['yaxis'].update({"tickvals": np.arange(-self.n_sel_ch + 1, 1),
+                                     'ticktext': [''] * self.n_sel_ch,
+                                     'range': [-self.n_sel_ch, 1]})
+        self.layout = go.Layout(**DEFAULT_LAYOUT)
 
-        trace_kwargs = {'mode':'lines', 'line':dict(color='#222222', width=1)}
+        trace_kwargs = {'x': [],
+                        'y': [],
+                        'mode': 'lines',
+                        'line': dict(color='#222222', width=1)
+                        }
         # create objects for layout and traces
-        self.traces = [go.Scatter(x=[], y=[], name=ii, **trace_kwargs)
+        self.traces = [go.Scatter(name=ii, **trace_kwargs)
                        for ii in range(self.n_sel_ch)]
-
-        self.graph.figure['layout'] = self.layout
 
         self.update_layout(ch_slider_val=self.channel_slider.max, time_slider_val=0)
 
@@ -197,8 +257,8 @@ class MNEVisualizer:
                 trace.line.color = 'red'
             else:
                 trace.line.color = 'black'
-        self.graph.figure['data'] = self.traces
 
+        self.graph.figure['data'] = self.traces
 
         self.refresh_annotations()
 

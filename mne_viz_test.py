@@ -49,7 +49,10 @@ directory = './tmp_test_files/derivatives/pylossless/sub-00/eeg/'
 fname = list(Path(directory).glob('*.edf'))[0] 
 bids_path = get_bids_path_from_fname(fname)
 raw = read_raw_bids(bids_path).pick('eeg')
-raw.set_annotations(mne.Annotations(onset=[2.], duration=[1.], description=['test_annot'], orig_time=raw.info['meas_date']))
+raw.set_annotations(mne.Annotations(onset=[2.5, 4],
+                                    duration=[1., 0],
+                                    description=['test_annot']*2,
+                                    orig_time=raw.info['meas_date']))
 
 
 ica_fpath = Path("./tmp_test_files\derivatives\pylossless\sub-00\eeg\sub-00_task-test_ica2.fif")
