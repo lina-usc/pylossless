@@ -96,7 +96,7 @@ def convert_dataset_to_bids(import_funcs, import_args, bids_path_args,
     if isinstance(import_funcs, list):
             assert(len(import_args) == len(import_funcs))
     else:
-        import_fct = [import_fct]*len(import_args)
+        import_funcs = [import_funcs]*len(import_args)
 
     bids_paths = []
     for import_kwargs, bids_path_kwargs, func in zip(import_args, bids_path_args, import_funcs):
