@@ -21,7 +21,7 @@ from tqdm.notebook import tqdm
 # ICA
 from mne.preprocessing import ICA
 
-from .config import read_config
+from .config import Config
 
 class FlaggedChs(dict):
 
@@ -427,7 +427,7 @@ class LosslessPipeline():
         self.ica = None
 
     def load_config(self):
-        self.config = read_config(self.config_fname)
+        self.config = Config(self.config_fname).read()
 
     def set_montage(self, raw):
         chan_locs = self.config['project']['analysis_montage']
