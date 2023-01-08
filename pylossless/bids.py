@@ -1,6 +1,21 @@
 from mne_bids import BIDSPath, write_raw_bids
 
 
+def get_bids_path(bids_path_kwargs, datatype='eeg', bids_root='./bids_dataset'):
+
+    if "datatype" not in bids_path_kwargs:
+        bids_path_kwargs["datatype"] = datatype
+    if "root" not in bids_path_kwargs:
+        bids_path_kwargs["root"] = bids_root
+
+    return BIDSPath(**bids_path_kwargs)
+
+
+def get_dataset_bids_path(bids_path_args, datatype='eeg', bids_root='./bids_dataset'):
+    return [get_bids_path(bids_path_kwargs, datatype, bids_root)
+            for bids_path_kwargs in bids_path_args]
+
+
 def convert_recording_to_bids(import_func, import_kwargs, bids_path_kwargs,
                     datatype='eeg', bids_root='./bids_dataset', 
                     import_events=True, **write_kwargs):
@@ -28,14 +43,8 @@ def convert_recording_to_bids(import_func, import_kwargs, bids_path_kwargs,
     bids_paths : list of instance of `mne_bids.BIDSPath`
       `mne_bids.BIDSPath` for the different recordings
     """
-    
 
-    if "datatype" not in bids_path_kwargs:
-        bids_path_kwargs["datatype"] = datatype
-    if "root" not in bids_path_kwargs:
-        bids_path_kwargs["root"] = bids_root
-
-    bids_path = BIDSPath(**bids_path_kwargs)
+    bids_path = get_bids_path(bids_path_kwargs, datatype, bids_root)
 
     if import_events:
         raw, events, event_id = import_func(**import_kwargs)
@@ -96,7 +105,7 @@ def convert_dataset_to_bids(import_funcs, import_args, bids_path_args,
     if isinstance(import_funcs, list):
             assert(len(import_args) == len(import_funcs))
     else:
-        import_fct = [import_fct]*len(import_args)
+        import_funcs = [import_funcs]*len(import_args)
 
     bids_paths = []
     for import_kwargs, bids_path_kwargs, func in zip(import_args, bids_path_args, import_funcs):

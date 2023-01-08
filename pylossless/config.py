@@ -1,30 +1,47 @@
 import yaml
 from pathlib import Path
+import sys
 
 
-DEFAULT_CONFIG_PATH = (Path(__file__).parent.parent / 
-                       "assets" / "ll_default_config.yaml")
+class Config(dict):
 
+    DEFAULT_CONFIG_PATH = (Path(__file__).parent.parent /
+                        "assets" / "ll_default_config.yaml")
 
-def save_config(init_variables, file_name='init_variables.yaml'):
-    with open(file_name, "w") as init_variables_file:
-        yaml.dump(init_variables, init_variables_file,
-                  indent=4, sort_keys=True)
+    def __init__(self, file_name=None):
+        self.file_name = Path(file_name)
 
+    def read(self, file_name=None):
+        if file_name is not None:
+            self.file_name = Path(file_name)
 
-def read_config(file_name):
-    with open(file_name, "r") as init_variables_file:
-        return yaml.safe_load(init_variables_file)
+        with self.file_name.open("r") as init_variables_file:
+            self.update(yaml.safe_load(init_variables_file))
 
+        return self
 
-def create_init_variables_json(path_in, id_, run, session):
-    init_variables = {'path_in': path_in,
-                      'id': id_,
-                      'run': run,
-                      'session': session
-                      }
-    save_config(init_variables)
+    def load_default(self):
+        file_name_bck = self.file_name
+        self.read(Config.DEFAULT_CONFIG_PATH)
 
+        # Restauring the file_name. We don't want this attribute
+        # to point to the default config, as it make it liekly
+        # that the user will end up overwritting the defaut config.
+        self.file_name = file_name_bck
 
-def get_default_config():
-    return read_config(DEFAULT_CONFIG_PATH)
+        return self
+
+    def save(self, file_name=None):
+
+        if file_name is not None:
+            self.file_name = Path(file_name)
+        else:
+            if self.file_name is None:
+                self.file_name = Path('init_variables.yaml')
+
+        with self.file_name.open("w") as init_variables_file:
+            yaml.dump(dict(self), init_variables_file,
+                    indent=4, sort_keys=True)
+
+    def print(self):
+        yaml.dump(dict(self), sys.stdout, indent=4, sort_keys=True)
