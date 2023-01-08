@@ -432,8 +432,8 @@ class LosslessPipeline():
     def set_montage(self, raw):
         analysis_montage = self.config['project']['analysis_montage']
         if analysis_montage == "" and raw.get_montage() is not None:
-            # No analysis montage has been specified and raw has already
-            # have a montage. Nothing to do; just return. This can happen
+            # No analysis montage has been specified and raw already has
+            # a montage. Nothing to do; just return. This can happen
             # with a BIDS dataset automatically loaded with its corresponding
             # montage.
             return
