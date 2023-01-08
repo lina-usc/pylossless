@@ -12,5 +12,6 @@ PyYAML
 # Dash
 gunicorn>=19.8.1
 dash>=1.0.0
+dash_extensions
 mne>=0.19
 colorlover>=0.2.1
