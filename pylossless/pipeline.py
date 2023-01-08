@@ -430,15 +430,23 @@ class LosslessPipeline():
         self.config = Config(self.config_fname).read()
 
     def set_montage(self, raw):
-        chan_locs = self.config['project']['analysis_montage']
-        if chan_locs in mne.channels.montage.get_builtin_montages():
+        analysis_montage = self.config['project']['analysis_montage']
+        if analysis_montage == "" and raw.get_montage() is not None:
+            # No analysis montage has been specified and raw has already
+            # have a montage. Nothing to do; just return. This can happen
+            # with a BIDS dataset automatically loaded with its corresponding
+            # montage.
+            return
+
+        if analysis_montage in mne.channels.montage.get_builtin_montages():
             # If chanlocs is a string of one the standard MNE montages
-            montage = mne.channels.make_standard_montage(chan_locs)
+            montage = mne.channels.make_standard_montage(analysis_montage)
+            raw.set_montage(montage, **self.config['project']['set_montage_kwargs'])
         else:  # If the montage is a filepath of a custom montage
-            raise ValueError('Montage should be one of the default MNE montages as'
-                             ' specified by mne.channels.get_builtin_montages()')
+            raise ValueError('self.config["project"]["analysis_montage"]'
+                             ' should be one of the default MNE montages as'
+                             ' specified by mne.channels.get_builtin_montages().')
             # montage = read_custom_montage(chan_locs)
-        raw.set_montage(montage, **self.config['project']['set_montage_kwargs'])
 
     def get_epochs(self, raw, detrend=None, preload=True):
         epoching_kwargs = self.config['epoching']['epochs_args']
@@ -675,7 +683,7 @@ class LosslessPipeline():
 
     def run_dataset(self, paths):
         for path in paths:
-            self.run(mne_bids.read_raw_bids(path))
+            self.run(path)
 
 
 """def pad_flags(raw, flags, npad, varargin):
