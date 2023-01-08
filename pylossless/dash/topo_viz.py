@@ -165,8 +165,7 @@ class TopoViz:
             args += [Input('topo-slider', 'value')]
 
         @self.app.callback(*args, suppress_callback_exceptions=False)
-        def callback(slider_val):      
-            print("update layout", slider_val)            
+        def callback(slider_val):             
             self.update_layout(slider_val=slider_val)
             return self.graph.figure
 
