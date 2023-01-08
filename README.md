@@ -134,7 +134,7 @@ import_args = [{"stim_channel": 'STI 014', "path_in": './sub-s004-ses_07_task-MM
 bids_path_args = [{'subject': '001', 'run': '01', 'session': '01', "task": "mmn"},
                   {'subject': '002', 'run': '01', 'session': '01', "task": "mmn"}]
 
-bids_paths = ll.bids.convert_to_bids(egi_import_fct, import_args, bids_path_args, overwrite=True)
+bids_paths = ll.bids.convert_dataset_to_bids(egi_import_fct, import_args, bids_path_args, overwrite=True)
 ```
 
  Note that, in this case, we used twice the same input file just to demonstrate how this function can be used for multiple recordings. In practice, a user may want to have this information stored in CSV files that can be readily used. For example, if we create such files for the demonstration:
@@ -151,7 +151,7 @@ Now, regardless of how such files have been produced (e.g., from Excel), these c
 ```python
 import_args = list(pd.read_csv("import_args.csv").T.to_dict().values())
 bids_path_args = list(pd.read_csv("bids_path_args.csv").T.to_dict().values())
-bids_paths = ll.bids.convert_to_bids(egi_import_fct, import_args, bids_path_args, overwrite=True)
+bids_paths = ll.bids.convert_dataset_to_bids(egi_import_fct, import_args, bids_path_args, overwrite=True)
 
 pipeline.run_dataset(bids_paths)
 ```
