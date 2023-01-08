@@ -8,8 +8,6 @@ import plotly.graph_objects as go
 
 import numpy as np
 
-from collections import Iterable
-
 from mne.io import BaseRaw
 from mne import  BaseEpochs, Evoked
 import mne
@@ -108,7 +106,7 @@ class MNEVisualizer:
             self.dcc_graph_kwargs.update(dcc_graph_kwargs)
         self.graph = dcc.Graph(**self.dcc_graph_kwargs)
         self.graph_div = html.Div([self.graph],
-                                        className='dcc-graph-div')
+                                  className='dcc-graph-div')
 
         self.use_ch_slider = ch_slider
         self.use_time_slider = time_slider
@@ -281,7 +279,6 @@ class MNEVisualizer:
 
     def set_callback(self):
         args = [Output(self.dash_ids['graph'], 'figure')]
-       
         if self.use_ch_slider:
             args += [Input(self.use_ch_slider, 'value')]
         else: 
@@ -295,8 +292,8 @@ class MNEVisualizer:
 
     
 
-        @self.app.callback(*args, suppress_callback_exceptions=True)
-        def channel_slider_change(ch, time, click_data, hover_data):
+        @self.app.callback(*args, suppress_callback_exceptions=False)
+        def callback(ch, time, click_data, hover_data):
             ctx = dash.callback_context
             assert(len(ctx.triggered) == 1)
             if len(ctx.triggered[0]['prop_id'].split('.')) == 2:
@@ -358,7 +355,12 @@ class MNEVisualizer:
                     else:
                         #self.select_trace()
                         pass # for selecting traces                    
-                elif object_ in [self.dash_ids['ch-slider'], self.dash_ids['time-slider'], self.use_time_slider]:
+                elif object_ in [self.dash_ids['ch-slider'],
+                                 self.dash_ids['time-slider'],
+                                 self.use_time_slider, self.use_ch_slider]:
+                    # if object_ in [self.dash_ids['ch-slider'], self.use_ch_slider]:
+                    #    pass
+
                     self.update_layout(ch_slider_val=ch, time_slider_val=time)
 
             return self.graph.figure

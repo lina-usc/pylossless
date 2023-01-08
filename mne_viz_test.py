@@ -24,6 +24,7 @@ from mne_bids import BIDSPath, read_raw_bids, get_bids_path_from_fname
 import mne
 
 from mne_visualizer import MNEVisualizer
+from topo_viz import TopoVizICA
 
 project_root = Path('./tmp_test_files')
 derivatives_dir = project_root / 'derivatives'
@@ -73,6 +74,8 @@ raw_ica = mne.io.RawArray(ica.get_sources(raw).get_data(), info)
 raw_ica.set_meas_date(raw.info['meas_date'])
 raw_ica.set_annotations(raw.annotations)
 
+
+
 def annot_created_callback(annotation):
     raw.set_annotations(raw.annotations + annotation)
     raw_ica.set_annotations(raw_ica.annotations + annotation)
@@ -89,102 +92,12 @@ ica_visualizer = MNEVisualizer(app, raw_ica, dash_id_suffix='ica', annot_created
 eeg_visualizer = MNEVisualizer(app, raw, time_slider=ica_visualizer.dash_ids['time-slider'], 
                                dcc_graph_kwargs=dict(config={'modeBarButtonsToRemove':['zoom','pan']}),
                                annot_created_callback=annot_created_callback)
+ica_topo = TopoVizICA(app, raw.get_montage(), ica, topo_slider_id=ica_visualizer.dash_ids['ch-slider'])
 
 ica_visualizer.new_annot_desc = 'bad_manual'
 eeg_visualizer.new_annot_desc = 'bad_manual'
 
 ica_visualizer.update_layout()
-
-
-#############################################################################
-#############################################################################
-#############################################################################
-
-
-############################################################################
-import warnings
-from mne import create_info
-from mne.io import RawArray
-from mne.viz.topomap import _add_colorbar
-from mne.viz import plot_topomap
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-def plot_values_topomap(value_dict, montage, axes, colorbar=True, cmap='RdBu_r',
-                        vmin=None, vmax=None, names=None, image_interp='cubic', side_cb="right",
-                        sensors=True, show_names=True, **kwargs):
-    if names is None:
-        names = montage.ch_names
-
-    info = create_info(names, sfreq=256, ch_types="eeg")
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        RawArray(np.zeros((len(names), 1)), info, copy=None, verbose=False).set_montage(montage)
-
-    im = plot_topomap([value_dict[ch] for ch in names], pos=info, show=False, image_interp=image_interp,
-                      sensors=sensors, res=64, axes=axes, names=names, show_names=show_names,
-                      vmin=vmin, vmax=vmax, cmap=cmap, **kwargs)
-
-    if colorbar:
-        try:
-            cbar, cax = _add_colorbar(axes, im[0], cmap, pad=.05,
-                                      format='%3.2f', side=side_cb)
-            axes.cbar = cbar
-            cbar.ax.tick_params(labelsize=12)
-
-        except TypeError:
-            pass
-
-    return im
-###########################################################################################################
-
-from itertools import product
-import plotly.express as px
-from plotly.subplots import make_subplots
-plt.switch_backend('agg')
-
-rows = 6
-cols = 4
-ply_fig = make_subplots(rows=rows, cols=cols, horizontal_spacing=0.01, 
-                        vertical_spacing=0.01)
-
-montage = raw.get_montage()
-
-margin_x = 10
-margin_y = 1
-offset = 0
-
-for no, (i, j) in enumerate(product(np.arange(rows), np.arange(cols))):
-    component = ica.get_components()[:, no+offset]
-    value_dict = dict(zip(ica.ch_names, component))
-
-    fig, ax = plt.subplots(dpi=25)
-    plot_values_topomap(value_dict, montage, ax, colorbar=False, show_names=False, names=ica.ch_names)
-    fig.tight_layout()
-    fig.canvas.draw()
-    data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-    data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))[margin_y:-margin_y, margin_x:-margin_x, :]
-    px_fig = px.imshow(data)
-
-    ply_fig.add_trace(px_fig.data[0], row=i+1, col=j+1)
-
-for i in range (1, rows*cols+1):
-  ply_fig['layout'][f'xaxis{i}'].update(showticklabels=False)
-  ply_fig['layout'][f'yaxis{i}'].update(showticklabels=False)
-
-
-ply_fig.update_layout(
-    autosize=False,
-    width=600,
-    height=800,)
-ply_fig['layout'].update(margin=dict(l=0,r=0,b=0,t=0))
-
-#ply_fig.show()
-
-#############################################################################
-#############################################################################
-#############################################################################
-
-
 
 
 server = app.server
@@ -236,11 +149,10 @@ layout =     html.Div([
                         html.Div([
                                 html.Div(id='plots-container', 
                                          children=[html.Div([eeg_visualizer.container_plot,
-                                                   ica_visualizer.container_plot]),
-                                                   html.Div(children=[dcc.Graph(figure=ply_fig)],
-                                                            )
-                                                   ]
-                                        )
+                                                             ica_visualizer.container_plot]),
+                                                   ica_topo.container_plot,
+                                                   ],
+                                        style={"border":"2px green solid"})
                                     ],
                                 style={'display':'block'})
                         ], style={"display":"block"})
