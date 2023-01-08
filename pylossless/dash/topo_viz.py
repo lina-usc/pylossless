@@ -20,7 +20,7 @@ from mne.viz import plot_topomap
 
 def plot_values_topomap(value_dict, montage, axes, colorbar=True, cmap='RdBu_r',
                         vmin=None, vmax=None, names=None, image_interp='cubic',
-                        side_cb="right", sensors=True, show_names=True,
+                        side_cb="right", sensors=True,
                         **kwargs):
     if names is None:
         names = montage.ch_names
@@ -33,8 +33,7 @@ def plot_values_topomap(value_dict, montage, axes, colorbar=True, cmap='RdBu_r',
 
     im = plot_topomap([value_dict[ch] for ch in names], pos=info, show=False,
                        image_interp=image_interp, sensors=sensors, res=64,
-                       axes=axes, names=names, show_names=show_names,
-                       vmin=vmin, vmax=vmax, cmap=cmap, **kwargs)
+                       axes=axes, names=names,vlim=(vmin, vmax), cmap=cmap, **kwargs)
 
     if colorbar:
         try:
@@ -74,10 +73,10 @@ class TopoViz:
         self.cols = cols
         self.width = width
         self.height = height
-        self.ply_fig = make_subplots(rows=rows, cols=cols,
+        fig = make_subplots(rows=rows, cols=cols,
                                      horizontal_spacing=0.01, 
                                      vertical_spacing=0.01)
-        self.graph = dcc.Graph(figure=self.ply_fig, id='topo-graph', className='dcc-graph') # 
+        self.graph = dcc.Graph(figure=fig, id='topo-graph', className='dcc-graph') # 
         self.graph_div = html.Div(children=[self.graph],
                                   style={"border":"2px red solid"},
                                   className='dcc-graph-div')
@@ -95,46 +94,46 @@ class TopoViz:
         self.set_div()
         self.set_callback()
 
-    def initialize_layout(self):
-        for no, (i, j) in enumerate(product(np.arange(self.rows),
-                                            np.arange(self.cols))):
+    def get_topo_data(self, i, j):
+        no = i*self.cols + j
+        if no + self.offset >= self.data.nb_topo: # out of range
+            return [[]]
+        value_dict = self.data.topo_values[no+self.offset]
 
-            self.ply_fig.add_trace(px.imshow([[]]).data[0], row=i+1, col=j+1)
-        self.update_layout(slider_val=self.topo_slider.max)
+        fig, ax = plt.subplots(dpi=25)
+        plot_values_topomap(value_dict, self.montage, ax, colorbar=False,
+                            names=list(value_dict.keys()))  
+        fig.tight_layout()
+        fig.canvas.draw()
+        data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
+        data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+        return data[self.margin_y:-self.margin_y,
+                    self.margin_x:-self.margin_x, :]
+
+    def initialize_layout(self):
+        for i, j in product(np.arange(self.rows), np.arange(self.cols)):
+            self.graph.figure.add_trace(px.imshow(self.get_topo_data(i, j)).data[0], 
+                                        row=i+1, col=j+1)
 
         for i in range(1, self.rows*self.cols+1):
-            self.ply_fig['layout'][f'xaxis{i}'].update(showticklabels=False)
-            self.ply_fig['layout'][f'yaxis{i}'].update(showticklabels=False)
+            self.graph.figure['layout'][f'xaxis{i}'].update(showticklabels=False)
+            self.graph.figure['layout'][f'yaxis{i}'].update(showticklabels=False)
 
-        self.ply_fig.update_layout(
+        self.graph.figure.update_layout(
             autosize=False,
             width=self.width,
             height=self.height,)
-        self.ply_fig['layout'].update(margin=dict(l=0,r=0,b=0,t=0))
-
+        self.graph.figure['layout'].update(margin=dict(l=0,r=0,b=0,t=0))
 
     def update_layout(self, slider_val):
+        self.offset = self.topo_slider.max-slider_val
         for no, (i, j) in enumerate(product(np.arange(self.rows),
                                             np.arange(self.cols))):
 
             if no + self.offset >= self.data.nb_topo: # out of range
                 break
-            value_dict = self.data.topo_values[no+self.offset]
 
-            fig, ax = plt.subplots(dpi=25)
-            plot_values_topomap(value_dict, self.montage, ax, colorbar=False,
-                                show_names=False, names=list(value_dict.keys()))  
-            fig.tight_layout()
-            fig.canvas.draw()
-            data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-            data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-            data = data[self.margin_y:-self.margin_y,
-                        self.margin_x:-self.margin_x, :]
-            px_fig = px.imshow(data)
-            list(self.ply_fig.select_traces(row=i+1, col=j+1))[0].figure.data = px_fig.data
-            #self.ply_fig.data[0] = px_fig.data[0]
-
-            #self.ply_fig.add_trace(px_fig.data[0], row=i+1, col=j+1)
+            self.graph.figure.update_traces(z=self.get_topo_data(i, j), row=i+1, col=j+1)
 
     def init_slider(self):
         self.topo_slider = dcc.Slider(id='topo-slider',
@@ -166,7 +165,8 @@ class TopoViz:
             args += [Input('topo-slider', 'value')]
 
         @self.app.callback(*args, suppress_callback_exceptions=False)
-        def callback(slider_val):                  
+        def callback(slider_val):      
+            print("update layout", slider_val)            
             self.update_layout(slider_val=slider_val)
             return self.graph.figure
 
