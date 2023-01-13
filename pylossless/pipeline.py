@@ -1,4 +1,5 @@
 # coding: utf-8
+from mne.utils import logger
 import mne_bids
 import numpy as np
 from pathlib import Path
@@ -23,7 +24,7 @@ from mne.preprocessing import ICA
 from mne_icalabel import label_components
 from mne_icalabel.annotation import write_components_tsv
 
-from .config import read_config
+from .config import Config
 
 class FlaggedChs(dict):
 
@@ -431,28 +432,37 @@ class LosslessPipeline():
         self.ic_labels = None
 
     def load_config(self):
-        self.config = read_config(self.config_fname)
+        self.config = Config(self.config_fname).read()
 
     def set_montage(self, raw):
-        chan_locs = self.config['project']['analysis_montage']
-        if chan_locs in mne.channels.montage.get_builtin_montages():
+        analysis_montage = self.config['project']['analysis_montage']
+        if analysis_montage == "" and raw.get_montage() is not None:
+            # No analysis montage has been specified and raw already has
+            # a montage. Nothing to do; just return. This can happen
+            # with a BIDS dataset automatically loaded with its corresponding
+            # montage.
+            return
+
+        if analysis_montage in mne.channels.montage.get_builtin_montages():
             # If chanlocs is a string of one the standard MNE montages
-            montage = mne.channels.make_standard_montage(chan_locs)
+            montage = mne.channels.make_standard_montage(analysis_montage)
+            raw.set_montage(montage, **self.config['project']['set_montage_kwargs'])
         else:  # If the montage is a filepath of a custom montage
-            raise ValueError('Montage should be one of the default MNE montages as'
-                             ' specified by mne.channels.get_builtin_montages()')
+            raise ValueError('self.config["project"]["analysis_montage"]'
+                             ' should be one of the default MNE montages as'
+                             ' specified by mne.channels.get_builtin_montages().')
             # montage = read_custom_montage(chan_locs)
-        raw.set_montage(montage, **self.config['project']['set_montage_kwargs'])
 
     def get_epochs(self, raw, detrend=None, preload=True):
+        tmin = self.config['epoching']['epochs_args']['tmin']
+        tmax = self.config['epoching']['epochs_args']['tmax']
+        overlap = self.config['epoching']['overlap']
+        events = mne.make_fixed_length_events(raw, duration=tmax-tmin,
+                                       overlap=overlap)
+        
         epoching_kwargs = self.config['epoching']['epochs_args']
         if detrend is not None:
             epoching_kwargs['detrend'] = detrend
-        step = self.config['epoching']['recur_sec'] * raw.info['sfreq']
-        first_col = np.arange(0, len(raw.times), step).astype(int)
-        events = np.array([first_col,
-                           np.zeros_like(first_col),
-                           np.zeros_like(first_col)]).T
         epochs = mne.Epochs(raw, events=events,
                             preload=preload, **epoching_kwargs)
         epochs = (epochs.pick(picks=None, exclude='bads')
@@ -502,15 +512,15 @@ class LosslessPipeline():
         data_sd = epochs.get_data().std(axis=-1)
 
         # flag epochs for ch_sd
-        if self.config['epoch_ch_sd']['init_method'] is None:
-            flag_sd_t_inds = []
-
-        elif self.config['epoch_ch_sd']['init_method'] == 'q':
-            kwargs = self.config['epochs_ch_sd']
-            flag_sd_t_inds = marks_array2flags(data_sd, flag_dim='epoch',
-                                               **kwargs)[1]
-        else:
-            raise NotImplementedError
+        if 'epoch_ch_sd' in self.config:
+            if 'init_method' in self.config['epoch_ch_sd']:
+                if self.config['epoch_ch_sd']['init_method'] is None:
+                    del self.config['epoch_ch_sd']['init_method']
+                elif self.config['epoch_ch_sd']['init_method'] not in ('q','z','fixed'):         
+                    raise NotImplementedError
+        kwargs = self.config['epoch_ch_sd']
+        flag_sd_t_inds = marks_array2flags(data_sd, flag_dim='epoch',
+                                           **kwargs)[1]
 
         self.flagged_epochs.add_flag_cat('ch_sd', flag_sd_t_inds, raw, epochs)
 
@@ -647,6 +657,7 @@ class LosslessPipeline():
                                 format='EDF',
                                 allow_preload=True)
                                 #  TODO address derivatives support in MNE bids.
+                                # use shutils ( or pathlib?) to rename file with ll suffix
 
         # Save ICAs
         for this_ica, self_ica, in zip(['ica1', 'ica2'],
@@ -681,8 +692,18 @@ class LosslessPipeline():
         # flag epochs and channels based on large Channel Stdev.
         self.flag_ch_sd(raw)
 
-        # Filter
-        raw.filter(**self.config['filter_args'])
+        # Filter lowpass/highpass
+        raw.filter(**self.config['filtering']['filter_args'])
+
+        # Filter notch
+        notch_args = self.config['filtering']['notch_filter_args']
+        spectrum_fit_method = ('method' in notch_args and
+                               notch_args['method'] == 'spectrum_fit')
+        if notch_args['freqs'] or spectrum_fit_method:
+            # in raw.notch_filter, freqs=None is ok if method=='spectrum_fit'
+            raw.notch_filter(**notch_args)
+        else:
+            logger.info('No notch filter arguments provided. Skipping')
 
         # calculate nearest neighbort r values
         data_r_ch = self.flag_ch_low_r(raw)
@@ -715,7 +736,7 @@ class LosslessPipeline():
 
     def run_dataset(self, paths):
         for path in paths:
-            self.run(mne_bids.read_raw_bids(path))
+            self.run(path)
 
 
 """def pad_flags(raw, flags, npad, varargin):
