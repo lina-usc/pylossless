@@ -54,7 +54,7 @@ project:
 
 ############################## epoching ##############################
 epoching:
-  recur_sec: 1
+  overlap: 0
   
   # See arguments definition from mne.Epochs
   epochs_args:
@@ -64,10 +64,13 @@ epoching:
 
 
 ########################### EEG filtering ############################
-# See arguments definition from mne.io.Raw.filtter
-filter_args:
-  h_freq: 100
-  l_freq: 1
+# See arguments definition from mne.io.Raw.filter & mne.io.Raw.notch_filter
+filtering:
+  filter_args:
+    h_freq: 100
+    l_freq: 1
+  notch_filter_args:
+    freqs: []
 
 
 ############################## SLURM #################################
@@ -96,7 +99,12 @@ ica:
 
   # See arguments definition from mne.preprocessing.ICA
   ica_args:
-    method: fastica
+    run1:
+      method: fastica
+    run2:
+      method: infomax
+      fit_params:
+        extended: True
 
 
 ########################## Nearest neigbhor ##########################
@@ -131,7 +139,7 @@ epoch_ch_sd:
   flag_method: fixed
   flag_vals: []
   init_crit: 16
-  init_method: null
+  init_method: q
   init_vals: [0.3, 0.7]
 
 epoch_gap:

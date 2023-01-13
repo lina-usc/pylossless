@@ -1,4 +1,5 @@
 # coding: utf-8
+from mne.utils import logger
 import mne_bids
 import numpy as np
 from pathlib import Path
@@ -20,6 +21,8 @@ from tqdm.notebook import tqdm
 
 # ICA
 from mne.preprocessing import ICA
+from mne_icalabel import label_components
+from mne_icalabel.annotation import write_components_tsv
 
 from .config import Config
 
@@ -424,7 +427,9 @@ class LosslessPipeline():
         #self.init_variables = read_config(init_fname)
         #init_path = Path(self.config['out_path']) / self.config["project"]['id']
         #init_path.mkdir(parents=True, exist_ok=True)
-        self.ica = None
+        self.ica1 = None
+        self.ica2 = None
+        self.ic_labels = None
 
     def load_config(self):
         self.config = Config(self.config_fname).read()
@@ -449,14 +454,15 @@ class LosslessPipeline():
             # montage = read_custom_montage(chan_locs)
 
     def get_epochs(self, raw, detrend=None, preload=True):
+        tmin = self.config['epoching']['epochs_args']['tmin']
+        tmax = self.config['epoching']['epochs_args']['tmax']
+        overlap = self.config['epoching']['overlap']
+        events = mne.make_fixed_length_events(raw, duration=tmax-tmin,
+                                       overlap=overlap)
+        
         epoching_kwargs = self.config['epoching']['epochs_args']
         if detrend is not None:
             epoching_kwargs['detrend'] = detrend
-        step = self.config['epoching']['recur_sec'] * raw.info['sfreq']
-        first_col = np.arange(0, len(raw.times), step).astype(int)
-        events = np.array([first_col,
-                           np.zeros_like(first_col),
-                           np.zeros_like(first_col)]).T
         epochs = mne.Epochs(raw, events=events,
                             preload=preload, **epoching_kwargs)
         epochs = (epochs.pick(picks=None, exclude='bads')
@@ -506,15 +512,15 @@ class LosslessPipeline():
         data_sd = epochs.get_data().std(axis=-1)
 
         # flag epochs for ch_sd
-        if self.config['epoch_ch_sd']['init_method'] is None:
-            flag_sd_t_inds = []
-
-        elif self.config['epoch_ch_sd']['init_method'] == 'q':
-            kwargs = self.config['epochs_ch_sd']
-            flag_sd_t_inds = marks_array2flags(data_sd, flag_dim='epoch',
-                                               **kwargs)[1]
-        else:
-            raise NotImplementedError
+        if 'epoch_ch_sd' in self.config:
+            if 'init_method' in self.config['epoch_ch_sd']:
+                if self.config['epoch_ch_sd']['init_method'] is None:
+                    del self.config['epoch_ch_sd']['init_method']
+                elif self.config['epoch_ch_sd']['init_method'] not in ('q','z','fixed'):         
+                    raise NotImplementedError
+        kwargs = self.config['epoch_ch_sd']
+        flag_sd_t_inds = marks_array2flags(data_sd, flag_dim='epoch',
+                                           **kwargs)[1]
 
         self.flagged_epochs.add_flag_cat('ch_sd', flag_sd_t_inds, raw, epochs)
 
@@ -600,16 +606,25 @@ class LosslessPipeline():
         annots = marks_flag_gap(raw, self.config['epoch_gap']['min_gap_ms'])
         raw.set_annotations(raw.annotations + annots)
 
-    def run_ica(self, raw):
-        ica_kwargs = self.config['ica']['ica_args']
+    def run_ica(self, raw, run):
+        ica_kwargs = self.config['ica']['ica_args'][run]
         if 'max_iter' not in ica_kwargs:
             ica_kwargs['max_iter'] = 'auto'
         if 'random_state' not in ica_kwargs:
             ica_kwargs['random_state'] = 97
 
         epochs = self.get_epochs(raw)
-        self.ica = ICA(**ica_kwargs)
-        self.ica.fit(epochs)
+        if run == 'run1':
+            self.ica1 = ICA(**ica_kwargs)
+            self.ica1.fit(epochs)
+
+        elif run == 'run2':
+            self.ica2 = ICA(**ica_kwargs)
+            self.ica2.fit(epochs)
+            self.ic_labels = label_components(epochs, self.ica2,
+                                              method="iclabel")
+        else:
+            raise ValueError("The `run` argument must be 'run1' or 'run2'")
 
     def flag_epoch_ic_sd1(self, raw):
         '''Calculates the IC standard Deviation by epoch window. Flags windows with
@@ -617,7 +632,7 @@ class LosslessPipeline():
 
         # Calculate IC sd by window
         epochs = self.get_epochs(raw)
-        epoch_ic_sd1 = chan_variance(epochs, kind='ica', ica=self.ica)
+        epoch_ic_sd1 = chan_variance(epochs, kind='ica', ica=self.ica1)
 
         # Create the windowing sd criteria
         kwargs = self.config['ica']['ic_ic_sd']
@@ -630,8 +645,35 @@ class LosslessPipeline():
         # icsd_epoch_flags=padflags(raw, icsd_epoch_flags,1,'value',.5);
 
     def save(self, raw, bids_path):
-        derivatives_path = bids_path.copy().update(extension='.fif', suffix='ll', root=bids_path.root / 'derivatives' / 'pylossless', check=False)
-        mne_bids.write_raw_bids(raw, derivatives_path, overwrite=True, format='EDF', allow_preload=True) #  TODO: address derivatives support in MNE bids.
+        lossless_suffix = bids_path.suffix + '_ll'
+        lossless_root = bids_path.root / 'derivatives' / 'pylossless'
+        derivatives_path = bids_path.copy().update(suffix=lossless_suffix,
+                                                   root=lossless_root,
+                                                   check=False
+                                                   )
+        mne_bids.write_raw_bids(raw,
+                                derivatives_path,
+                                overwrite=True,
+                                format='EDF',
+                                allow_preload=True)
+                                #  TODO address derivatives support in MNE bids.
+                                # use shutils ( or pathlib?) to rename file with ll suffix
+
+        # Save ICAs
+        for this_ica, self_ica, in zip(['ica1', 'ica2'],
+                                       [self.ica1, self.ica2]):
+            ica_bidspath = derivatives_path.copy().update(extension='.fif',
+                                                          suffix=this_ica,
+                                                          check=False)
+            self_ica.save(ica_bidspath)
+
+        # Save IC labels
+        iclabels_bidspath = derivatives_path.copy().update(extension='.tsv',
+                                                           suffix='iclabels',
+                                                           check=False)
+        write_components_tsv(self.ica2, iclabels_bidspath)
+
+
         # TODO epoch marks and ica marks are not currently saved into annotations
         #raw.save(derivatives_path, overwrite=True, split_naming='bids')
 
@@ -650,8 +692,18 @@ class LosslessPipeline():
         # flag epochs and channels based on large Channel Stdev.
         self.flag_ch_sd(raw)
 
-        # Filter
-        raw.filter(**self.config['filter_args'])
+        # Filter lowpass/highpass
+        raw.filter(**self.config['filtering']['filter_args'])
+
+        # Filter notch
+        notch_args = self.config['filtering']['notch_filter_args']
+        spectrum_fit_method = ('method' in notch_args and
+                               notch_args['method'] == 'spectrum_fit')
+        if notch_args['freqs'] or spectrum_fit_method:
+            # in raw.notch_filter, freqs=None is ok if method=='spectrum_fit'
+            raw.notch_filter(**notch_args)
+        else:
+            logger.info('No notch filter arguments provided. Skipping')
 
         # calculate nearest neighbort r values
         data_r_ch = self.flag_ch_low_r(raw)
@@ -669,12 +721,13 @@ class LosslessPipeline():
         self.flag_epoch_gap(raw)
 
         # Run ICA
-        self.run_ica(raw)
+        self.run_ica(raw, 'run1')
 
         # Calculate IC SD
         self.flag_epoch_ic_sd1(raw)
 
         # TODO 2ND ICA excluding flagged component times
+        self.run_ica(raw, 'run2')
 
         self.flag_epoch_gap(raw)
 
