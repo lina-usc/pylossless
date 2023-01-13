@@ -730,7 +730,7 @@ class LosslessPipeline():
         # Calculate IC SD
         self.flag_epoch_ic_sd1(raw)
 
-        # TODO 2ND ICA excluding flagged component times
+        # TODO integrate labels from IClabels to self.flagged_ics
         self.run_ica(raw, 'run2')
 
         self.flag_epoch_gap(raw)
