@@ -21,6 +21,7 @@ from tqdm.notebook import tqdm
 # ICA
 from mne.preprocessing import ICA
 from mne_icalabel import label_components
+from mne_icalabel.annotation import write_components_tsv
 
 from .config import Config
 
@@ -657,8 +658,34 @@ class LosslessPipeline():
         # icsd_epoch_flags=padflags(raw, icsd_epoch_flags,1,'value',.5);
 
     def save(self, raw, bids_path):
-        derivatives_path = bids_path.copy().update(extension='.fif', suffix='ll', root=bids_path.root / 'derivatives' / 'pylossless', check=False)
-        mne_bids.write_raw_bids(raw, derivatives_path, overwrite=True, format='EDF', allow_preload=True) #  TODO: address derivatives support in MNE bids.
+        lossless_suffix = bids_path.suffix + '_ll'
+        lossless_root = bids_path.root / 'derivatives' / 'pylossless'
+        derivatives_path = bids_path.copy().update(suffix=lossless_suffix,
+                                                   root=lossless_root,
+                                                   check=False
+                                                   )
+        mne_bids.write_raw_bids(raw,
+                                derivatives_path,
+                                overwrite=True,
+                                format='EDF',
+                                allow_preload=True)
+                                #  TODO address derivatives support in MNE bids.
+
+        # Save ICAs
+        for this_ica, self_ica, in zip(['ica1', 'ica2'],
+                                       [self.ica1, self.ica2]):
+            ica_bidspath = derivatives_path.copy().update(extension='.fif',
+                                                          suffix=this_ica,
+                                                          check=False)
+            self_ica.save(ica_bidspath)
+
+        # Save IC labels
+        iclabels_bidspath = derivatives_path.copy().update(extension='.tsv',
+                                                           suffix='iclabels',
+                                                           check=False)
+        write_components_tsv(self.ica2, iclabels_bidspath)
+
+
         # TODO epoch marks and ica marks are not currently saved into annotations
         #raw.save(derivatives_path, overwrite=True, split_naming='bids')
 
