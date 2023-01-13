@@ -72,14 +72,14 @@ def epochs_to_xr(epochs, kind="ch"):
                             coords={'epoch': np.arange(data.shape[0]),
                                     "ch": epochs.ch_names,
                                     "time": epochs.times})
-    elif kind == "ic":
-        data = self.ica.get_sources(epochs).get_data()
+    elif kind == "ic1":
+        data = self.ica1.get_sources(epochs).get_data()
         data = xr.DataArray(epochs.get_data(),
                             coords={'epoch': np.arange(data.shape[0]),
                                     "ic": epochs.ch_names,
                                     "time": epochs.times})            
     else:
-        raise ValueError("The argument kind must be equal to 'ch' or 'ic'.")
+        raise ValueError("The argument kind must be equal to 'ch' or 'ic1'.")
 
     return data
 
@@ -634,7 +634,7 @@ class LosslessPipeline():
 
         # Calculate IC sd by window
         epochs = self.get_epochs(raw)
-        epoch_ic_sd1 = variability_across_epochs(epochs, kind='ic')
+        epoch_ic_sd1 = variability_across_epochs(epochs, kind='ic1')
 
         # Create the windowing sd criteria
         kwargs = self.config['ica']['ic_ic_sd']
