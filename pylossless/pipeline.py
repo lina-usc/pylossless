@@ -493,24 +493,25 @@ class LosslessPipeline():
 
         # Determines comically bad channels,
         # and leaves them out of average rereference
-        trim_ch_sd = variability_across_epochs(epochs, kind="ch")  # std across epochs for each chan
+        trim_ch_sd = variability_across_epochs(epochs, kind="ch")  
+        # std across epochs for each chan; shape (chans, time)
+
 
         # Measure how diff the std of 1 channel is with respect
         # to other channels (nonparametric z-score)
         ch_dist = trim_ch_sd - trim_ch_sd.median(dim="ch")
         perc_30 = trim_ch_sd.percentile(30, dim="ch")
         perc_70 = trim_ch_sd.percentile(70, dim="ch")
-        ch_dist /= perc_70 - perc_30
+        ch_dist /= perc_70 - perc_30  # shape (chans, time)
 
-        mean_ch_dist = ch_dist.mean(dim="time")
+        mean_ch_dist = ch_dist.mean(dim="time")  # shape (chans)
 
         # find the median and 30 and 70 percentiles
         # of the mean of the channel distributions
         mdn = np.median(mean_ch_dist)
         deviation = np.diff(np.percentile(mean_ch_dist, [30, 70]))
-
-        mask = mean_ch_dist > mdn+6*deviation
-        bad_ch_names = np.array(epochs.ch_names)[mask]
+        
+        bad_ch_names = mean_ch_dist.ch[mean_ch_dist > mdn+6*deviation]
         self.flagged_chs.add_flag_cat(kind='outliers',
                                       bad_ch_names=bad_ch_names)
         self.flagged_chs.rereference(raw)
@@ -518,7 +519,8 @@ class LosslessPipeline():
     def flag_ch_sd(self, raw):
 
         epochs = self.get_epochs(raw)
-        data_sd = epochs.get_data().std(axis=-1)
+        epochs_xr = epochs_to_xr(epochs, kind="ch")
+        data_sd = epochs_xr.std("time")
 
         # flag epochs for ch_sd
         if 'epoch_ch_sd' in self.config:
@@ -527,9 +529,9 @@ class LosslessPipeline():
                     del self.config['epoch_ch_sd']['init_method']
                 elif self.config['epoch_ch_sd']['init_method'] not in ('q','z','fixed'):         
                     raise NotImplementedError
-        kwargs = self.config['epoch_ch_sd']
+
         flag_sd_t_inds = marks_array2flags(data_sd, flag_dim='epoch',
-                                           **kwargs)[1]
+                                           **self.config['epoch_ch_sd'])[1]
 
         self.flagged_epochs.add_flag_cat('ch_sd', flag_sd_t_inds, raw, epochs)
 
@@ -537,7 +539,7 @@ class LosslessPipeline():
         flag_sd_ch_inds = marks_array2flags(data_sd, flag_dim='ch',
                                             **self.config['ch_ch_sd'])[1]
 
-        bad_ch_names = np.array(epochs.ch_names)[flag_sd_ch_inds]
+        bad_ch_names = epochs_xr.ch[flag_sd_ch_inds]
         self.flagged_chs.add_flag_cat(kind='ch_sd',
                                       bad_ch_names=bad_ch_names)
         self.flagged_chs.rereference(raw)
