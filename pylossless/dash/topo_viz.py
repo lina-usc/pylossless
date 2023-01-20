@@ -7,6 +7,7 @@ from dash import dcc, html, no_update
 from dash.dependencies import Input, Output
 
 import numpy as np
+import pandas as pd
 
 import matplotlib.pyplot as plt
 plt.switch_backend('agg')
@@ -18,22 +19,17 @@ from mne.viz.topomap import _add_colorbar
 from mne.viz import plot_topomap
 
 
-def plot_values_topomap(value_dict, montage, axes, colorbar=True, cmap='RdBu_r',
+def plot_values_topomap(value_dict, montage, axes, info, colorbar=True, cmap='RdBu_r',
                         vmin=None, vmax=None, names=None, image_interp='cubic',
                         side_cb="right", sensors=True,
                         **kwargs):
     if names is None:
         names = montage.ch_names
 
-    info = create_info(names, sfreq=256, ch_types="eeg")
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        RawArray(np.zeros((len(names), 1)), info, copy=None,
-                 verbose=False).set_montage(montage)
 
     im = plot_topomap([value_dict[ch] for ch in names], pos=info, show=False,
                        image_interp=image_interp, sensors=sensors, res=64,
-                       axes=axes, names=names,vlim=(vmin, vmax), cmap=cmap, **kwargs)
+                       axes=axes, names=None,vlim=(vmin, vmax), cmap=cmap, **kwargs)
 
     if colorbar:
         try:
@@ -51,20 +47,20 @@ def plot_values_topomap(value_dict, montage, axes, colorbar=True, cmap='RdBu_r',
 class TopoData:
     def __init__(self, topo_values=()):
         """topo_values: list of dict """
-        self.topo_values = list(topo_values)
+        self.topo_values = pd.DataFrame(topo_values)
 
     def add_topomap(self, topomap: dict):
         """topomap: dict"""
-        self.topo_values.append(topomap)
+        self.topo_values = self.topo_values.append(topomap)
 
     @property
     def nb_topo(self):
-        return len(self.topo_values)
+        return self.topo_values.shape[0]
 
 
 class TopoViz:
-    def __init__(self, app, montage, data: TopoData, rows=5, cols=4, margin_x=10,
-                 width=600, height=800, margin_y=1, topo_slider_id=None):
+    def __init__(self, app, montage, data: TopoData, rows=5, cols=4, margin_x=4/5,
+                 width=600, height=800, margin_y=2/5, topo_slider_id=None):
         """ """
         self.montage = montage
         self.data = data
@@ -86,29 +82,34 @@ class TopoViz:
         self.offset = 0
         self.topo_slider = None
         self.use_topo_slider = topo_slider_id
-        
+
+        names = self.data.topo_values.columns.tolist()
+        self.info = create_info(names, sfreq=256, ch_types="eeg")
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            RawArray(np.zeros((len(names), 1)), self.info, copy=None,
+                     verbose=False).set_montage(montage)
 
         self.init_slider()
-        
         self.initialize_layout()
         self.set_div()
         self.set_callback()
 
-    def get_topo_data(self, i, j):
+    def get_topo_data(self, i, j, dpi=40):
         no = i*self.cols + j
-        if no + self.offset >= self.data.nb_topo: # out of range
+        if no + self.offset >= self.data.nb_topo:  # out of range
             return [[]]
-        value_dict = self.data.topo_values[no+self.offset]
+        value_dict = dict(self.data.topo_values.iloc[no+self.offset])
 
-        fig, ax = plt.subplots(dpi=25)
-        plot_values_topomap(value_dict, self.montage, ax, colorbar=False,
+        fig, ax = plt.subplots(dpi=dpi)
+        plot_values_topomap(value_dict, self.montage, ax, self.info, colorbar=False,
                             names=list(value_dict.keys()))  
-        fig.tight_layout()
+        # fig.tight_layout()
         fig.canvas.draw()
         data = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
         data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
-        return data[self.margin_y:-self.margin_y,
-                    self.margin_x:-self.margin_x, :]
+        return data[int(self.margin_y*dpi):-int(self.margin_y*dpi),
+                    int(self.margin_x*dpi):-int(self.margin_x*dpi), :]
 
     def initialize_layout(self):
         for i, j in product(np.arange(self.rows), np.arange(self.cols)):

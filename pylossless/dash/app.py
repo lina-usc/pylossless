@@ -40,9 +40,25 @@ def get_app(assets_kwargs=None, kind="dash"):
     return app    
 
 
+"""
 if __name__ == '__main__':
 
     assets_kwargs = dict(fname=Path(__file__).parent / '../../assets/test_data/sub-s02/eeg/sub-s02_task-faceO_eeg.edf',
                          ica_fpath=Path(__file__).parent / '../../assets/test_data/sub-s02/eeg/sub-s02_task-faceO_ica2_ica.fif',
                          bads=('A27', 'A5', 'B10', 'B16', 'B17', 'B27', 'B28', 'C10', 'C17','C18', 'C3', 'D1'))
     get_app(assets_kwargs).run_server(debug=True, use_reloader=False)
+"""
+from werkzeug.middleware.profiler import ProfilerMiddleware
+if __name__ == "__main__":
+    import os
+
+    assets_kwargs = dict(fname=Path(__file__).parent / '../../assets/test_data/sub-s02/eeg/sub-s02_task-faceO_eeg.edf',
+                        ica_fpath=Path(__file__).parent / '../../assets/test_data/sub-s02/eeg/sub-s02_task-faceO_ica2_ica.fif',
+                        bads=('A27', 'A5', 'B10', 'B16', 'B17', 'B27', 'B28', 'C10', 'C17','C18', 'C3', 'D1'))
+    app = get_app(assets_kwargs)
+    if False: # os.getenv("PROFILER", None):
+        app.server.config["PROFILE"] = True
+        app.server.wsgi_app = ProfilerMiddleware(
+            app.server.wsgi_app, profile_dir='.', stream=None, sort_by=("cumtime", "tottime"), restrictions=[50]
+        )
+    app.run_server(debug=False)
