@@ -25,14 +25,14 @@
      inkscape:document-units="mm"
      showgrid="false"
      inkscape:zoom="0.84096521"
-     inkscape:cx="493.48058"
+     inkscape:cx="417.37755"
      inkscape:cy="430.45776"
      inkscape:window-width="1309"
      inkscape:window-height="1052"
-     inkscape:window-x="430"
+     inkscape:window-x="39"
      inkscape:window-y="25"
      inkscape:window-maximized="0"
-     inkscape:current-layer="g6338" />
+     inkscape:current-layer="layer1" />
   <defs
      id="defs2">
     <marker
@@ -339,6 +339,25 @@
          style="fill:context-stroke;fill-rule:evenodd;stroke:none"
          id="arrow2L-7-0" />
     </marker>
+    <marker
+       style="overflow:visible"
+       id="Arrow2-9-4-5"
+       refX="0"
+       refY="0"
+       orient="auto-start-reverse"
+       inkscape:stockid="Arrow2"
+       markerWidth="7.6999998"
+       markerHeight="5.5999999"
+       viewBox="0 0 7.7 5.6"
+       inkscape:isstock="true"
+       inkscape:collect="always"
+       preserveAspectRatio="xMidYMid">
+      <path
+         transform="scale(0.7)"
+         d="M -2,-4 9,0 -2,4 c 2,-2.33 2,-5.66 0,-8 z"
+         style="fill:context-stroke;fill-rule:evenodd;stroke:none"
+         id="arrow2L-6-9-8" />
+    </marker>
   </defs>
   <g
      inkscape:label="Layer 1"
@@ -368,7 +387,7 @@
     </g>
     <g
        id="g6395"
-       transform="translate(128.56491,-42.707025)">
+       transform="translate(19.774035,-8.5562895)">
       <rect
          style="fill:#0000ff;fill-opacity:0.27;stroke:#000090;stroke-width:0.665001;stroke-opacity:1"
          id="rect234-0"
@@ -386,11 +405,11 @@
            id="tspan2819-2"
            style="stroke-width:0.264583"
            x="16.204945"
-           y="213.57614">14. Export</tspan></text>
+           y="213.57614">15. Export</tspan></text>
     </g>
     <g
        id="g6403"
-       transform="translate(-32.283705,-8.5562982)">
+       transform="translate(22.111712,-8.5563048)">
       <rect
          style="fill:#0000ff;fill-opacity:0.27;stroke:#000090;stroke-width:0.665001;stroke-opacity:1"
          id="rect234-0-1"
@@ -408,7 +427,7 @@
            id="tspan2819-2-6"
            style="stroke-width:0.264583"
            x="66.582169"
-           y="210.9944">15. Quality </tspan><tspan
+           y="210.9944">16. Quality </tspan><tspan
            sodipodi:role="line"
            style="stroke-width:0.264583"
            x="66.582169"
@@ -751,6 +770,28 @@
            y="174.87946"
            id="tspan6207-1">13. Second ICA</tspan></text>
     </g>
+    <g
+       id="g6390-0"
+       transform="translate(21.557338,-3.5524836)">
+      <rect
+         style="fill:#ff0000;fill-opacity:0.27;stroke:#b10000;stroke-width:0.665001;stroke-opacity:1"
+         id="rect234-9-43-4-2"
+         width="41.824165"
+         height="21.579491"
+         x="113.68165"
+         y="162.51358" />
+      <text
+         xml:space="preserve"
+         style="font-size:4.23333px;line-height:1.25;font-family:sans-serif;stroke-width:0.264583"
+         x="117.81441"
+         y="174.87946"
+         id="text2821-8-65-0-4"><tspan
+           sodipodi:role="line"
+           style="stroke-width:0.264583"
+           x="117.81441"
+           y="174.87946"
+           id="tspan6207-1-8">14. Gap removal</tspan></text>
+    </g>
     <path
        style="fill:none;stroke:#000000;stroke-width:0.865;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow2)"
        d="M 7.0476252,33.147876 H 20.840706"
@@ -824,6 +865,11 @@
        style="fill:none;stroke:#000000;stroke-width:0.865;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow2-9-4)"
        d="m 68.399031,170.20869 h 6.242228"
        id="path6468-6-5"
+       sodipodi:nodetypes="cc" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:0.865;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow2-9-4-5)"
+       d="m 68.399031,203.60116 h 6.242228"
+       id="path6468-6-5-1"
        sodipodi:nodetypes="cc" />
     <path
        style="fill:none;stroke:#000000;stroke-width:0.865;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:none;stroke-opacity:1;marker-end:url(#Arrow2-9-5-4)"

@@ -68,47 +68,45 @@ class FlaggedICs(dict):
         self['manual'] = np.unique(np.concatenate(list(self.values())))
 
 
-def epochs_to_xr(epochs, kind="ch"):
+def epochs_to_xr(epochs, kind="ch", ica=None):
     if kind == "ch":
         data = epochs.get_data() # n_epochs, n_channels, n_times
         data = xr.DataArray(epochs.get_data(),
                             coords={'epoch': np.arange(data.shape[0]),
                                     "ch": epochs.ch_names,
                                     "time": epochs.times})
-    elif kind == "ic1":
-        data = self.ica1.get_sources(epochs).get_data()
+    elif kind == "ic":
+        data = ica.get_sources(epochs).get_data()
         data = xr.DataArray(epochs.get_data(),
                             coords={'epoch': np.arange(data.shape[0]),
                                     "ic": epochs.ch_names,
                                     "time": epochs.times})            
     else:
-        raise ValueError("The argument kind must be equal to 'ch' or 'ic1'.")
+        raise ValueError("The argument kind must be equal to 'ch' or 'ic'.")
 
     return data
 
 def get_operate_dim(array, flag_dim):
-    dims = array.dims
-    dims.pop(flag_dim)
+    dims = list(array.dims)
+    dims.remove(flag_dim)
     return dims
 
 
-def variability_across_epochs(epochs, var_measure='sd', epochs_inds=None, ch_names=None,
-                kind='ch', ic_inds=None, spect_range=()):
-
-    epoch_arr = epochs_to_xr(epochs, kind=kind)
+def variability_across_epochs(epochs_xr, var_measure='sd', epochs_inds=None, ch_names=None,
+                              ic_inds=None, spect_range=()):
 
     if ch_names is not None:
-        epoch_arr = epoch_arr.sel(ch=ch_names)
+        epochs_xr = epochs_xr.sel(ch=ch_names)
     if epochs_inds is not None:
-        epoch_arr = epoch_arr.sel(epoch=epochs_inds)
+        epochs_xr = epochs_xr.sel(epoch=epochs_inds)
     if ic_inds is not None:
-        epoch_arr = epoch_arr.sel(ic=ic_inds)
+        epochs_xr = epochs_xr.sel(ic=ic_inds)
 
 
     if var_measure == 'sd':
-        return epoch_arr.std(dim="epoch")  # returns array of shape (n_chans, n_times)
+        return epochs_xr.std(dim="epoch")  # returns array of shape (n_chans, n_times)
     if var_measure == 'absmean':
-        return np.abs(epoch_arr).mean(dim="epoch")
+        return np.abs(epochs_xr).mean(dim="epoch")
 
     if var_measure == 'spect':
 
@@ -201,9 +199,9 @@ def marks_array2flags(inarray, flag_dim='epoch', init_method='q', init_vals=(),
         else:
             raise ValueError('init_vals argument must be 1, 2, or 3')
 
-        m_dist = inarray.percentile(qval[1]*100, dim=operate_dim)
-        l_dist = inarray.percentile(qval[0]*100, dim=operate_dim)
-        u_dist = inarray.percentile(qval[2]*100, dim=operate_dim)
+        m_dist = inarray.quantile(qval[1], dim=operate_dim)
+        l_dist = inarray.quantile(qval[0], dim=operate_dim)
+        u_dist = inarray.quantile(qval[2], dim=operate_dim)
         l_out = m_dist - (m_dist - l_dist) * init_crit
         u_out = m_dist + (u_dist - m_dist) * init_crit
 
@@ -232,8 +230,7 @@ def marks_array2flags(inarray, flag_dim='epoch', init_method='q', init_vals=(),
         outlier_mask = outlier_mask | (inarray < l_out)
 
     # average column of outlier_mask
-    dims = inarray.dim
-    dims.pop(flag_dim)
+    dims = get_operate_dim(inarray, flag_dim)
     assert(len(dims) == 1)
     critrow = outlier_mask.mean(dims[0])
 
@@ -337,29 +334,7 @@ def chan_neighbour_r(epochs, nneigbr, method):
         m_neigbr_r = xr.apply_ufunc(np.abs, c_neigbr_r)\
                               .reduce(trim_mean_10, dim='channel')
 
-    return m_neigbr_r.transpose("epoch", "ref_chan")
-
-
-def ve_trimmean(data, ptrim, axis=0):
-    return ve_trim_var(data, ptrim, np.mean, axis)
-
-
-def ve_trimstd(data, ptrim, axis=0):
-    return ve_trim_var(data, ptrim, np.std, axis)
-
-
-def ve_trim_var(data, ptrim, func, axis=0):
-    if ptrim >= 1:
-        ptrim /= 100
-    ptrim /= 2
-
-    # Take 1/2 of the requested amount off the top and off the bottom
-    data_srt = np.sort(data, axis=axis)
-    ntrim = np.round(data.shape[axis]*ptrim)
-    indices = np.arange(ntrim, data.shape[axis]-ntrim).astype(int)
-    if axis:
-        return func(data_srt[:, indices], axis=axis)
-    return func(data_srt[indices, :], axis=axis)
+    return m_neigbr_r.rename(ref_chan="ch")
 
 
 # TODO check that annot type contains all unique flags
@@ -489,19 +464,19 @@ class LosslessPipeline():
     def flag_outlier_chs(self, raw):
         # Window the continuous data
         # logging_log('INFO', 'Windowing the continous data...');
-        epochs = self.get_epochs(raw)
+        epochs_xr = epochs_to_xr(self.get_epochs(raw), kind="ch")
 
         # Determines comically bad channels,
         # and leaves them out of average rereference
-        trim_ch_sd = variability_across_epochs(epochs, kind="ch")  
+        trim_ch_sd = variability_across_epochs(epochs_xr)  
         # std across epochs for each chan; shape (chans, time)
 
 
         # Measure how diff the std of 1 channel is with respect
         # to other channels (nonparametric z-score)
         ch_dist = trim_ch_sd - trim_ch_sd.median(dim="ch")
-        perc_30 = trim_ch_sd.percentile(30, dim="ch")
-        perc_70 = trim_ch_sd.percentile(70, dim="ch")
+        perc_30 = trim_ch_sd.quantile(0.3, dim="ch")
+        perc_70 = trim_ch_sd.quantile(0.7, dim="ch")
         ch_dist /= perc_70 - perc_30  # shape (chans, time)
 
         mean_ch_dist = ch_dist.mean(dim="time")  # shape (chans)
@@ -509,7 +484,7 @@ class LosslessPipeline():
         # find the median and 30 and 70 percentiles
         # of the mean of the channel distributions
         mdn = np.median(mean_ch_dist)
-        deviation = np.diff(np.percentile(mean_ch_dist, [30, 70]))
+        deviation = np.diff(np.quantile(mean_ch_dist, [0.3, 0.7]))
         
         bad_ch_names = mean_ch_dist.ch[mean_ch_dist > mdn+6*deviation]
         self.flagged_chs.add_flag_cat(kind='outliers',
@@ -544,78 +519,80 @@ class LosslessPipeline():
                                       bad_ch_names=bad_ch_names)
         self.flagged_chs.rereference(raw)
 
+
+    def get_n_nbr(self, raw):
+        # Calculate nearest neighbout correlation on
+        # non-'manual' flagged channels and epochs...
+        epochs = self.get_epochs(raw)
+        n_nbr_ch = self.config['nearest_neighbors']['n_nbr_ch']
+        return chan_neighbour_r(epochs, n_nbr_ch, 'max'), epochs
+
+
     def flag_ch_low_r(self, raw):
         ''' Checks neighboring channels for
             too high or low of a correlation.'''
 
         # Calculate nearest neighbout correlation on
         # non-'manual' flagged channels and epochs...
-        epochs = self.get_epochs(raw)
-
-        n_nbr_ch = self.config['nearest_neighbors']['n_nbr_ch']
-        data_r_ch = chan_neighbour_r(epochs, n_nbr_ch, 'max')
+        data_r_ch = self.get_n_nbr(raw)[0]
 
         # Create the window criteria vector for flagging low_r chan_info...
-        flag_r_ch_inds = marks_array2flags(data_r_ch.values.T, flag_dim='ch',
+        flag_r_ch_inds = marks_array2flags(data_r_ch, flag_dim='ch',
                                            init_dir='neg',
                                            **self.config['ch_low_r'])[1]
 
         # Edit the channel flag info structure
-        try:
-            bad_ch_names = data_r_ch.ref_chan[flag_r_ch_inds].values.tolist()
-        except:
-            print(self.config['ch_low_r'])
-            print(data_r_ch.values.T)
-            print(data_r_ch.values.T.shape)
-            print(flag_r_ch_inds)
-            print(data_r_ch.ref_chan)
-            raise
+        bad_ch_names = data_r_ch.ch[flag_r_ch_inds].values.tolist()
         self.flagged_chs.add_flag_cat(kind='low_r', bad_ch_names=bad_ch_names)
 
         return data_r_ch
 
-    def flag_ch_bridge(self, raw, data_r_ch):
+    def flag_ch_bridge(self, data_r_ch):
         # Uses the correlation of neighboors
         # calculated to flag bridged channels.
 
-        msr = np.median(data_r_ch, 0) / scipy.stats.iqr(data_r_ch, 0)
+        msr = data_r_ch.median("epoch") / data_r_ch.reduce(scipy.stats.iqr, dim="epoch")
 
-        mask = (msr > (ve_trimmean(msr[:, None],
-                                   self.config['bridge']['bridge_trim'], 0) +
-                       ve_trimstd(msr[:, None],
-                                  self.config['bridge']['bridge_trim'], 0) *
-                       self.config['bridge']['bridge_z'])
-                )
+        trim = self.config['bridge']['bridge_trim']
+        if trim >= 1:
+            trim /= 100
+        trim /= 2
 
-        bad_ch_names = data_r_ch.ref_chan.values[mask]
+        trim_mean = partial(scipy.stats.mstats.trimmed_mean, limits=(trim, trim))
+        trim_std = partial(scipy.stats.mstats.trimmed_std, limits=(trim, trim))
+
+        z =  self.config['bridge']['bridge_z']
+        mask = msr > msr.reduce(trim_mean, dim="ch") + z*msr.reduce(trim_std, dim="ch")
+
+        bad_ch_names = data_r_ch.ch.values[mask]
         self.flagged_chs.add_flag_cat(kind='bridge',
                                       bad_ch_names=bad_ch_names)
 
-    def flag_ch_rank(self, raw, data_r_ch, pick_types='eeg'):
+    def flag_ch_rank(self, data_r_ch):
         '''Flags the channel that is the least unique,
         the channel to remove prior to ICA in
         order to account for the rereference rank deficiency.'''
 
-        epochs = self.get_epochs(raw).pick(pick_types)
-        x = data_r_ch.sel(ref_chan=epochs.ch)
-        inds = x.argmax(dim=["epoch", "ref_chan"])["ref_chan"]
-        bad_ch_names = [str(x.ref_chan[inds].values)]
+        if len(self.flagged_chs['manual']):
+            ch_sel = [ch for ch in data_r_ch.ch if ch not in self.flagged_chs['manual']]
+            data_r_ch = data_r_ch.sel(ch=ch_sel)
+
+        bad_ch_names = [str(data_r_ch.median("epoch").idxmax(dim="ch").to_numpy())]
         self.flagged_chs.add_flag_cat(kind='rank',
                                       bad_ch_names=bad_ch_names)
 
-        self.flagged_chs.rereference(raw)
 
-    def flag_epoch_low_r(self, raw, data_r_ch):
+    def flag_epoch_low_r(self, raw):
         ''' Similarly to the neighbor r calculation
          done between channels this section looks at the correlation,
          but between all channels and for epochs of time.
          Time segments are flagged for removal.'''
 
-        epochs = self.get_epochs(raw)
-        n_nbr_epoch = self.config['nearest_neighbors']['n_nbr_epoch']
-        data_r_ch = chan_neighbour_r(epochs, n_nbr_epoch, 'max')
+        # Calculate nearest neighbout correlation on
+        # non-'manual' flagged channels and epochs...
+        data_r_ch, epochs = self.get_n_nbr(raw)
 
-        flag_r_t_inds = marks_array2flags(data_r_ch.values.T, flag_dim='epoch',
+        flag_r_t_inds = marks_array2flags(data_r_ch, flag_dim='epoch',
                                           init_dir='neg',
                                           **self.config['epoch_low_r'])[1]
 
@@ -651,7 +628,8 @@ class LosslessPipeline():
 
         # Calculate IC sd by window
         epochs = self.get_epochs(raw)
-        epoch_ic_sd1 = variability_across_epochs(epochs, kind='ic1')
+        epochs_xr = epochs_to_xr(epochs, kind="ic")
+        epoch_ic_sd1 = variability_across_epochs(epochs_xr, kind='ic', ica=self.ica1)
 
         # Create the windowing sd criteria
         kwargs = self.config['ica']['ic_ic_sd']
@@ -701,20 +679,20 @@ class LosslessPipeline():
         raw.load_data()
         self.set_montage(raw)
 
-        # Execute the staging script if specified.
+        # 1. Execute the staging script if specified.
         self.run_staging_script()
 
-        # Determine comically bad channels,
+        # 2. Determine comically bad channels,
         # and leave them out of average reference
         self.flag_outlier_chs(raw)
 
-        # flag epochs and channels based on large Channel Stdev.
+        # 3-4.flag epochs and channels based on large Channel Stdev.
         self.flag_ch_sd(raw)
 
-        # Filter lowpass/highpass
+        # 5.a. Filter lowpass/highpass
         raw.filter(**self.config['filtering']['filter_args'])
 
-        # Filter notch
+        # 5.b. Filter notch
         notch_args = self.config['filtering']['notch_filter_args']
         spectrum_fit_method = ('method' in notch_args and
                                notch_args['method'] == 'spectrum_fit')
@@ -724,32 +702,36 @@ class LosslessPipeline():
         else:
             logger.info('No notch filter arguments provided. Skipping')
 
-        # calculate nearest neighbort r values
+        # 6. calculate nearest neighbort r values
         data_r_ch = self.flag_ch_low_r(raw)
 
-        # Identify bridged channels
-        self.flag_ch_bridge(raw, data_r_ch)
+        # 7. Identify bridged channels
+        self.flag_ch_bridge(data_r_ch)
+        # TODO: Check why we don not rerefence after this step. 
 
-        # FLAG RANK CHAN
-        self.flag_ch_rank(raw, data_r_ch)
+        # 8. Flag rank channels
+        self.flag_ch_rank(data_r_ch)
+        self.flagged_chs.rereference(raw)
 
-        # Calculate nearest neighbour R values for epochs
-        self.flag_epoch_low_r(raw, data_r_ch)
+        # 9. Calculate nearest neighbour R values for epochs
+        self.flag_epoch_low_r(raw)
 
-        # flag very small time periods between flagged time
+        # 10. Flag very small time periods between flagged time
         self.flag_epoch_gap(raw)
 
-        # Run ICA
+        # 11. Run ICA
         self.run_ica(raw, 'run1')
 
-        # Calculate IC SD
+        # 12. Calculate IC SD
         self.flag_epoch_ic_sd1(raw)
 
-        # TODO integrate labels from IClabels to self.flagged_ics
+        # 13. TODO integrate labels from IClabels to self.flagged_ics
         self.run_ica(raw, 'run2')
 
+        # 14. Flag very small time periods between flagged time
         self.flag_epoch_gap(raw)
 
+        # 15. Export
         if save:
             self.save(raw, bids_path)
 
