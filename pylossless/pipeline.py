@@ -489,6 +489,10 @@ class LosslessPipeline():
         bad_ch_names = mean_ch_dist.ch[mean_ch_dist > mdn+6*deviation]
         self.flagged_chs.add_flag_cat(kind='outliers',
                                       bad_ch_names=bad_ch_names)
+
+        # TODO: Verify: It is unclear this is necessary.
+        # get_epochs() is systematically rereferencing and
+        # all steps (?) uses the get_epochs() function
         self.flagged_chs.rereference(raw)
 
     def flag_ch_sd(self, raw):
@@ -517,6 +521,10 @@ class LosslessPipeline():
         bad_ch_names = epochs_xr.ch[flag_sd_ch_inds]
         self.flagged_chs.add_flag_cat(kind='ch_sd',
                                       bad_ch_names=bad_ch_names)
+
+        # TODO: Verify: It is unclear this is necessary.
+        # get_epochs() is systematically rereferencing and
+        # all steps (?) uses the get_epochs() function
         self.flagged_chs.rereference(raw)
 
 
@@ -574,7 +582,7 @@ class LosslessPipeline():
         order to account for the rereference rank deficiency.'''
 
         if len(self.flagged_chs['manual']):
-            ch_sel = [ch for ch in data_r_ch.ch if ch not in self.flagged_chs['manual']]
+            ch_sel = [ch for ch in data_r_ch.ch.values if ch not in self.flagged_chs['manual']]
             data_r_ch = data_r_ch.sel(ch=ch_sel)
 
         bad_ch_names = [str(data_r_ch.median("epoch").idxmax(dim="ch").to_numpy())]
@@ -628,13 +636,13 @@ class LosslessPipeline():
 
         # Calculate IC sd by window
         epochs = self.get_epochs(raw)
-        epochs_xr = epochs_to_xr(epochs, kind="ic")
-        epoch_ic_sd1 = variability_across_epochs(epochs_xr, kind='ic', ica=self.ica1)
+        epochs_xr = epochs_to_xr(epochs, kind="ic", ica=self.ica1)
+        epoch_ic_sd1 = variability_across_epochs(epochs_xr)
 
         # Create the windowing sd criteria
         kwargs = self.config['ica']['ic_ic_sd']
-        flag_epoch_ic_inds = marks_array2flags(epoch_ic_sd1.T,
-                                               flag_dim='epoch', **kwargs)[1]
+        flag_epoch_ic_inds = marks_array2flags(epoch_ic_sd1,
+                                               flag_dim='ic', **kwargs)[1]
 
         self.flagged_epochs.add_flag_cat('ic_sd1', flag_epoch_ic_inds,
                                          raw, epochs)
@@ -642,7 +650,8 @@ class LosslessPipeline():
         # icsd_epoch_flags=padflags(raw, icsd_epoch_flags,1,'value',.5);
 
     def save(self, raw, bids_path):
-        lossless_suffix = bids_path.suffix + '_ll'
+        lossless_suffix = bids_path.suffix if bids_path.suffix else ""
+        lossless_suffix +=  '_ll'
         lossless_root = bids_path.root / 'derivatives' / 'pylossless'
         derivatives_path = bids_path.copy().update(suffix=lossless_suffix,
                                                    root=lossless_root,
@@ -707,10 +716,13 @@ class LosslessPipeline():
 
         # 7. Identify bridged channels
         self.flag_ch_bridge(data_r_ch)
-        # TODO: Check why we don not rerefence after this step. 
+        # TODO: Check why we don not rerefence after this step.
 
         # 8. Flag rank channels
         self.flag_ch_rank(data_r_ch)
+        # TODO: Verify: It is unclear this is necessary.
+        # get_epochs() is systematically rereferencing and
+        # all steps (?) uses the get_epochs() function
         self.flagged_chs.rereference(raw)
 
         # 9. Calculate nearest neighbour R values for epochs
