@@ -7,8 +7,10 @@ from pathlib import Path
 # BIDS
 import mne
 
+# Find breaks
+from mne.preprocessing import annotate_break
+
 # Co-Registration
-from mne.channels.montage import read_custom_montage
 from mne.coreg import Coregistration
 
 # nearest neighbours
@@ -25,6 +27,7 @@ from mne_icalabel import label_components
 from mne_icalabel.annotation import write_components_tsv
 
 from .config import Config
+
 
 class FlaggedChs(dict):
 
@@ -107,9 +110,10 @@ def chan_variance(epochs, var_measure='sd', epochs_inds=None, ch_names=None,
 
 # TODO change naming of 'init' and init_dir specifically,
 # neg/pos/both for lower/upper bound options.
-def marks_array2flags(inarray, flag_dim='epoch', init_method='q', init_vals=(),
-                      init_dir='both', init_crit=(), flag_method='z_score',
-                      flag_vals=(), flag_crit=(), trim=0):
+def marks_array2flags(inarray, flag_dim='epoch', outlier_method='q',
+                      init_vals=(), init_dir='both', init_crit=(),
+                      flag_method='z_score', flag_vals=(),
+                      flag_crit=(), trim=0):
 
     ''' This function takes an array typically created by chan_variance or
     chan_neighbour_r and marks either periods of time or sources as outliers.
@@ -140,7 +144,7 @@ def marks_array2flags(inarray, flag_dim='epoch', init_method='q', init_vals=(),
     %                unusually low (neg) correlations, high (pos) or both.
     % flag_dim     - String; one of: 'col', 'row'. Col flags time, row flags
     %                sources.
-    % init_method  - String; one of: 'q', 'z', 'fixed'. See method section.
+    % outlier_method  - String; one of: 'q', 'z', 'fixed'. See method section.
     % init_vals    - See method section.
     % init_crit    - See method section.
     % flag_method  - String; one of: 'q', 'z', 'fixed'. See method section.
@@ -152,7 +156,8 @@ def marks_array2flags(inarray, flag_dim='epoch', init_method='q', init_vals=(),
     % Methods:
     % fixed - This method does no investigation if the distribution. Instead
     %         specific criteria are given via vals and crit. If fixed
-    %         is selected for the init_method option, only init_vals should be
+    %         is selected for the outlier_method option, only init_vals should
+    %         be
     %         filled while init_crit is to be left empty. This would have the
     %         effect of marking some interval, e.g. [0 50] as being an outlier.
     %         If fixed is selected for flag_method, only flag_crit should be
@@ -180,7 +185,7 @@ def marks_array2flags(inarray, flag_dim='epoch', init_method='q', init_vals=(),
     # return flags indices (outind) from input measure (inarray)
 
     # Calculate mean and standard deviation for each column
-    if init_method == 'q':
+    if outlier_method == 'q':
 
         if len(init_vals) == 1:
             qval = [.5 - init_vals[0], .5, .5 + init_vals[0]]
@@ -197,7 +202,7 @@ def marks_array2flags(inarray, flag_dim='epoch', init_method='q', init_vals=(),
         l_out = m_dist - (m_dist - l_dist) * init_crit
         u_out = m_dist + (u_dist - m_dist) * init_crit
 
-    elif init_method == 'z':
+    elif outlier_method == 'z':
 
         m_dist = scipy.stats.mstats.trimmed_mean(inarray, [trim, 1-trim],
                                                  axis=0)
@@ -208,7 +213,7 @@ def marks_array2flags(inarray, flag_dim='epoch', init_method='q', init_vals=(),
         l_out = m_dist - s_dist * init_crit
         u_out = m_dist + s_dist * init_crit
 
-    elif init_method == 'fixed':
+    elif outlier_method == 'fixed':
         l_out, u_out = init_vals
 
     # flag outlying values
@@ -319,7 +324,7 @@ def chan_neighbour_r(epochs, nneigbr, method):
     c_neigbr_r = xr.concat(r_list, dim='ref_chan')
 
     if method == 'max':
-       m_neigbr_r = xr.apply_ufunc(np.abs, c_neigbr_r).max(dim='channel')
+        m_neigbr_r = xr.apply_ufunc(np.abs, c_neigbr_r).max(dim='channel')
 
     elif method == 'mean':
         m_neigbr_r = xr.apply_ufunc(np.abs, c_neigbr_r).mean(dim='channel')
@@ -328,7 +333,7 @@ def chan_neighbour_r(epochs, nneigbr, method):
         trim_mean_10 = partial(scipy.stats.trim_mean,
                                proportiontocut=0.1, axis=0)
         m_neigbr_r = xr.apply_ufunc(np.abs, c_neigbr_r)\
-                              .reduce(trim_mean_10, dim='channel')
+                       .reduce(trim_mean_10, dim='channel')
 
     return m_neigbr_r.transpose("epoch", "ref_chan")
 
@@ -424,15 +429,12 @@ class LosslessPipeline():
         self.flagged_ics = FlaggedICs()
         self.config_fname = config_fname
         self.load_config()
-        #self.init_variables = read_config(init_fname)
-        #init_path = Path(self.config['out_path']) / self.config["project"]['id']
-        #init_path.mkdir(parents=True, exist_ok=True)
         self.ica1 = None
         self.ica2 = None
         self.ic_labels = None
 
     def load_config(self):
-        self.config = Config(self.config_fname).read()
+        self.config = Config().read(self.config_fname)
 
     def set_montage(self, raw):
         analysis_montage = self.config['project']['analysis_montage']
@@ -446,11 +448,13 @@ class LosslessPipeline():
         if analysis_montage in mne.channels.montage.get_builtin_montages():
             # If chanlocs is a string of one the standard MNE montages
             montage = mne.channels.make_standard_montage(analysis_montage)
-            raw.set_montage(montage, **self.config['project']['set_montage_kwargs'])
+            raw.set_montage(montage,
+                            **self.config['project']['set_montage_kwargs'])
         else:  # If the montage is a filepath of a custom montage
             raise ValueError('self.config["project"]["analysis_montage"]'
                              ' should be one of the default MNE montages as'
-                             ' specified by mne.channels.get_builtin_montages().')
+                             ' specified by'
+                             ' mne.channels.get_builtin_montages().')
             # montage = read_custom_montage(chan_locs)
 
     def get_epochs(self, raw, detrend=None, preload=True):
@@ -458,8 +462,8 @@ class LosslessPipeline():
         tmax = self.config['epoching']['epochs_args']['tmax']
         overlap = self.config['epoching']['overlap']
         events = mne.make_fixed_length_events(raw, duration=tmax-tmin,
-                                       overlap=overlap)
-        
+                                              overlap=overlap)
+
         epoching_kwargs = self.config['epoching']['epochs_args']
         if detrend is not None:
             epoching_kwargs['detrend'] = detrend
@@ -478,6 +482,12 @@ class LosslessPipeline():
             staging_script = Path(self.config['staging_script'])
             if staging_script.exists():
                 exec(staging_script.open().read())
+
+    def find_breaks(self, raw):
+        if 'find_breaks' not in self.config or not self.config['find_breaks']:
+            return
+        breaks = annotate_break(raw, **self.config['find_breaks'])
+        raw.set_annotations(breaks + raw.annotations)
 
     def flag_outlier_chs(self, raw):
         # Window the continuous data
@@ -517,14 +527,14 @@ class LosslessPipeline():
 
         # flag epochs for ch_sd
         if 'epoch_ch_sd' in self.config:
-            if 'init_method' in self.config['epoch_ch_sd']:
-                if self.config['epoch_ch_sd']['init_method'] is None:
-                    del self.config['epoch_ch_sd']['init_method']
-                elif self.config['epoch_ch_sd']['init_method'] not in ('q','z','fixed'):         
+            config_epoch = self.config['epoch_ch_sd']
+            if 'outlier_method' in config_epoch:
+                if config_epoch['outlier_method'] is None:
+                    del config_epoch['outlier_method']
+                elif config_epoch['outlier_method'] not in ('q', 'z', 'fixed'):
                     raise NotImplementedError
-        kwargs = self.config['epoch_ch_sd']
         flag_sd_t_inds = marks_array2flags(data_sd, flag_dim='epoch',
-                                           **kwargs)[1]
+                                           **config_epoch)[1]
 
         self.flagged_epochs.add_flag_cat('ch_sd', flag_sd_t_inds, raw, epochs)
 
@@ -636,8 +646,8 @@ class LosslessPipeline():
             raise ValueError("The `run` argument must be 'run1' or 'run2'")
 
     def flag_epoch_ic_sd1(self, raw):
-        '''Calculates the IC standard Deviation by epoch window. Flags windows with
-           too much standard deviation.'''
+        '''Calculates the IC standard Deviation by epoch window. Flags windows
+           with too much standard deviation.'''
 
         # Calculate IC sd by window
         epochs = self.get_epochs(raw)
@@ -667,8 +677,8 @@ class LosslessPipeline():
                                 overwrite=True,
                                 format='EDF',
                                 allow_preload=True)
-                                #  TODO address derivatives support in MNE bids.
-                                # use shutils ( or pathlib?) to rename file with ll suffix
+        #  TODO address derivatives support in MNE bids.
+        # use shutils ( or pathlib?) to rename file with ll suffix
 
         # Save ICAs
         for this_ica, self_ica, in zip(['ica1', 'ica2'],
@@ -684,9 +694,8 @@ class LosslessPipeline():
                                                            check=False)
         write_components_tsv(self.ica2, iclabels_bidspath)
 
-
-        # TODO epoch marks and ica marks are not currently saved into annotations
-        #raw.save(derivatives_path, overwrite=True, split_naming='bids')
+        # TODO epoch marks and ica marks are not currently saved into annots
+        # raw.save(derivatives_path, overwrite=True, split_naming='bids')
 
     def run(self, bids_path, save=True):
         raw = mne_bids.read_raw_bids(bids_path)
@@ -695,6 +704,9 @@ class LosslessPipeline():
 
         # Execute the staging script if specified.
         self.run_staging_script()
+
+        # find breaks
+        self.find_breaks(raw)
 
         # Determine comically bad channels,
         # and leave them out of average reference
@@ -753,18 +765,3 @@ class LosslessPipeline():
     def run_dataset(self, paths):
         for path in paths:
             self.run(path)
-
-
-"""def pad_flags(raw, flags, npad, varargin):
-    ''' Function which given an array 'flags' of values,
-     prepends and appends a value around a given nonzero block of data
-     in the given array. This value can be customized via the vararg 'value'.
-     (e.g. 'value',0.5)'''
-
-
-    for np=1:npad:
-        for i=1:size(flags,3)-1:
-            if any(flags(:,:,i+1)) && ~any(flags(:,:,i)):
-                flags(:,:,i)=g.value
-            if any(flags(:,:,(EEG.trials-(i-1))-1)) && ~any(flags(:,:,EEG.trials-(i-1))):
-                flags(:,:,EEG.trials-(i-1))=g.value"""
