@@ -36,10 +36,10 @@ import pylossless as ll
 Running the pipeline always requires 1) a dataset and 2) a configuration file describing the parameters for the preprocessing. A default version of this configuration file can be fetched as a starting point that can be adjusted to the specific needs of a given project
 
 ```python
-config = ll.config.Config("my_project_ll_config.yaml")
+config = ll.config.Config()
 config.load_default()
 config.print()
-config.save()
+config.save("my_project_ll_config.yaml")
 ```
 More information about the description of the different fields can be found [here](./doc/config.md).
 
