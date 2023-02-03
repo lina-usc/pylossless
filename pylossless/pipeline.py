@@ -3,6 +3,7 @@ from mne.utils import logger
 import mne_bids
 import numpy as np
 from pathlib import Path
+import tempfile
 
 # BIDS
 import mne
@@ -23,7 +24,7 @@ from tqdm.notebook import tqdm
 
 # ICA
 from mne.preprocessing import ICA
-from mne_icalabel import label_components
+import mne_icalabel
 from mne_icalabel.annotation import write_components_tsv
 
 from .config import Config
@@ -63,12 +64,34 @@ class FlaggedICs(dict):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if 'manual' not in self:
-            self['manual'] = []
+        self.fname = None
+        self.ica = None
+        self.data_frame = None
+    
+    # TODO implement python __get_item__ __set_item__
+    def add_flag_cat(self, kind, bad_ic_inds, author=''):
 
-    def add_flag_cat(self, kind, bad_epoch_inds, raw, epochs):
-        self[kind] = bad_epoch_inds
-        self['manual'] = np.unique(np.concatenate(list(self.values())))
+        method = 'manual' if kind == 'manual' else 'icalabel'
+        author = author if kind == 'manual' else 'icalabel'
+        with tempfile.TemporaryFile() as fp:
+            fname = self.fname if self.fname else fp.name
+            for i in bad_ic_inds:
+                mne_icalabel.mark_component(component=i, fname=fname,
+                                            method=method, label=kind,
+                                            author=author)
+            self.data_frame = pd.read_csv(fname)
+
+    def label_components(self, epochs, ica):
+        mne_icalabel.label_components(epochs, ica, method="iclabel")
+        self.ica = ica
+        with tempfile.TemporaryFile() as fp:
+            self.save(fp.name, tmp_file=True)
+            self.data_frame = pd.read_csv(fp.name)
+
+    def save(self, fname, tmp_file=False):
+        if not tmp_file:
+            self.fname = fname
+        write_components_tsv(self.ica, fname)
 
 
 def chan_variance(epochs, var_measure='sd', epochs_inds=None, ch_names=None,
@@ -431,7 +454,6 @@ class LosslessPipeline():
         self.load_config()
         self.ica1 = None
         self.ica2 = None
-        self.ic_labels = None
 
     def load_config(self):
         self.config = Config().read(self.config_fname)
@@ -640,8 +662,7 @@ class LosslessPipeline():
         elif run == 'run2':
             self.ica2 = ICA(**ica_kwargs)
             self.ica2.fit(epochs)
-            self.ic_labels = label_components(epochs, self.ica2,
-                                              method="iclabel")
+            self.flagged_ics.label_components(epochs, self.ica2)
         else:
             raise ValueError("The `run` argument must be 'run1' or 'run2'")
 
@@ -692,8 +713,7 @@ class LosslessPipeline():
         iclabels_bidspath = derivatives_path.copy().update(extension='.tsv',
                                                            suffix='iclabels',
                                                            check=False)
-        write_components_tsv(self.ica2, iclabels_bidspath)
-
+        self.flagged_ics.save(iclabels_bidspath)
         # TODO epoch marks and ica marks are not currently saved into annots
         # raw.save(derivatives_path, overwrite=True, split_naming='bids')
 
