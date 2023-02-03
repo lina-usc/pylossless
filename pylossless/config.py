@@ -1,30 +1,33 @@
 import yaml
 from pathlib import Path
+import sys
 
 
-DEFAULT_CONFIG_PATH = (Path(__file__).parent.parent / 
-                       "assets" / "ll_default_config.yaml")
+class Config(dict):
 
+    DEFAULT_CONFIG_PATH = (Path(__file__).parent.parent /
+                           "assets" / "ll_default_config.yaml")
 
-def save_config(init_variables, file_name='init_variables.yaml'):
-    with open(file_name, "w") as init_variables_file:
-        yaml.dump(init_variables, init_variables_file,
-                  indent=4, sort_keys=True)
+    def read(self, file_name):
+        file_name = Path(file_name)
+        if not file_name.exists():
+            raise FileExistsError(f'Configuration file {file_name.absolute()} '
+                                  'does not exist')
 
+        with file_name.open("r") as init_variables_file:
+            self.update(yaml.safe_load(init_variables_file))
 
-def read_config(file_name):
-    with open(file_name, "r") as init_variables_file:
-        return yaml.safe_load(init_variables_file)
+        return self
 
+    def load_default(self):
+        self.read(Config.DEFAULT_CONFIG_PATH)
+        return self
 
-def create_init_variables_json(path_in, id_, run, session):
-    init_variables = {'path_in': path_in,
-                      'id': id_,
-                      'run': run,
-                      'session': session
-                      }
-    save_config(init_variables)
+    def save(self, file_name):
+        file_name = Path(file_name)
+        with file_name.open("w") as init_variables_file:
+            yaml.dump(dict(self), init_variables_file,
+                      indent=4, sort_keys=True)
 
-
-def get_default_config():
-    return read_config(DEFAULT_CONFIG_PATH)
+    def print(self):
+        yaml.dump(dict(self), sys.stdout, indent=4, sort_keys=True)

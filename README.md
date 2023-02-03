@@ -36,10 +36,10 @@ import pylossless as ll
 Running the pipeline always requires 1) a dataset and 2) a configuration file describing the parameters for the preprocessing. A default version of this configuration file can be fetched as a starting point that can be adjusted to the specific needs of a given project
 
 ```python
-ll_default_config = ll.config.get_default_config()
-print(ll_default_config)
-
-ll.config.save_config(ll_default_config, "my_project_ll_config.yaml")
+config = ll.config.Config()
+config.load_default()
+config.print()
+config.save("my_project_ll_config.yaml")
 ```
 More information about the description of the different fields can be found [here](./doc/config.md).
 
@@ -134,7 +134,7 @@ import_args = [{"stim_channel": 'STI 014', "path_in": './sub-s004-ses_07_task-MM
 bids_path_args = [{'subject': '001', 'run': '01', 'session': '01', "task": "mmn"},
                   {'subject': '002', 'run': '01', 'session': '01', "task": "mmn"}]
 
-bids_paths = ll.bids.convert_to_bids(egi_import_fct, import_args, bids_path_args, overwrite=True)
+bids_paths = ll.bids.convert_dataset_to_bids(egi_import_fct, import_args, bids_path_args, overwrite=True)
 ```
 
  Note that, in this case, we used twice the same input file just to demonstrate how this function can be used for multiple recordings. In practice, a user may want to have this information stored in CSV files that can be readily used. For example, if we create such files for the demonstration:
@@ -151,7 +151,7 @@ Now, regardless of how such files have been produced (e.g., from Excel), these c
 ```python
 import_args = list(pd.read_csv("import_args.csv").T.to_dict().values())
 bids_path_args = list(pd.read_csv("bids_path_args.csv").T.to_dict().values())
-bids_paths = ll.bids.convert_to_bids(egi_import_fct, import_args, bids_path_args, overwrite=True)
+bids_paths = ll.bids.convert_dataset_to_bids(egi_import_fct, import_args, bids_path_args, overwrite=True)
 
 pipeline.run_dataset(bids_paths)
 ```

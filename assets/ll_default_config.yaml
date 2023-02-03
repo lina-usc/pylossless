@@ -51,10 +51,13 @@ project:
     software_filters: n/a
     software_versions: NetStation V4.5
     
+######################## Task break detection ########################
+# See arguments definition from mne.preprocessing.annotate_breaks
+find_breaks:
 
 ############################## epoching ##############################
 epoching:
-  recur_sec: 1
+  overlap: 0
   
   # See arguments definition from mne.Epochs
   epochs_args:
@@ -94,7 +97,7 @@ ica:
     flag_method: fixed
     flag_vals: null
     init_crit: 6
-    init_method: q
+    outlier_method: q
     init_vals: [0.3, 0.7]
 
   # See arguments definition from mne.preprocessing.ICA
@@ -123,7 +126,7 @@ ch_ch_sd:
   flag_method: fixed
   flag_vals: []
   init_crit: 16
-  init_method: q
+  outlier_method: q
   init_vals: [0.3, 0.7]
 
 ch_low_r:
@@ -131,7 +134,7 @@ ch_low_r:
   flag_method: fixed
   flag_vals: []
   init_crit: 16
-  init_method: q
+  outlier_method: q
   init_vals: [0.3, 0.7]
 
 epoch_ch_sd:
@@ -139,7 +142,7 @@ epoch_ch_sd:
   flag_method: fixed
   flag_vals: []
   init_crit: 16
-  init_method: null
+  outlier_method: q
   init_vals: [0.3, 0.7]
 
 epoch_gap:
@@ -150,5 +153,5 @@ epoch_low_r:
   flag_method: fixed
   flag_vals: []
   init_crit: 16
-  init_method: q
+  outlier_method: q
   init_vals: [0.3, 0.7]
