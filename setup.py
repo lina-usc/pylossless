@@ -25,4 +25,6 @@ if __name__ == "__main__":
         author_email='seh33@uw.edu',
         url='https://github.com/scott-huberty/pylossless',
         packages=['pylossless'],
-        install_requires=install_requires)
+        install_requires=install_requires,
+        include_package_data=True,
+        entry_points={"console_scripts": ["pylossless_qc=pylossless.dash.app:main"]})
