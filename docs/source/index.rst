@@ -3,15 +3,18 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to pyLossless's documentation!
-======================================
+PyLossless EEG Processing Pipeline
+==================================
 
 .. note::
    This repository is in a constant state of flux and not yet ready for outside use!
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :hidden:
+
+   install
+   implementation
 
 
 
@@ -40,10 +43,3 @@ choose which annotations to use for preprocessing in a piecemeal fashion, or
 simply use the raw data without excluding any artifacts based on provided
 annotations. Artifacts are annotated for channels, epochs, and independent
 components; see Desjardins et al (2021) for a more detailed presentation.
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

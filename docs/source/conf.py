@@ -14,7 +14,8 @@ release = '0.1'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = []
+extensions = ['sphinx.ext.todo'] #['sphinx_gallery.gen_gallery',]
+todo_include_todos = True
 
 templates_path = ['_templates']
 exclude_patterns = []
@@ -25,4 +26,9 @@ exclude_patterns = []
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = 'pydata_sphinx_theme' #'alabaster'
-html_static_path = ['_static']
+html_static_path = [] # ['_static']
+
+# Custom sidebar templates, maps document names to template names.
+html_sidebars = {
+    "index": ["search-field.html", "sidebar-nav-bs", 'globaltoc.html']
+}
