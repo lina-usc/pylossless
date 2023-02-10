@@ -1,4 +1,4 @@
-# requirements for building docs
+# docs
 sphinx!=4.1.0,<6
 pydata-sphinx-theme
 sphinx-gallery
