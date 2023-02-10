@@ -93,7 +93,7 @@ class MNEVisualizer:
         self.annotation_inprogress = None
         self.annot_created_callback = annot_created_callback
         self.new_annot_desc = 'selected_time'
-        
+
         # setting component ids based on dash_id_suffix
         default_ids = ['graph', 'ch-slider', 'time-slider', 'container-plot', 'keyboard', 'output']
         self.dash_ids = {id_:(id_ + dash_id_suffix) for id_ in default_ids}
@@ -151,7 +151,7 @@ class MNEVisualizer:
         "will divide returned value to data for timeseries"
         return 2 * self.scalings[ch_type] / self.zoom
 
-    
+
     def _get_annot_text(self, annotation):
         return dict(x=annotation['onset'] + annotation['duration'] /2,
                     y=self.layout.yaxis['range'][1],
@@ -182,7 +182,7 @@ class MNEVisualizer:
                                    for annot in annotations]
         if self.annotating:
             self.layout.shapes += (self.annotation_inprogress,)
-    
+
     def refresh_annotations(self):
         tmin, tmax = self.win_start, self.win_start + self.win_size
         annots = self.inst.annotations.copy().crop(tmin, tmax, use_orig_time=False)
@@ -197,7 +197,7 @@ class MNEVisualizer:
     @property
     def layout(self):
         return self.graph.figure['layout']
-    
+
     @layout.setter
     def layout(self, layout):
         self.graph.figure['layout'] = layout
@@ -252,7 +252,7 @@ class MNEVisualizer:
             trace.y = signal/self._get_norm_factor(ch_type) - (self.n_sel_ch - i - 1)
             trace.name = ch_name
             if ch_name in self.inst.info['bads']:
-                trace.line.color = 'red'
+                trace.line.color = '#d3d3d3'
             else:
                 trace.line.color = 'black'
 
@@ -404,3 +404,36 @@ class MNEVisualizer:
                                                     className='timeseries-container')]
         self.container_plot = html.Div(id=self.dash_ids['container-plot'], 
                                        children=ts_and_timeslider)
+
+
+class ICVisualizer(MNEVisualizer):
+    
+    def __init__(self, *args, cmap=None, **kwargs):
+
+        
+        if cmap is not None:
+            self.cmap = cmap
+        else:
+            self.cmap = dict()
+        super(ICVisualizer, self).__init__(*args, **kwargs)
+    
+    def update_layout(self,
+                      ch_slider_val=None,
+                      time_slider_val=None):
+
+        super(ICVisualizer, self).update_layout(ch_slider_val,
+                                                time_slider_val)
+
+        # Update selected channels
+        first_sel_ch = self._ch_slider_val - self.n_sel_ch + 1
+        last_sel_ch = self._ch_slider_val + 1  # +1 bc this is used in slicing below, & end is not inclued
+
+        # Update the raw timeseries traces
+        ch_names = self.inst.ch_names[::-1][first_sel_ch:last_sel_ch]
+        for ch_name, trace in zip(ch_names, self.traces):
+            if ch_name in self.inst.info['bads']:
+                trace.line.color = '#d3d3d3'
+            else:
+                trace.line.color = self.cmap[ch_name]
+
+        self.graph.figure['data'] = self.traces

@@ -1,19 +1,26 @@
-from dash import dcc, html
-from dash.dependencies import Input, Output
+from pathlib import Path
 
 # file selection
 import tkinter
 from tkinter import filedialog
+import pandas as pd
 
-from pathlib import Path
+from dash import dcc, html
+from dash.dependencies import Input, Output
+
+from mne_icalabel.config import ICLABEL_LABELS_TO_MNE
 
 from .topo_viz import TopoVizICA
-from .mne_visualizer import MNEVisualizer
+from .mne_visualizer import MNEVisualizer, ICVisualizer
+
+IC_COLORS = ['green', 'blue', 'cyan', 'goldenrod', 'magenta', 'red', 
+             'purple','brown', 'yellowgreen', 'burlywood', 'plum']
 
 
 class QCGUI:
 
-    def __init__(self, app, raw, raw_ica, ica, project_root='./tmp_test_files'):
+    def __init__(self, app, raw, raw_ica, ica, iclabel_fpath,
+                 project_root='./tmp_test_files'):
 
         self.project_root = Path(project_root)
 
@@ -25,21 +32,30 @@ class QCGUI:
         self.ica_visualizer = None
         self.eeg_visualizer = None
         self.ica_topo = None
+        self.ic_types = pd.read_csv(iclabel_fpath, sep='\t')
+        self.ic_types['component'] = [f'ICA{ic:03}'
+                                      for ic in self.ic_types.component]
+        self.ic_types = self.ic_types.set_index('component')['ic_type']
+        self.ic_types = self.ic_types.to_dict()
 
         self.set_layout()
         self.set_callbacks()
-
 
     def annot_created_callback(self, annotation):
         self.raw.set_annotations(self.raw.annotations + annotation)
         self.raw_ica.set_annotations(self.raw_ica.annotations + annotation)
         self.ica_visualizer.update_layout(ch_slider_val=self.ica_visualizer.channel_slider.max,
-                                    time_slider_val=self.ica_visualizer.win_start)
+                                          time_slider_val=self.ica_visualizer.win_start)
         self.eeg_visualizer.update_layout()
 
     def set_visualizers(self):
         # Setting time-series and topomap visualizers
-        self.ica_visualizer = MNEVisualizer(self.app, self.raw_ica, dash_id_suffix='ica', annot_created_callback=self.annot_created_callback)
+        cmap = dict(zip(ICLABEL_LABELS_TO_MNE.values(), IC_COLORS))
+        cmap = {ic:cmap[ic_type] for ic, ic_type in self.ic_types.items()}
+        self.ica_visualizer = ICVisualizer(self.app, self.raw_ica,
+                                           dash_id_suffix='ica',
+                                           annot_created_callback=self.annot_created_callback,
+                                           cmap=cmap)
         self.eeg_visualizer = MNEVisualizer(self.app, self.raw, time_slider=self.ica_visualizer.dash_ids['time-slider'], 
                                     dcc_graph_kwargs=dict(config={'modeBarButtonsToRemove':['zoom','pan']}),
                                     annot_created_callback=self.annot_created_callback)
@@ -49,10 +65,11 @@ class QCGUI:
         self.ica_visualizer.new_annot_desc = 'bad_manual'
         self.eeg_visualizer.new_annot_desc = 'bad_manual'
 
-        self.ica_visualizer.update_layout()        
+        self.ica_visualizer.update_layout()
 
     def set_layout(self):
-        # app.layout must not be None for some of the operations of the visualizers.
+        # app.layout must not be None for some of the operations of the
+        # visualizers.
         self.app.layout = html.Div([])
         self.set_visualizers()
 

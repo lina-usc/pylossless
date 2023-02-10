@@ -8,7 +8,8 @@ import mne
 from pylossless.dash.qcgui import QCGUI
 
 
-def get_test_assets(fname, ica_fpath, bads=(), verbose=False):
+def get_test_assets(fname, ica_fpath, iclabel_fpath='', bads=(),
+                    verbose=False):
     bids_path = get_bids_path_from_fname(fname, verbose=verbose)
     raw = read_raw_bids(bids_path, verbose=False).pick('eeg')
     raw.info['bads'].extend(bads)
@@ -22,7 +23,7 @@ def get_test_assets(fname, ica_fpath, bads=(), verbose=False):
     raw_ica.set_meas_date(raw.info['meas_date'])
     raw_ica.set_annotations(raw.annotations)
 
-    return raw, raw_ica, ica
+    return raw, raw_ica, ica, iclabel_fpath
 
 
 def get_app(assets_kwargs=None, kind="dash"):
@@ -52,9 +53,15 @@ from werkzeug.middleware.profiler import ProfilerMiddleware
 if __name__ == "__main__":
     import os
 
-    assets_kwargs = dict(fname=Path(__file__).parent / '../../assets/test_data/sub-s02/eeg/sub-s02_task-faceO_eeg.edf',
-                        ica_fpath=Path(__file__).parent / '../../assets/test_data/sub-s02/eeg/sub-s02_task-faceO_ica2_ica.fif',
-                        bads=('A27', 'A5', 'B10', 'B16', 'B17', 'B27', 'B28', 'C10', 'C17','C18', 'C3', 'D1'))
+    test_fpath = Path(__file__).parent / '../../assets/test_data'
+    eeg_fpath = 'sub-s02/eeg/sub-s02_task-faceO_eeg.edf'
+    ica_fpath = 'sub-s02/eeg/sub-s02_task-faceO_ica2_ica.fif'
+    iclabel_fpath = 'sub-s02/eeg/sub-s02_task-faceO_iclabels.tsv'
+    assets_kwargs = dict(fname=test_fpath / eeg_fpath,
+                         ica_fpath=test_fpath / ica_fpath,
+                         iclabel_fpath=test_fpath / iclabel_fpath,
+                         bads=('A27', 'A5', 'B10', 'B16', 'B17', 'B27', 'B28',
+                               'C10', 'C17','C18', 'C3', 'D1'))
     app = get_app(assets_kwargs)
     if False: # os.getenv("PROFILER", None):
         app.server.config["PROFILE"] = True
