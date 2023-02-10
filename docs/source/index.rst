@@ -8,14 +8,16 @@ PyLossless EEG Processing Pipeline
 
 .. note::
    This repository is in a constant state of flux and not yet ready for outside use!
-
+   
 .. toctree::
    :maxdepth: 1
    :hidden:
 
    install
    implementation
-
+   API/API_index
+   generated/index
+   contributing
 
 
 Motivation
