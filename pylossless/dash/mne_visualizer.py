@@ -248,13 +248,19 @@ class MNEVisualizer:
         self.layout.yaxis['ticktext'] = ch_names
         ch_types = self.inst.get_channel_types()[::-1][first_sel_ch:last_sel_ch]
         for i, (ch_name, signal, trace, ch_type) in enumerate(zip(ch_names, data, self.traces, ch_types)):
-            trace.x = times
+            trace.x = np.round(times, 3)
             trace.y = signal/self._get_norm_factor(ch_type) - (self.n_sel_ch - i - 1)
             trace.name = ch_name
             if ch_name in self.inst.info['bads']:
                 trace.line.color = '#d3d3d3'
             else:
                 trace.line.color = 'black'
+            # Hover template will show Channel number and Time
+            trace.text = np.round(signal * 1e6, 3)  # Volts to microvolts
+            trace.hovertemplate = (f'<b>Channel</b>: {ch_name}<br>' +
+                                   '<b>Time</b>: %{x}s<br>' +
+                                   '<b>Amplitude</b>: %{text}uV<br>' +
+                                   '<extra></extra>')
 
         self.graph.figure['data'] = self.traces
 
@@ -408,9 +414,9 @@ class MNEVisualizer:
 
 class ICVisualizer(MNEVisualizer):
     
-    def __init__(self, *args, cmap=None, **kwargs):
+    def __init__(self, *args, cmap=None, ic_types=None, **kwargs):
 
-        
+        self.ic_types = ic_types
         if cmap is not None:
             self.cmap = cmap
         else:
@@ -420,6 +426,8 @@ class ICVisualizer(MNEVisualizer):
     def update_layout(self,
                       ch_slider_val=None,
                       time_slider_val=None):
+        """Update raw timeseries layout"""
+        # TODO: update ycoord hover label to represent the voltage vals.
 
         super(ICVisualizer, self).update_layout(ch_slider_val,
                                                 time_slider_val)
@@ -428,12 +436,21 @@ class ICVisualizer(MNEVisualizer):
         first_sel_ch = self._ch_slider_val - self.n_sel_ch + 1
         last_sel_ch = self._ch_slider_val + 1  # +1 bc this is used in slicing below, & end is not inclued
 
+        
         # Update the raw timeseries traces
+        self.ic_types
         ch_names = self.inst.ch_names[::-1][first_sel_ch:last_sel_ch]
         for ch_name, trace in zip(ch_names, self.traces):
             if ch_name in self.inst.info['bads']:
                 trace.line.color = '#d3d3d3'
             else:
                 trace.line.color = self.cmap[ch_name]
-
+            # IC Hover template will show IC number and Time by default 
+            trace.hovertemplate = (f'<b>Component</b>: {ch_name}' +
+                                    '<br><b>Time</b>: %{x}s<br>'+
+                                    '<extra></extra>')
+            if self.ic_types:
+                # update hovertemplate with IC label
+                label = self.ic_types[ch_name]
+                trace.hovertemplate += f'<b>Label</b>: {label}<br>'
         self.graph.figure['data'] = self.traces

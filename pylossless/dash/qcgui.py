@@ -55,7 +55,8 @@ class QCGUI:
         self.ica_visualizer = ICVisualizer(self.app, self.raw_ica,
                                            dash_id_suffix='ica',
                                            annot_created_callback=self.annot_created_callback,
-                                           cmap=cmap)
+                                           cmap=cmap,
+                                           ic_types=self.ic_types)
         self.eeg_visualizer = MNEVisualizer(self.app, self.raw, time_slider=self.ica_visualizer.dash_ids['time-slider'], 
                                     dcc_graph_kwargs=dict(config={'modeBarButtonsToRemove':['zoom','pan']}),
                                     annot_created_callback=self.annot_created_callback)
