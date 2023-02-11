@@ -8,13 +8,10 @@ import pandas as pd
 from dash import dcc, html
 from dash.dependencies import Input, Output
 
-from mne_icalabel.config import ICLABEL_LABELS_TO_MNE
-
 from .topo_viz import TopoVizICA
 from .mne_visualizer import MNEVisualizer, ICVisualizer
 
-IC_COLORS = ['green', 'blue', 'cyan', 'goldenrod', 'magenta', 'red', 
-             'purple','brown', 'yellowgreen', 'burlywood', 'plum']
+from . import ic_label_cmap
 
 
 class QCGUI:
@@ -50,8 +47,7 @@ class QCGUI:
 
     def set_visualizers(self):
         # Setting time-series and topomap visualizers
-        cmap = dict(zip(ICLABEL_LABELS_TO_MNE.values(), IC_COLORS))
-        cmap = {ic:cmap[ic_type] for ic, ic_type in self.ic_types.items()}
+        cmap = {ic: ic_label_cmap [ic_type] for ic, ic_type in self.ic_types.items()}
         self.ica_visualizer = ICVisualizer(self.app, self.raw_ica,
                                            dash_id_suffix='ica',
                                            annot_created_callback=self.annot_created_callback,
@@ -60,7 +56,7 @@ class QCGUI:
         self.eeg_visualizer = MNEVisualizer(self.app, self.raw, time_slider=self.ica_visualizer.dash_ids['time-slider'], 
                                     dcc_graph_kwargs=dict(config={'modeBarButtonsToRemove':['zoom','pan']}),
                                     annot_created_callback=self.annot_created_callback)
-        self.ica_topo = TopoVizICA(self.app, self.raw.get_montage(), self.ica, 
+        self.ica_topo = TopoVizICA(self.app, self.raw.get_montage(), self.ica, self.ic_types,
                                    topo_slider_id=self.ica_visualizer.dash_ids['ch-slider'])
 
         self.ica_visualizer.new_annot_desc = 'bad_manual'
