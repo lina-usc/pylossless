@@ -38,7 +38,7 @@ def get_app(assets_kwargs=None, kind="dash"):
         app = JupyterDash(__name__)
 
     else:
-        app = dash.Dash(__name__)
+        app = dash.Dash(__name__, external_stylesheets=[dbc.themes.DARKLY])
 
     QCGUI(app, *get_test_assets(**assets_kwargs))
     return app    

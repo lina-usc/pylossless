@@ -7,7 +7,7 @@ import pandas as pd
 
 from dash import dcc, html
 from dash.dependencies import Input, Output
-
+import dash_bootstrap_components as dbc
 
 
 from .topo_viz import TopoVizICA
@@ -81,31 +81,28 @@ class QCGUI:
         derivatives_dir = self.project_root / 'derivatives'
         files_list = [{'label':str(file), 'value':str(file)} for file in sorted(derivatives_dir.rglob("*.edf"))]
 
-        control_header_div = html.Div([
-                                        html.Button('Folder',
-                                                    id='submit-val',
-                                                    className="folderButton",
-                                                    title=f'current folder: {self.project_root.resolve()}'
-                                                    ),
-                                        dcc.Dropdown(id="fileDropdown",
-                                                    className="card",
-                                                    options=files_list,
-                                                    placeholder="Select a file"
-                                                    ),
-                                        html.Div(id='container-button-basic',
-                                                children='Enter a value and press submit')
-                                        ],
-                                        className='banner'
-                                    )
-        visualizers_div = html.Div(id='plots-container', 
+        control_header_div = dbc.Row([
+                                    dbc.Col([html.Button('Folder',
+                                                          id='mysubmit-val',
+                                                          className="d-md-inline-block bg-primary",
+                                                                title=f'current folder: {self.project_root.resolve()}')
+                                                 ], width={'size': 1, 'offset':0}, style={'border':'2px solid red'}),
+                                        dbc.Col([dcc.Dropdown(id="myfileDropdown",
+                                                              className="d-md-inline-block w-100",
+                                                              options=files_list,
+                                                              placeholder="Select a file")],
+                                                width={'size': 6}, style={'border':'2px dashed purple'}),
+                                         ], style={'border':'2px solid orange'})
+        visualizers_div = dbc.Row([
+                            dbc.Col([html.Div(id='plots-container', 
                                             children=[html.Div([self.eeg_visualizer.container_plot,
                                                                 self.ica_visualizer.container_plot],
                                                                 id='channel-and-icsources-div'),
-                                                    self.ica_topo.container_plot,
-                                                    ],
-                                            )
+                                                                self.ica_topo.container_plot])
+                                    ], width=12)
+                                ])
 
-        qc_app_layout = html.Div([control_header_div, visualizers_div], style={"display":"block"})
+        qc_app_layout = dbc.Container([control_header_div, visualizers_div], fluid=True, style={'border':'2px solid yellow'})
         self.app.layout.children.append(qc_app_layout)
 
     def set_callbacks(self):
