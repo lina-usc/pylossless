@@ -24,6 +24,8 @@ DEFAULT_LAYOUT_XAXIS = {'zeroline': False,
                         'spikesnap': 'cursor',
                         'showline': True,
                         'spikecolor':'black',
+                        'titlefont': dict(color='#ADB5BD'),
+                        'tickfont': dict(color='#ADB5BD'),
                         'spikedash':'dash'
                         }
 
@@ -33,14 +35,15 @@ DEFAULT_LAYOUT_YAXIS = {'showgrid': True,
                         'autorange': False,  #'reversed',
                         'scaleratio': 0.5,
                         "tickmode": "array",
+                        'titlefont': dict(color='#ADB5BD'),
+                        'tickfont': dict(color='#ADB5BD'),
                         'fixedrange':True}
 
-DEFAULT_LAYOUT = dict(width = 1200,
-                      height=400,
+DEFAULT_LAYOUT = dict(height=400,
                       xaxis=DEFAULT_LAYOUT_XAXIS,
                       yaxis=DEFAULT_LAYOUT_YAXIS,
                       showlegend=False,
-                      margin={'t': 25,'b': 25, 'l': 35, 'r': 25},
+                      margin={'t': 15,'b': 25, 'l': 35, 'r': 5},
                       paper_bgcolor="rgba(0,0,0,0)",
                       plot_bgcolor="#EAEAF2",
                       shapes=[],
@@ -212,7 +215,7 @@ class MNEVisualizer:
         trace_kwargs = {'x': [],
                         'y': [],
                         'mode': 'lines',
-                        'line': dict(color='#222222', width=1)
+                        'line': dict(color='#2c2c2c', width=1)
                         }
         # create objects for layout and traces
         self.traces = [go.Scatter(name=ii, **trace_kwargs)
@@ -254,7 +257,7 @@ class MNEVisualizer:
             if ch_name in self.inst.info['bads']:
                 trace.line.color = '#d3d3d3'
             else:
-                trace.line.color = 'black'
+                trace.line.color = '#2c2c2c'
             # Hover template will show Channel number and Time
             trace.text = np.round(signal * 1e6, 3)  # Volts to microvolts
             trace.hovertemplate = (f'<b>Channel</b>: {ch_name}<br>' +
@@ -382,6 +385,7 @@ class MNEVisualizer:
                                          updatemode='mouseup',
                                          vertical=True,
                                          verticalHeight=300)
+        self.channel_slider_div = html.Div(self.channel_slider, className='ch-slider-div')
 
         marks_keys = np.round(np.linspace(self.inst.times[0], self.inst.times[-1], 10))
         self.time_slider = dcc.Slider(id=self.dash_ids['time-slider'],
@@ -392,23 +396,20 @@ class MNEVisualizer:
                                       vertical=False,
                                       included=False,
                                       updatemode='mouseup')
+        self.time_slider_div = html.Div(self.time_slider, className='time-slider-div')
     def set_div(self):
         if self.use_ch_slider is None:
-            outer_ts_div = [html.Div(self.channel_slider), self.graph_div]
+            outer_ts_div = html.Div([self.channel_slider_div, self.graph_div], className='slider-and-figure-div')
         else:
             outer_ts_div = [self.graph_div]
         if self.use_time_slider is None:
-            ts_and_timeslider = [html.Div([
-                                            html.Div(outer_ts_div,
-                                                    className="outer-timeseries-div"),
-                                            html.Div(self.time_slider,
-                                                    style= {'width': '1200px'})],
-                                                    className='timeseries-container')]
+            ts_and_timeslider = [html.Div([outer_ts_div,
+                                           self.time_slider_div]),
+                                ]
         else:
-            ts_and_timeslider = [html.Div([html.Div(outer_ts_div,
-                                                    className="outer-timeseries-div")],
-                                                    className='timeseries-container')]
-        self.container_plot = html.Div(id=self.dash_ids['container-plot'], 
+            ts_and_timeslider = [html.Div([outer_ts_div],
+                                          )]
+        self.container_plot = html.Div(id=self.dash_ids['container-plot'],
                                        children=ts_and_timeslider)
 
 

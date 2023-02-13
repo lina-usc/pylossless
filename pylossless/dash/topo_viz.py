@@ -42,8 +42,10 @@ class TopoData:
 
 class TopoViz:
     def __init__(self, app, montage, data: TopoData, rows=5, cols=4,
-                 margin_x=4/5, width=600, height=800, margin_y=2/5,
-                 topo_slider_id=None, head_contours_color="black"):
+                 margin_x=4/5, width=600, height=700, margin_y=2/5,
+                 topo_slider_id=None, head_contours_color="black",
+                 cmap='RdBu_r', subplot_titles=None,
+                 show_sensors=True):
         """ """
         self.montage = montage
         self.data = data
@@ -54,14 +56,17 @@ class TopoViz:
         self.height = height
         self.heatmap_traces = None
         self.colorbar = False
+        self.cmap = cmap
+        self.titles = subplot_titles
+        self.show_sensors = show_sensors
         fig = make_subplots(rows=rows, cols=cols,
                             horizontal_spacing=0.01,
                             vertical_spacing=0.01)
         self.graph = dcc.Graph(figure=fig, id='topo-graph',
                                className='dcc-graph')
         self.graph_div = html.Div(children=[self.graph],
-                                  style={"border":"2px red solid"},
-                                  className='dcc-graph-div')
+                                  id='topo-graph-div',
+                                  )
 
         self.margin_x = margin_x
         self.margin_y = margin_y
@@ -82,7 +87,8 @@ class TopoViz:
         self.set_head_pos_contours()
 
         self.init_slider()
-        self.initialize_layout()
+        self.initialize_layout(subplot_titles=self.titles,
+                               show_sensors=show_sensors)
         self.set_div()
         self.set_callback()
 
@@ -91,16 +97,19 @@ class TopoViz:
         self.pos, self.outlines = _get_pos_outlines(self.info, picks, sphere,
                                                     to_sphere=True)
 
-    def get_head_scatters(self, color="back"):
+    def get_head_scatters(self, color="back", show_sensors=True):
         outlines_scat = [go.Scatter(x=x, y=y, line=dict(color=color),
                                     mode='lines', showlegend=False)
                         for key, (x, y) in self.outlines.items()
                         if 'clip' not in key]
-        pos_scat = go.Scatter(x=self.pos.T[0], y=self.pos.T[1],
-                              line=dict(color=color), mode='markers',
-                              showlegend=False)
+        if show_sensors:
+            pos_scat = go.Scatter(x=self.pos.T[0], y=self.pos.T[1],
+                                line=dict(color=color), mode='markers',
+                                showlegend=False)
 
-        return outlines_scat + [pos_scat]
+            return outlines_scat + [pos_scat]
+        else:
+            return outlines_scat
 
     def get_heatmap_data(self, i, j, ch_type="eeg", res=64,
                          extrapolate='auto'):
@@ -127,12 +136,16 @@ class TopoViz:
 
         return {"x":Xi[0], "y": Yi[:, 0], "z": Zi}
 
-    def initialize_layout(self, slider_val=None):
+    def initialize_layout(self, slider_val=None, subplot_titles=None,
+                          show_sensors=True):
 
         if slider_val != None:
             self.offset = self.topo_slider.max-slider_val
 
-        ic_names = self.data.topo_values.index
+        if subplot_titles:
+            ic_names = subplot_titles
+        else:
+            ic_names = self.data.topo_values.index
         ic_names = ic_names[self.offset: self.offset+self.rows*self.cols]
         self.graph.figure = make_subplots(rows=self.rows, cols=self.cols,
                             horizontal_spacing=0.03,
@@ -140,6 +153,7 @@ class TopoViz:
                             subplot_titles=ic_names)
 
         self.heatmap_traces = [[go.Heatmap(showscale=self.colorbar,
+                                           colorscale=self.cmap,
                                            **self.get_heatmap_data(i, j))
                                 for j in np.arange(self.cols)]
                                 for i in np.arange(self.rows)]
@@ -155,7 +169,9 @@ class TopoViz:
                 color = self.head_contours_color[ic_names[no]]
             else:
                 color = "black"
-            for trace in self.get_head_scatters(color=color):
+
+            for trace in self.get_head_scatters(color=color,
+                                                show_sensors=self.show_sensors):
                 self.graph.figure.add_trace(trace, row=i+1, col=j+1)
             self.graph.figure.add_trace(self.heatmap_traces[i][j],
                                         row=i+1, col=j+1)
@@ -168,7 +184,8 @@ class TopoViz:
             autosize=False,
             width=self.width,
             height=self.height,
-            plot_bgcolor="white")
+            plot_bgcolor='rgba(234,234,242,.8)',  #'#EAEAF2', #'rgba(44,44,44,.5)',
+            paper_bgcolor='rgba(234,234,242,.8)')  #'#EAEAF2')  #'rgba(44,44,44,.5)')
         self.graph.figure['layout'].update(margin=dict(l=0,r=0,b=0,t=20))
 
     def init_slider(self):
@@ -183,7 +200,7 @@ class TopoViz:
                                 vertical=True,
                                 verticalHeight=self.graph.figure.layout.height)
 
-        
+
     def set_div(self):
         if self.use_topo_slider is None:
             # outer_div includes slider obj
@@ -195,8 +212,7 @@ class TopoViz:
             # outer_div is just the graph
             outer_div = [self.graph_div]
         self.container_plot = html.Div(children=outer_div,
-                                       style={"border":"2px black solid"},
-                                       className="outer-timeseries-div")
+                                       className="topo-div")
 
     def set_callback(self):
         args = [Output('topo-graph', 'figure')]
@@ -207,7 +223,9 @@ class TopoViz:
 
         @self.app.callback(*args, suppress_callback_exceptions=False)
         def callback(slider_val):             
-            self.initialize_layout(slider_val=slider_val)
+            self.initialize_layout(slider_val=slider_val,
+                                   subplot_titles=self.titles,
+                                   show_sensors=self.show_sensors)
             return self.graph.figure
 
 

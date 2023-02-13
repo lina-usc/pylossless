@@ -1,6 +1,9 @@
 from pathlib import Path
 import dash
 
+import dash_bootstrap_components as dbc
+
+
 # loading raw object
 from mne_bids import read_raw_bids, get_bids_path_from_fname
 import mne

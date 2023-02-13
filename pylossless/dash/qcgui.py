@@ -8,6 +8,8 @@ import pandas as pd
 from dash import dcc, html
 from dash.dependencies import Input, Output
 
+
+
 from .topo_viz import TopoVizICA
 from .mne_visualizer import MNEVisualizer, ICVisualizer
 
@@ -45,6 +47,7 @@ class QCGUI:
                                           time_slider_val=self.ica_visualizer.win_start)
         self.eeg_visualizer.update_layout()
 
+
     def set_visualizers(self):
         # Setting time-series and topomap visualizers
         cmap = {ic: ic_label_cmap [ic_type] for ic, ic_type in self.ic_types.items()}
@@ -56,8 +59,13 @@ class QCGUI:
         self.eeg_visualizer = MNEVisualizer(self.app, self.raw, time_slider=self.ica_visualizer.dash_ids['time-slider'], 
                                     dcc_graph_kwargs=dict(config={'modeBarButtonsToRemove':['zoom','pan']}),
                                     annot_created_callback=self.annot_created_callback)
+
+        titles = [f'{comp}: {label.capitalize()}'
+                  for comp, label
+                  in self.ic_types.items()]
         self.ica_topo = TopoVizICA(self.app, self.raw.get_montage(), self.ica, self.ic_types,
-                                   topo_slider_id=self.ica_visualizer.dash_ids['ch-slider'])
+                                   topo_slider_id=self.ica_visualizer.dash_ids['ch-slider'],
+                                   show_sensors=False)
 
         self.ica_visualizer.new_annot_desc = 'bad_manual'
         self.eeg_visualizer.new_annot_desc = 'bad_manual'
@@ -89,15 +97,13 @@ class QCGUI:
                                         ],
                                         className='banner'
                                     )
-        visualizers_div = html.Div([
-                                    html.Div(id='plots-container', 
+        visualizers_div = html.Div(id='plots-container', 
                                             children=[html.Div([self.eeg_visualizer.container_plot,
-                                                                self.ica_visualizer.container_plot]),
+                                                                self.ica_visualizer.container_plot],
+                                                                id='channel-and-icsources-div'),
                                                     self.ica_topo.container_plot,
                                                     ],
-                                            style={"border":"2px green solid"})
-                                        ],
-                                    style={'display':'block'})
+                                            )
 
         qc_app_layout = html.Div([control_header_div, visualizers_div], style={"display":"block"})
         self.app.layout.children.append(qc_app_layout)
