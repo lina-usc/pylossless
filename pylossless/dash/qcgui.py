@@ -15,6 +15,8 @@ from .mne_visualizer import MNEVisualizer, ICVisualizer
 
 from . import ic_label_cmap
 
+from .css_defaults import CSS, STYLE
+
 
 class QCGUI:
 
@@ -43,26 +45,28 @@ class QCGUI:
     def annot_created_callback(self, annotation):
         self.raw.set_annotations(self.raw.annotations + annotation)
         self.raw_ica.set_annotations(self.raw_ica.annotations + annotation)
-        self.ica_visualizer.update_layout(ch_slider_val=self.ica_visualizer.channel_slider.max,
-                                          time_slider_val=self.ica_visualizer.win_start)
+        self.ica_visualizer.update_layout(ch_slider_val=self.ica_visualizer
+                                                            .channel_slider
+                                                            .max,
+                                          time_slider_val=self.ica_visualizer
+                                                              .win_start)
         self.eeg_visualizer.update_layout()
-
 
     def set_visualizers(self):
         # Setting time-series and topomap visualizers
-        cmap = {ic: ic_label_cmap [ic_type] for ic, ic_type in self.ic_types.items()}
+        cmap = {ic: ic_label_cmap[ic_type] for ic, ic_type in self.ic_types.items()}
         self.ica_visualizer = ICVisualizer(self.app, self.raw_ica,
                                            dash_id_suffix='ica',
                                            annot_created_callback=self.annot_created_callback,
                                            cmap=cmap,
                                            ic_types=self.ic_types)
-        self.eeg_visualizer = MNEVisualizer(self.app, self.raw, time_slider=self.ica_visualizer.dash_ids['time-slider'], 
-                                    dcc_graph_kwargs=dict(config={'modeBarButtonsToRemove':['zoom','pan']}),
-                                    annot_created_callback=self.annot_created_callback)
+        self.eeg_visualizer = MNEVisualizer(self.app,
+                                            self.raw,
+                                            time_slider=self.ica_visualizer
+                                                            .dash_ids['time-slider'],
+                                            dcc_graph_kwargs=dict(config={'modeBarButtonsToRemove':['zoom','pan']}),
+                                            annot_created_callback=self.annot_created_callback)
 
-        titles = [f'{comp}: {label.capitalize()}'
-                  for comp, label
-                  in self.ic_types.items()]
         self.ica_topo = TopoVizICA(self.app, self.raw.get_montage(), self.ica, self.ic_types,
                                    topo_slider_id=self.ica_visualizer.dash_ids['ch-slider'],
                                    show_sensors=False)
@@ -78,31 +82,45 @@ class QCGUI:
         self.app.layout = html.Div([])
         self.set_visualizers()
 
+        # Layout for file control row
         derivatives_dir = self.project_root / 'derivatives'
-        files_list = [{'label':str(file), 'value':str(file)} for file in sorted(derivatives_dir.rglob("*.edf"))]
+        files_list = [{'label': str(file), 'value': str(file)}
+                      for file in sorted(derivatives_dir.rglob("*.edf"))]
+        dropdown_text = f'current folder: {self.project_root.resolve()}'
+        folder_button = dbc.Button('Folder', id='mysubmit-val',
+                                   color='primary',
+                                   className=CSS['folder-button'],
+                                   title=dropdown_text)
+        drop_down = dcc.Dropdown(id="myfileDropdown",
+                                 className=CSS['dropdown'],
+                                 options=files_list,
+                                 placeholder="Select a file")
+        control_header_row = dbc.Row([
+                                    dbc.Col([folder_button],
+                                            width={'size': 1, 'offset': 0},
+                                            style=STYLE['folder-col']),
+                                    dbc.Col([drop_down],
+                                            width={'size': 6},
+                                            style=STYLE['dropdown-col'])
+                                      ],
+                                     style=STYLE['file-row'],
+                                     className=CSS['file-row'])
 
-        control_header_div = dbc.Row([
-                                    dbc.Col([html.Button('Folder',
-                                                          id='mysubmit-val',
-                                                          className="d-md-inline-block bg-primary",
-                                                                title=f'current folder: {self.project_root.resolve()}')
-                                                 ], width={'size': 1, 'offset':0}, style={'border':'2px solid red'}),
-                                        dbc.Col([dcc.Dropdown(id="myfileDropdown",
-                                                              className="d-md-inline-block w-100",
-                                                              options=files_list,
-                                                              placeholder="Select a file")],
-                                                width={'size': 6}, style={'border':'2px dashed purple'}),
-                                         ], style={'border':'2px solid orange'})
-        visualizers_div = dbc.Row([
-                            dbc.Col([html.Div(id='plots-container', 
-                                            children=[html.Div([self.eeg_visualizer.container_plot,
-                                                                self.ica_visualizer.container_plot],
-                                                                id='channel-and-icsources-div'),
-                                                                self.ica_topo.container_plot])
-                                    ], width=12)
-                                ])
-
-        qc_app_layout = dbc.Container([control_header_div, visualizers_div], fluid=True, style={'border':'2px solid yellow'})
+        # Layout for EEG/ICA and Topo plots row
+        timeseries_div = html.Div([self.eeg_visualizer.container_plot,
+                                   self.ica_visualizer.container_plot],
+                                  id='channel-and-icsources-div',
+                                  className=CSS['timeseries-col'])
+        visualizers_row = dbc.Row([dbc.Col([timeseries_div], width=8),
+                                   dbc.Col(self.ica_topo.container_plot,
+                                           className=CSS['topo-col'],
+                                           width=4)],
+                                  style=STYLE['plots-row'],
+                                  className=CSS['plots-row']
+                                  )
+        # Final Layout
+        qc_app_layout = dbc.Container([control_header_row, visualizers_row],
+                                      fluid=True, style=STYLE['qc-container'])
         self.app.layout.children.append(qc_app_layout)
 
     def set_callbacks(self):
@@ -119,5 +137,3 @@ class QCGUI:
                 root.destroy()
                 self.eeg_visualizer.change_dir(directory)
                 return directory
-
-

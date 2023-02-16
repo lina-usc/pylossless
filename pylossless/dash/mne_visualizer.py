@@ -3,6 +3,8 @@ from dash import dcc, html, no_update
 from dash.dependencies import Input, Output
 from dash_extensions import EventListener
 
+import dash_bootstrap_components as dbc
+
 # time series plot
 import plotly.graph_objects as go
 
@@ -13,41 +15,7 @@ from mne import  BaseEpochs, Evoked
 import mne
 from mne.utils import _validate_type
 
-
-DEFAULT_LAYOUT_XAXIS = {'zeroline': False,
-                        'showgrid': True,
-                        'title': "time (seconds)",
-                        'gridcolor':'white',
-                        'fixedrange':True,
-                        'showspikes' : True,
-                        'spikemode': 'across',
-                        'spikesnap': 'cursor',
-                        'showline': True,
-                        'spikecolor':'black',
-                        'titlefont': dict(color='#ADB5BD'),
-                        'tickfont': dict(color='#ADB5BD'),
-                        'spikedash':'dash'
-                        }
-
-DEFAULT_LAYOUT_YAXIS = {'showgrid': True,
-                        'showline': True,
-                        'zeroline': False,
-                        'autorange': False,  #'reversed',
-                        'scaleratio': 0.5,
-                        "tickmode": "array",
-                        'titlefont': dict(color='#ADB5BD'),
-                        'tickfont': dict(color='#ADB5BD'),
-                        'fixedrange':True}
-
-DEFAULT_LAYOUT = dict(height=400,
-                      xaxis=DEFAULT_LAYOUT_XAXIS,
-                      yaxis=DEFAULT_LAYOUT_YAXIS,
-                      showlegend=False,
-                      margin={'t': 15,'b': 25, 'l': 35, 'r': 5},
-                      paper_bgcolor="rgba(0,0,0,0)",
-                      plot_bgcolor="#EAEAF2",
-                      shapes=[],
-                      hovermode='closest')
+from .css_defaults import DEFAULT_LAYOUT, CSS, STYLE
 
 
 
@@ -102,14 +70,17 @@ class MNEVisualizer:
         self.dash_ids = {id_:(id_ + dash_id_suffix) for id_ in default_ids}
 
         self.dcc_graph_kwargs = dict(id=self.dash_ids['graph'],
-                                     className='dcc-graph',
+                                     className=CSS['timeseries'],  # 'dcc-graph',
+                                     style=STYLE['timeseries'],
                                      figure={'data': None,
-                                             'layout': None})
+                                             'layout': None},
+                                     )
         if dcc_graph_kwargs is not None:
             self.dcc_graph_kwargs.update(dcc_graph_kwargs)
         self.graph = dcc.Graph(**self.dcc_graph_kwargs)
         self.graph_div = html.Div([self.graph],
-                                  className='dcc-graph-div')
+                                  style=STYLE['timeseries-div'],
+                                  className=CSS['timeseries-div'])  # 'dcc-graph-div')
 
         self.use_ch_slider = ch_slider
         self.use_time_slider = time_slider
@@ -385,7 +356,8 @@ class MNEVisualizer:
                                          updatemode='mouseup',
                                          vertical=True,
                                          verticalHeight=300)
-        self.channel_slider_div = html.Div(self.channel_slider, className='ch-slider-div')
+        self.channel_slider_div = html.Div(self.channel_slider,
+                                           className=CSS['ch-slider-div'])  # 'ch-slider-div')
 
         marks_keys = np.round(np.linspace(self.inst.times[0], self.inst.times[-1], 10))
         self.time_slider = dcc.Slider(id=self.dash_ids['time-slider'],
@@ -396,21 +368,27 @@ class MNEVisualizer:
                                       vertical=False,
                                       included=False,
                                       updatemode='mouseup')
-        self.time_slider_div = html.Div(self.time_slider, className='time-slider-div')
+        self.time_slider_div = html.Div(self.time_slider, className=CSS['time-slider-div'])
     def set_div(self):
+        """build the final hmtl.Div to be returned to user."""
         if self.use_ch_slider is None:
-            outer_ts_div = html.Div([self.channel_slider_div, self.graph_div], className='slider-and-figure-div')
+            # include both the timeseries graph and channel slider
+            graph_components = [self.channel_slider_div, self.graph_div]
         else:
-            outer_ts_div = [self.graph_div]
+            # just the graph, exclude the ch slider
+            graph_components = [self.graph_div]
         if self.use_time_slider is None:
-            ts_and_timeslider = [html.Div([outer_ts_div,
-                                           self.time_slider_div]),
-                                ]
+            # include the time slider
+            graph_components = graph_components + [self.time_slider_div]
+
         else:
-            ts_and_timeslider = [html.Div([outer_ts_div],
-                                          )]
+            # don't include the time slider.
+            graph_components = graph_components
+
+        # pass the list of components into an html.Div
         self.container_plot = html.Div(id=self.dash_ids['container-plot'],
-                                       children=ts_and_timeslider)
+                                       className=CSS['timeseries-container'],
+                                       children=graph_components)
 
 
 class ICVisualizer(MNEVisualizer):
