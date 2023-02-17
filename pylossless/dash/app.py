@@ -13,6 +13,13 @@ from pylossless.dash.qcgui import QCGUI
 
 def get_test_assets(fname, ica_fpath, iclabel_fpath='', bads=(),
                     verbose=False):
+    # Validity check
+    if iclabel_fpath is not None:
+        if not iclabel_fpath.exists():
+            msg = (f'Could not find {iclabel_fpath.name}. Searched in'
+                f' {iclabel_fpath.parent.absolute()}')
+            raise FileExistsError(msg)
+
     bids_path = get_bids_path_from_fname(fname, verbose=verbose)
     raw = read_raw_bids(bids_path, verbose=False).pick('eeg')
     raw.info['bads'].extend(bads)
@@ -44,13 +51,16 @@ def get_app(assets_kwargs=None, kind="dash"):
     return app    
 
 
-"""
+
 if __name__ == '__main__':
 
     assets_kwargs = dict(fname=Path(__file__).parent / '../../assets/test_data/sub-s02/eeg/sub-s02_task-faceO_eeg.edf',
                          ica_fpath=Path(__file__).parent / '../../assets/test_data/sub-s02/eeg/sub-s02_task-faceO_ica2_ica.fif',
-                         bads=('A27', 'A5', 'B10', 'B16', 'B17', 'B27', 'B28', 'C10', 'C17','C18', 'C3', 'D1'))
+                         iclabel_fpath = Path(__file__).parent / '../../assets/test_data/sub-s02/eeg/sub-s02_task-faceO_iclabels.tsv',
+                         bads=('A27', 'A5', 'B10', 'B16', 'B17', 'B27', 'B28',
+                               'C10', 'C17','C18', 'C3', 'D1'))
     get_app(assets_kwargs).run_server(debug=True, use_reloader=False)
+
 """
 from werkzeug.middleware.profiler import ProfilerMiddleware
 if __name__ == "__main__":
@@ -72,3 +82,4 @@ if __name__ == "__main__":
             app.server.wsgi_app, profile_dir='.', stream=None, sort_by=("cumtime", "tottime"), restrictions=[50]
         )
     app.run_server(debug=False)
+"""

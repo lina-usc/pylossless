@@ -87,24 +87,34 @@ class QCGUI:
         files_list = [{'label': str(file), 'value': str(file)}
                       for file in sorted(derivatives_dir.rglob("*.edf"))]
         dropdown_text = f'current folder: {self.project_root.resolve()}'
-        folder_button = dbc.Button('Folder', id='mysubmit-val',
+        logo_fpath = '../assets/logo_color_thick.png'
+        folder_button = dbc.Button('Folder', id='folder-selector',
                                    color='primary',
-                                   className=CSS['folder-button'],
+                                   outline=True,
+                                   className=CSS['button'],
                                    title=dropdown_text)
-        drop_down = dcc.Dropdown(id="myfileDropdown",
+        save_button = dbc.Button('Save', id='save-button',
+                                 color='info',
+                                 outline=True,
+                                 className=CSS['button'])
+        drop_down = dcc.Dropdown(id="fileDropdown",
                                  className=CSS['dropdown'],
                                  options=files_list,
                                  placeholder="Select a file")
         control_header_row = dbc.Row([
-                                    dbc.Col([folder_button],
-                                            width={'size': 1, 'offset': 0},
-                                            style=STYLE['folder-col']),
+                                    dbc.Col([folder_button, save_button],
+                                            width={'size': 2}),
                                     dbc.Col([drop_down],
-                                            width={'size': 6},
-                                            style=STYLE['dropdown-col'])
+                                            width={'size': 6}),
+                                    dbc.Col(
+                                        html.Img(src=logo_fpath,
+                                                 height='40px',
+                                                 className=CSS['logo']),
+                                        width={'size': 2, 'offset': 2}),
                                       ],
-                                     style=STYLE['file-row'],
-                                     className=CSS['file-row'])
+                                     className=CSS['file-row'],
+                                     align='center',
+                                     )
 
         # Layout for EEG/ICA and Topo plots row
         timeseries_div = html.Div([self.eeg_visualizer.container_plot,
@@ -125,8 +135,8 @@ class QCGUI:
 
     def set_callbacks(self):
         @self.app.callback(
-            Output('container-button-basic', 'children'),
-            Input('submit-val', 'n_clicks')
+            Output('fileDropdown', 'options'),
+            Input('folder-selector', 'n_clicks')
         )
         def _select_folder(n_clicks):
             if n_clicks:
@@ -135,5 +145,7 @@ class QCGUI:
                 directory = filedialog.askdirectory()
                 print('selected directory: ', directory)
                 root.destroy()
-                self.eeg_visualizer.change_dir(directory)
-                return directory
+                # self.eeg_visualizer.change_dir(directory)
+                files_list = [{'label': str(file), 'value': str(file)}
+                              for file in sorted(directory.rglob("*.edf"))]
+                return files_list  # directory
