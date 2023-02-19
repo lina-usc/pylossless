@@ -47,8 +47,9 @@ class TopoViz:
                  rows=5, cols=4, margin_x=4/5, width=450, height=700,
                  margin_y=2/5, topo_slider_id=None,
                  head_contours_color="black", cmap='RdBu_r',
-                 show_sensors=True):
+                 show_sensors=True, refresh_input=None):
         """ """
+        self.refresh_input = refresh_input
         self.montage = montage
         self.data = data
         self.app = app
@@ -87,9 +88,9 @@ class TopoViz:
         self.set_div()
         self.set_callback()
 
-    def load_recording(self, montage, ica):
+    def load_recording(self, montage, data):
         self.montage = montage
-        self.ica = ica
+        self.data = data
         if self.data:
             names = self.data.topo_values.columns.tolist()
             self.info = create_info(names, sfreq=256, ch_types="eeg")
@@ -98,8 +99,8 @@ class TopoViz:
                 RawArray(np.zeros((len(names), 1)), self.info, copy=None,
                          verbose=False).set_montage(montage)
         self.set_head_pos_contours()
-        self.topo_slider.max = self.nb_topo - 1,
-        self.topo_slider.value = self.nb_topo - 1,
+        self.topo_slider.max = self.nb_topo - 1
+        self.topo_slider.value = self.nb_topo - 1
         self.initialize_layout()
 
     def set_head_pos_contours(self, sphere=None, picks=None):
@@ -237,9 +238,11 @@ class TopoViz:
             args += [Input(self.use_topo_slider, 'value')]
         else:
             args += [Input('topo-slider', 'value')]
+        if self.refresh_input:
+            args += [self.refresh_input]
 
         @self.app.callback(*args, suppress_callback_exceptions=False)
-        def callback(slider_val):
+        def callback(slider_val, *args):
             self.initialize_layout(slider_val=slider_val,
                                    subplot_titles=self.titles,
                                    show_sensors=self.show_sensors)

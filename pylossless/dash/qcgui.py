@@ -70,7 +70,6 @@ class QCGUI:
         self.ic_types = None
         self.set_layout()
         self.set_callbacks()
-        # self.load_recording()
 
     def annot_created_callback(self, annotation):
         self.raw.set_annotations(self.raw.annotations + annotation)
@@ -89,22 +88,30 @@ class QCGUI:
                     for ic, ic_type in self.ic_types.items()}
         else:
             cmap = None
+
+        # Using the ouptut of the callback being triggered by
+        # a selection of a new file, so that the two callbacks
+        # are executed sequentially.
+        refresh_input = Input('file-dropdown', 'placeholder')
         self.ica_visualizer = ICVisualizer(self.app, self.raw_ica,
                                            dash_id_suffix='ica',
                                            annot_created_callback=self.annot_created_callback,
                                            cmap=cmap,
-                                           ic_types=self.ic_types)
+                                           ic_types=self.ic_types,
+                                           refresh_input=refresh_input)
         self.eeg_visualizer = MNEVisualizer(self.app,
                                             self.raw,
                                             time_slider=self.ica_visualizer
                                                             .dash_ids['time-slider'],
                                             dcc_graph_kwargs=dict(config={'modeBarButtonsToRemove':['zoom','pan']}),
-                                            annot_created_callback=self.annot_created_callback)
+                                            annot_created_callback=self.annot_created_callback,
+                                            refresh_input=refresh_input)
 
         montage = self.raw.get_montage() if self.raw else None
         self.ica_topo = TopoVizICA(self.app, montage, self.ica, self.ic_types,
                                    topo_slider_id=self.ica_visualizer.dash_ids['ch-slider'],
-                                   show_sensors=True)
+                                   show_sensors=True,
+                                   refresh_input=refresh_input)
 
         self.ica_visualizer.new_annot_desc = 'bad_manual'
         self.eeg_visualizer.new_annot_desc = 'bad_manual'
@@ -120,8 +127,16 @@ class QCGUI:
         # Layout for file control row
         # derivatives_dir = self.project_root / 'derivatives'
         files_list = []
-        # files_list = [dbc.DropdownMenuItem(str(file.name))
-        #              for file in sorted(self.project_root.rglob("*.edf"))]
+
+        ###############################
+        # TESTING
+        self.project_root = Path("/Users/christian/Code/pylossless/assets/test_data/")
+        files_list = [{'label': str(file.name), 'value': str(file)}
+                              for file
+                              in sorted(self.project_root.rglob("*.edf"))]
+        # To be removed after fixing: https://github.com/lina-usc/pylossless/issues/29
+        ###############################
+
         dropdown_text = f'current folder: {self.project_root.resolve()}'
         logo_fpath = '../assets/logo.png'
         folder_button = dbc.Button('Folder', id='folder-selector',
@@ -133,11 +148,6 @@ class QCGUI:
                                  color='info',
                                  outline=True,
                                  className=CSS['button'])
-        '''drop_down = dbc.DropdownMenu(label="Select a file",
-                                     id='file-dropdown',
-                                     className=CSS['dropdown'],
-                                     children=files_list
-                                     )'''
         drop_down = dcc.Dropdown(id='file-dropdown',
                                  className=CSS['dropdown'],
                                  placeholder="Select a file",
@@ -156,6 +166,7 @@ class QCGUI:
                                      className=CSS['file-row'],
                                      align='center',
                                      )
+
         # Layout for EEG/ICA and Topo plots row
         timeseries_div = html.Div([self.eeg_visualizer.container_plot,
                                    self.ica_visualizer.container_plot],
@@ -201,7 +212,11 @@ class QCGUI:
         def folder_button_clicked(n_clicks):
             if n_clicks:
                 root = tkinter.Tk()
-                root.withdraw()
+                #root.focus_force()
+                # Make folder picker dialog appear on top of other windows
+                root.wm_attributes('-topmost', 1)
+                # Cause the root window to disappear milliseconds after calling the filedialog.
+                root.after(100, root.withdraw)
                 directory = Path(filedialog.askdirectory())
                 print('selected directory: ', directory)
                 # self.eeg_visualizer.change_dir(directory)
@@ -215,7 +230,6 @@ class QCGUI:
                 return files_list # directory
             return dash.no_update
 
-
         @self.app.callback(
             Output('file-dropdown', 'placeholder'),
             Input('file-dropdown', 'value')
@@ -223,4 +237,5 @@ class QCGUI:
         def file_selected(value):
             if value:  # on selection of dropdown item
                 self.load_recording(value)
+                return value
             return dash.no_update

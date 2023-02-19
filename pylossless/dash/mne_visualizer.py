@@ -28,7 +28,7 @@ class MNEVisualizer:
     def __init__(self, app, inst, dcc_graph_kwargs=None,
                  dash_id_suffix='', ch_slider=None, time_slider=None,
                  scalings='auto', zoom=2, remove_dc=True,
-                 annot_created_callback=None):
+                 annot_created_callback=None, refresh_input=None):
         """ text
             Parameters
             ----------
@@ -51,6 +51,7 @@ class MNEVisualizer:
             -------
             """
 
+        self.refresh_input = refresh_input
         self.app = app
         self.scalings_arg = scalings
         self._inst = None        
@@ -100,8 +101,8 @@ class MNEVisualizer:
 
     def load_recording(self, raw):
         """ """
-        self.raw = raw
-        self.channel_slider.max = self.nb_channels - 1,
+        self.inst = raw
+        self.channel_slider.max = self.nb_channels - 1
         self.channel_slider.value = self.nb_channels - 1
         marks_keys = np.round(np.linspace(self.times[0], self.times[-1], 10))
         self.time_slider.min = self.times[0]
@@ -290,11 +291,20 @@ class MNEVisualizer:
             args += [Input(self.dash_ids['time-slider'], 'value')]
         args += [Input(self.dash_ids['graph'], "clickData"),
                  Input(self.dash_ids['graph'], "hoverData")]
+        if self.refresh_input:
+            args += [self.refresh_input]
 
         @self.app.callback(*args, suppress_callback_exceptions=False)
-        def callback(ch, time, click_data, hover_data):
+        def callback(ch, time, click_data, hover_data, *args):
             if not self.inst:
                 return dash.no_update
+
+            update_layout_ids = [self.dash_ids['ch-slider'],
+                                 self.dash_ids['time-slider'],
+                                 self.use_time_slider, self.use_ch_slider]
+            if self.refresh_input:
+                update_layout_ids.append(self.refresh_input.component_id)
+
             ctx = dash.callback_context
             assert(len(ctx.triggered) == 1)
             if len(ctx.triggered[0]['prop_id'].split('.')) == 2:
@@ -356,12 +366,7 @@ class MNEVisualizer:
                     else:
                         # self.select_trace()
                         pass # for selecting traces                    
-                elif object_ in [self.dash_ids['ch-slider'],
-                                 self.dash_ids['time-slider'],
-                                 self.use_time_slider, self.use_ch_slider]:
-                    # if object_ in [self.dash_ids['ch-slider'], self.use_ch_slider]:
-                    #    pass
-
+                elif object_ in update_layout_ids:
                     self.update_layout(ch_slider_val=ch, time_slider_val=time)
 
             return self.graph.figure
