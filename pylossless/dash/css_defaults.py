@@ -41,6 +41,13 @@ DEFAULT_LAYOUT = dict(  # height=400,
                       shapes=[],
                       hovermode='closest')
 
+WATERMARK_ANNOT = (dict(text='NO FILE SELECTED',
+                        textangle=0, opacity=0.1,
+                        font=dict(color='red', size=80),
+                        xref='paper', yref='paper', x=.5, y=.5,
+                        showarrow=False),
+                   )
+
 CSS = dict()
 STYLE = dict()
 

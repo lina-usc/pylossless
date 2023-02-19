@@ -18,6 +18,10 @@ from mne.utils import _validate_type
 from .css_defaults import DEFAULT_LAYOUT, CSS, STYLE
 
 
+def _add_watermark_annot():
+    from .css_defaults import WATERMARK_ANNOT
+    return WATERMARK_ANNOT
+
 
 class MNEVisualizer:
 
@@ -191,9 +195,12 @@ class MNEVisualizer:
 
     def initialize_layout(self):
 
+        if not self.inst:
+            DEFAULT_LAYOUT['annotations'] = _add_watermark_annot()
+
         DEFAULT_LAYOUT['yaxis'].update({"tickvals": np.arange(-self.n_sel_ch + 1, 1),
-                                     'ticktext': [''] * self.n_sel_ch,
-                                     'range': [-self.n_sel_ch, 1]})
+                                        'ticktext': [''] * self.n_sel_ch,
+                                        'range': [-self.n_sel_ch, 1]})
         self.layout = go.Layout(**DEFAULT_LAYOUT)
 
         trace_kwargs = {'x': [],

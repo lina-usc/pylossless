@@ -70,7 +70,7 @@ class QCGUI:
         self.ic_types = None
         self.set_layout()
         self.set_callbacks()
-        self.load_recording('c:/users/shuber10/documents/github_repos/pylossless/assets/test_data/sub-s02/eeg/sub-s02_task-faceO_eeg.edf')
+        # self.load_recording()
 
     def annot_created_callback(self, annotation):
         self.raw.set_annotations(self.raw.annotations + annotation)
