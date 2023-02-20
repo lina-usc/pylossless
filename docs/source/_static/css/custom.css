@@ -3,6 +3,7 @@ html[data-theme="light"] {
 }
 
 html[data-theme="dark"] {
-    --pst-color-primary: #CECECE;
-    --pst-color-background: #222222;
+    --pst-color-primary: #FFFFFF;
+    --pst-color-background: #0D1012;
+    --pst-color-on-background: #0E1012;
 }
