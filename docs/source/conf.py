@@ -26,10 +26,14 @@ sys.path.insert(0, os.path.abspath('../..'))
 # napoleon for: building doc from Numpy formatted docstrings 
 # ext.todo: so we can use the ..todo:: directive
 # gallery for: building tutorial .rst files from python files
+# sphinxemoji So we can use emoji's in docs.
+# sphinx design to support certain directives, like ::grid etc.
 extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.napoleon',
               'sphinx.ext.todo',
-              'sphinx_gallery.gen_gallery'] 
+              'sphinx_gallery.gen_gallery',
+              'sphinxemoji.sphinxemoji',
+              "sphinx_design"] 
 
 # Allows us to use the ..todo:: directive
 todo_include_todos = True
@@ -52,10 +56,15 @@ html_theme = 'pydata_sphinx_theme' #'alabaster'
 html_static_path = ['_static']
 html_theme_options = {
    "logo": {
-      "image_light": "logo-light_mode.png",
-      "image_dark": "logo-dark_mode.png",
+      "image_light": "logo-lightmode_color.png",
+      "image_dark": "logo-darkmode_color.png",
    }
 }
+
+# user made CSS to customize look
+html_css_files = [
+    'css/custom.css',
+]
 
 # Custom sidebar templates, maps document names to template names.
 html_sidebars = {

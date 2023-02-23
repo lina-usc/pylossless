@@ -20,6 +20,52 @@ PyLossless EEG Processing Pipeline
    contributing
 
 
+
+.. grid::
+   
+   .. grid-item-card::
+
+      |:mechanical_arm:| Automated
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      Automatic Processing Pipeline
+      cleans your EEG data. |:broom:|
+
+
+   .. grid-item-card::
+
+      |:snake:| Built on Python
+      ^^^^^^^^^^^^^^^^^^^^^^^^^
+      Ported from MATLAB for easier
+      use and access!
+
+   .. grid-item-card::
+
+      |:recycle:| Non-destructive
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      Keeps your EEG continuous, so
+      you can epoch your data however
+      and whenever you want to.
+
+.. grid::
+
+   .. grid-item-card:: 
+
+      |:pencil:| Artifacts are Noted
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      Bad channels, times, and
+      components are stored as
+      ``Annotations`` in your
+      raw data. 
+
+   .. grid-item-card::
+
+      |:woman_technologist:| Streamlined Review
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      Web dashboard built with Plotly/Dash helps
+      you Review the pipeline output and make
+      informed decisions about your data
+      
+
 Motivation
 ==================
 This project is a port of the MATLAB Lossless EEG Processing Pipeline
