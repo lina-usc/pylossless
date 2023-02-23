@@ -162,5 +162,10 @@ TBD
 
 ## Manual quality control (QC)
 
-TBD
+The automated part of the PyLossless pipeline is optimally followed by a manual QC phase. But no sweet! We used the Plotly Dash library to prepared a convenient graphical user interface (GUI) to help you do that! This interface can be lauched using 
 
+```python
+$ python ./pylossless/dash/app.py
+```
+
+Thanks to it being a web-based GUI, this interface can even be deployed without any local installation, e.g., using a virtualization platform like Google Colab. Here is an [example](https://githubtocolab.com/lina-usc/pylossless/blob/main/notebooks/qc_example.ipynb)!
