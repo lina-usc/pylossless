@@ -18,51 +18,26 @@ from .topo_viz import TopoVizICA
 from .mne_visualizer import MNEVisualizer, ICVisualizer
 
 from . import ic_label_cmap
+from ..pipeline import LosslessPipeline
 
 from .css_defaults import CSS, STYLE
 
 
-def get_ll_assets(fname, ica_fpath, iclabel_fpath='', bads=(),
-                  verbose=False):
-    # Validity check
-    if not fname or not ica_fpath or not iclabel_fpath:
-        return None, None, None, None
-
-    if iclabel_fpath is not None:
-        if not iclabel_fpath.exists():
-            msg = (f'Could not find {iclabel_fpath.name}. Searched in'
-                   f' {iclabel_fpath.parent.absolute()}')
-            raise FileExistsError(msg)
-
-    bids_path = get_bids_path_from_fname(fname, verbose=verbose)
-    raw = read_raw_bids(bids_path, verbose=False).pick('eeg')
-    raw.info['bads'].extend(bads)
-
-    ica = mne.preprocessing.read_ica(ica_fpath, verbose=verbose)
-    info = mne.create_info(ica._ica_names,
-                        sfreq=raw.info['sfreq'],
-                        ch_types=['eeg'] * ica.n_components_, verbose=verbose)
-
-    raw_ica = mne.io.RawArray(ica.get_sources(raw).get_data(), info, verbose=verbose)
-    raw_ica.set_meas_date(raw.info['meas_date'])
-    raw_ica.set_annotations(raw.annotations)
-
-    return raw, raw_ica, ica, iclabel_fpath
-
-
 class QCGUI:
 
-    def __init__(self, app, raw=None, raw_ica=None, ica=None,
-                 iclabel_fpath=None, project_root=None):
+    def __init__(self, app, fpath=None, project_root=None, verbose=False):
 
         if project_root is None:
             project_root = Path(__file__).parent.parent.parent / 'assets' / 'test_data'
         self.project_root = Path(project_root)
 
+        self.pipeline = LosslessPipeline()
         self.app = app
-        self.raw = raw
-        self.raw_ica = raw_ica
-        self.ica = ica
+        self.raw = None
+        self.ica = None
+        self.raw_ica = None
+        if fpath:
+            self.load_recording(fpath)
 
         self.ica_visualizer = None
         self.eeg_visualizer = None
@@ -130,7 +105,7 @@ class QCGUI:
 
         ###############################
         # TESTING
-        self.project_root = Path("/Users/christian/Code/pylossless/assets/test_data/")
+        #self.project_root = Path("/Users/christian/Code/pylossless/assets/test_data/")
         files_list = [{'label': str(file.name), 'value': str(file)}
                               for file
                               in sorted(self.project_root.rglob("*.edf"))]
@@ -148,14 +123,15 @@ class QCGUI:
                                  color='info',
                                  outline=True,
                                  className=CSS['button'])
-        drop_down = dcc.Dropdown(id='file-dropdown',
+        self.drop_down = dcc.Dropdown(id='file-dropdown',
                                  className=CSS['dropdown'],
                                  placeholder="Select a file",
                                  options=files_list)
         control_header_row = dbc.Row([
                                     dbc.Col([folder_button, save_button],
                                             width={'size': 2}),
-                                    dbc.Col([drop_down],
+                                    dbc.Col([self.drop_down,
+                                             html.P(id='dropdown-output')],
                                             width={'size': 6}),
                                     dbc.Col(
                                         html.Img(src=logo_fpath,
@@ -184,13 +160,24 @@ class QCGUI:
                                       fluid=True, style=STYLE['qc-container'])
         self.app.layout.children.append(qc_app_layout)
 
-    def load_recording(self, fname):
+    def load_recording(self, fpath, verbose=False):
         """  """
-        fname = Path(fname)
-        ica_fpath = fname.parent / fname.name.replace("_eeg.edf", "_ica1_ica.fif") 
-        iclabel_fpath = fname.parent / fname.name.replace("_eeg.edf", "_iclabels.tsv") 
-        self.raw, self.raw_ica, self.ica = \
-            get_ll_assets(fname, ica_fpath, iclabel_fpath)[:-1]
+        fpath = Path(fpath)
+        iclabel_fpath = fpath.parent / fpath.name.replace("_eeg.edf", "_iclabels.tsv")
+        self.pipeline.load_ll_derivative(get_bids_path_from_fname(fpath))
+        self.raw = self.pipeline.raw
+        self.ica = self.pipeline.ica2
+        if self.raw:
+            info = mne.create_info(self.ica._ica_names,
+                                   sfreq=self.raw.info['sfreq'],
+                                   ch_types=['eeg'] * self.ica.n_components_,
+                                   verbose=verbose)
+            sources = self.ica.get_sources(self.raw).get_data()
+            self.raw_ica = mne.io.RawArray(sources, info, verbose=verbose)
+            self.raw_ica.set_meas_date(self.raw.info['meas_date'])
+            self.raw_ica.set_annotations(self.raw.annotations)
+        else:
+            self.raw_ica = None
 
         self.ic_types = pd.read_csv(iclabel_fpath, sep='\t')
         self.ic_types['component'] = [f'ICA{ic:03}'
@@ -202,7 +189,7 @@ class QCGUI:
         self.ica_visualizer.load_recording(self.raw_ica, cmap=cmap,
                                            ic_types=self.ic_types)
         self.eeg_visualizer.load_recording(self.raw)
-        self.ica_topo.load_recording(self.raw.get_montage(), self.ica, self.ic_types)    
+        self.ica_topo.load_recording(self.raw.get_montage(), self.ica, self.ic_types)
 
     def set_callbacks(self):
         @self.app.callback(
@@ -238,4 +225,13 @@ class QCGUI:
             if value:  # on selection of dropdown item
                 self.load_recording(value)
                 return value
+            return dash.no_update
+
+        @self.app.callback(
+            Output('dropdown-output', 'children'),
+            Input('save-button','n_clicks'),
+            prevent_initial_call=True
+        )
+        def save_file(n_clicks):
+            self.pipeline.save(get_bids_path_from_fname(self.drop_down.value))
             return dash.no_update

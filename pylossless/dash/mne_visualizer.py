@@ -3,8 +3,6 @@ from dash import dcc, html, no_update
 from dash.dependencies import Input, Output
 from dash_extensions import EventListener
 
-import dash_bootstrap_components as dbc
-
 # time series plot
 import plotly.graph_objects as go
 
