@@ -77,8 +77,11 @@ def test_pipeline_run(dataset):
         raw, ll_default_config = load_openneuro_bids()
     elif dataset == 'egi_mff':
         raw, ll_default_config = load_test_egi_mff()
-    
+
     ll.config.save_config(ll_default_config, "project_ll_config.yaml")
     pipeline = ll.LosslessPipeline('my_project_ll_config.yaml')
     pipeline.run(raw.pick('eeg', exclude=['EXG1', 'EXG2', 'EXG3', 'EXG4', 'EXG5', 'EXG6', 'EXG7', 'EXG8']))
-    Path('my_project_ll_config.yaml').unlink() # delete config file we made
+    Path('my_project_ll_config.yaml').unlink()  # delete config file we made
+
+# TODO: Add a save-load roundtrip test
+#          - Check that FlaggedEpochs indices are preserved save-load roundtrip

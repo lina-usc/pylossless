@@ -1,4 +1,4 @@
-# Authors: Christian O'Reilly <christian.oreilly@gmail.com>;
+# Authors: Christian O'Reilly <christian.oreilly@sc.edu>;
 # Scott Huberty <scott.huberty@mail.mcgill.ca>
 # James Desjardins <jim.a.desjardins@gmail.com>
 # License: MIT
