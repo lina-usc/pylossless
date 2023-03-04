@@ -1,6 +1,7 @@
 # coding: utf-8
 from mne.utils import logger
 import mne_bids
+from mne_bids import get_bids_path_from_fname, BIDSPath
 import numpy as np
 from pathlib import Path
 import tempfile
@@ -26,9 +27,9 @@ from tqdm.notebook import tqdm
 from mne.preprocessing import ICA
 import mne_icalabel
 from mne_icalabel.annotation import write_components_tsv
+from mne_icalabel.config import ICLABEL_LABELS_TO_MNE
 
 from .config import Config
-
 
 class FlaggedChs(dict):
 
@@ -57,8 +58,8 @@ class FlaggedChs(dict):
                                                     index=False, sep="\t")
 
     def load_tsv(self, fname):
-        df = pd.read_csv(fname)
-        for label, grp_df in df.groupby("label"):
+        df = pd.read_csv(fname, sep='\t')
+        for label, grp_df in df.groupby("labels"):
             self[label] = grp_df.ch_names.values
 
 
@@ -77,7 +78,7 @@ class FlaggedEpochs(dict):
     def load_from_raw(self, raw):
         sfreq = raw.info['sfreq']
         for annot in raw.annotations:
-            if annot['descriptions'].startswith('bad_pylossless'):
+            if annot['description'].startswith('bad_pylossless'):
                 ind_onset = int(np.round(annot['onset'] * sfreq))
                 ind_dur = int(np.round(annot['duration'] * sfreq))
                 inds = np.arange(ind_onset, ind_onset + ind_dur)
@@ -91,38 +92,20 @@ class FlaggedICs(dict):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fname = None
-        self.ica = None
         self.data_frame = None
-
-    # TODO implement python __get_item__ __set_item__
-    def add_flag_cat(self, kind, bad_ic_inds, author=''):
-        method = 'manual' if kind == 'manual' else 'icalabel'
-        author = author if kind == 'manual' else 'icalabel'
-        with tempfile.TemporaryFile() as fp:
-            fname = self.fname if self.fname else fp.name
-            for i in bad_ic_inds:
-                mne_icalabel.mark_component(component=i, fname=fname,
-                                            method=method, label=kind,
-                                            author=author)
-            self.data_frame = pd.read_csv(fname)
 
     def label_components(self, epochs, ica):
         mne_icalabel.label_components(epochs, ica, method="iclabel")
-        self.ica = ica
-        with tempfile.TemporaryFile() as fp:
-            self.save(fp.name, tmp_file=True)
-            self.data_frame = pd.read_csv(fp.name)
+        self.data_frame = _icalabel_to_data_frame(ica)
 
-    def save(self, fname, tmp_file=False):
-        if not tmp_file:
-            self.fname = fname
-        write_components_tsv(self.ica, fname)
-
-    def load(self, fname, ica, data_frame=None):
+    def save_tsv(self, fname):
         self.fname = fname
-        self.ica = ica
+        self.data_frame.to_csv(fname, sep='\t', index=False, na_rep='n/a')
+
+    def load_tsv(self, fname, data_frame=None):
+        self.fname = fname
         if data_frame is None:
-            data_frame = pd.read_csv(fname)
+            data_frame = pd.read_csv(fname, sep='\t')
         self.data_frame = data_frame
 
 
@@ -144,6 +127,36 @@ def epochs_to_xr(epochs, kind="ch", ica=None):
 
     return data
 
+
+def _icalabel_to_data_frame(ica):
+    """ """
+    # initialize status, description and IC type
+    status = ["good"] * ica.n_components_
+    status_description = ["n/a"] * ica.n_components_
+    ic_type = ["n/a"] * ica.n_components_
+
+    # extract the component labels if they are present in the ICA instance
+    if ica.labels_:
+        for label, comps in ica.labels_.items():
+            this_status = "good" if label == "brain" else "bad"
+            if label in ICLABEL_LABELS_TO_MNE.values():
+                for comp in comps:
+                    status[comp] = this_status
+                    ic_type[comp] = label
+
+    # Create TSV.
+    return pd.DataFrame(
+        dict(
+            component=list(range(ica.n_components_)),
+            type=["ica"] * ica.n_components_,
+            description=["Independent Component"] * ica.n_components_,
+            status=status,
+            status_description=status_description,
+            annotate_method=["n/a"] * ica.n_components_,
+            annotate_author=["n/a"] * ica.n_components_,
+            ic_type=ic_type,
+        )
+    )
 
 def get_operate_dim(array, flag_dim):
     dims = list(array.dims)
@@ -709,10 +722,10 @@ class LosslessPipeline():
 
         # icsd_epoch_flags=padflags(raw, icsd_epoch_flags,1,'value',.5);
 
-    def save(self, derivatives_path):
+    def save(self, derivatives_path, overwrite=False):
         mne_bids.write_raw_bids(self.raw,
                                 derivatives_path,
-                                overwrite=True,
+                                overwrite=overwrite,
                                 format='EDF',
                                 allow_preload=True)
         #  TODO address derivatives support in MNE bids.
@@ -725,13 +738,13 @@ class LosslessPipeline():
             ica_bidspath = bpath.update(extension='.fif',
                                         suffix=this_ica,
                                         check=False)
-            self_ica.save(ica_bidspath)
+            self_ica.save(ica_bidspath, overwrite=overwrite)
 
         # Save IC labels
         iclabels_bidspath = bpath.update(extension='.tsv',
                                          suffix='iclabels',
                                          check=False)
-        self.flagged_ics.save(iclabels_bidspath)
+        self.flagged_ics.save_tsv(iclabels_bidspath)
         # TODO epoch marks and ica marks are not currently saved into annots
         # raw.save(derivatives_path, overwrite=True, split_naming='bids')
         config_bidspath = bpath.update(extension='.yaml',
@@ -743,7 +756,7 @@ class LosslessPipeline():
         flagged_chs_fpath = bpath.update(extension='.tsv',
                                          suffix='ll_FlaggedChs',
                                          check=False)
-        self.flagged_chs.save_tsv(flagged_chs_fpath.fname)
+        self.flagged_chs.save_tsv(flagged_chs_fpath.fpath.name)
 
     def filter(self):
         # 5.a. Filter lowpass/highpass
@@ -768,9 +781,21 @@ class LosslessPipeline():
             logger.info('No notch filter arguments provided. Skipping')
 
 
-    def run(self, bids_path, save=True):
-        self.raw = mne_bids.read_raw_bids(bids_path)
+    def run(self, bids_path, save=True, overwrite=False):
+        self.bids_path = bids_path
+        self.raw = mne_bids.read_raw_bids(self.bids_path)
         self.raw.load_data()
+        self._run()
+
+        if save:
+            self.save(self.get_derivative_path(bids_path), overwrite=overwrite)
+
+    def run_with_raw(self, raw):
+        self.raw = raw
+        self._run()
+        return self.raw
+
+    def _run(self):
         self.set_montage()
 
         # 1. Execute the staging script if specified.
@@ -821,15 +846,14 @@ class LosslessPipeline():
         # 14. Flag very small time periods between flagged time
         self.flag_epoch_gap()
 
-        # 15. Export
-        if save:
-            self.save(self.get_derivative_path(bids_path))
-
     def run_dataset(self, paths):
         for path in paths:
             self.run(path)
 
     def load_ll_derivative(self, derivatives_path):
+        """ """
+        if not isinstance(derivatives_path, BIDSPath):
+            derivatives_path = get_bids_path_from_fname(derivatives_path)
         self.raw = mne_bids.read_raw_bids(derivatives_path)
         bpath = derivatives_path.copy()
         # Save ICAs
@@ -843,7 +867,7 @@ class LosslessPipeline():
         # Save IC labels
         iclabels_bidspath = bpath.update(extension='.tsv', suffix='iclabels',
                                          check=False)
-        self.flagged_ics.load(iclabels_bidspath.fpath, self.ica1)
+        self.flagged_ics.load_tsv(iclabels_bidspath.fpath)
 
         self.config_fname = bpath.update(extension='.yaml', suffix='ll_config',
                                          check=False)
@@ -853,7 +877,7 @@ class LosslessPipeline():
         flagged_chs_fpath = bpath.update(extension='.tsv',
                                          suffix='ll_FlaggedChs',
                                          check=False)
-        self.flagged_chs.load_tsv(flagged_chs_fpath.fname)
+        self.flagged_chs.load_tsv(flagged_chs_fpath.fpath.name)
 
         # Load Flagged Epochs
         self.flagged_epochs.load_from_raw(self.raw)

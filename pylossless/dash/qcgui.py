@@ -4,6 +4,7 @@ from pathlib import Path
 import tkinter
 from tkinter import filedialog
 import pandas as pd
+import numpy as np
 
 import dash
 from dash import dcc, html
@@ -36,6 +37,7 @@ class QCGUI:
         self.raw = None
         self.ica = None
         self.raw_ica = None
+        self.fpath = None
         if fpath:
             self.load_recording(fpath)
 
@@ -92,6 +94,26 @@ class QCGUI:
         self.eeg_visualizer.new_annot_desc = 'bad_manual'
 
         self.ica_visualizer.update_layout()
+
+    def update_bad_ics(self):
+        df = self.pipeline.flagged_ics.data_frame
+        ic_names = self.raw_ica.ch_names
+        df['ic_names'] = ic_names
+        df.set_index('ic_names', inplace=True)
+        for ic_name in self.raw_ica.ch_names:
+            ic_type = df.loc[ic_name, 'ic_type']
+            is_mne_bad = ic_name in self.raw_ica.info['bads']
+            was_mne_bad = df.loc[ic_name, 'annotate_method'] == 'manual'
+            if is_mne_bad:  # user added channel to info['bads']
+                df.loc[ic_name, 'annotate_method'] = 'manual'
+                df.loc[ic_name, 'status'] = 'bad'
+            elif was_mne_bad and not is_mne_bad:
+                df.loc[ic_name, 'annotate_method'] = np.nan
+                if ic_type == "brain":
+                    df.loc[ic_name, 'status'] = 'good'
+        df.reset_index(drop=True, inplace=True)
+        # TODO understand why original component values are lost to begin with
+        df["component"] = np.arange(df.shape[0])
 
     def set_layout(self):
         # app.layout must not be None for some of the operations of the
@@ -162,9 +184,9 @@ class QCGUI:
 
     def load_recording(self, fpath, verbose=False):
         """  """
-        fpath = Path(fpath)
-        iclabel_fpath = fpath.parent / fpath.name.replace("_eeg.edf", "_iclabels.tsv")
-        self.pipeline.load_ll_derivative(get_bids_path_from_fname(fpath))
+        self.fpath = Path(fpath)
+        # iclabel_fpath = self.fpath.parent / self.fpath.name.replace("_eeg.edf", "_iclabels.tsv")
+        self.pipeline.load_ll_derivative(self.fpath)
         self.raw = self.pipeline.raw
         self.ica = self.pipeline.ica2
         if self.raw:
@@ -176,12 +198,21 @@ class QCGUI:
             self.raw_ica = mne.io.RawArray(sources, info, verbose=verbose)
             self.raw_ica.set_meas_date(self.raw.info['meas_date'])
             self.raw_ica.set_annotations(self.raw.annotations)
+            df = self.pipeline.flagged_ics.data_frame
+            ic_names = self.raw_ica.ch_names
+            df['ic_names'] = ic_names
+
+            bads = [ic_name
+                    for ic_name, annot
+                    in df[["ic_names", "annotate_method"]].values
+                    if annot == "manual"]
+            self.raw_ica.info["bads"] = bads
         else:
             self.raw_ica = None
 
-        self.ic_types = pd.read_csv(iclabel_fpath, sep='\t')
+        self.ic_types = self.pipeline.flagged_ics.data_frame  # pd.read_csv(iclabel_fpath, sep='\t')
         self.ic_types['component'] = [f'ICA{ic:03}'
-                                        for ic in self.ic_types.component]
+                                      for ic in self.ic_types.component]
         self.ic_types = self.ic_types.set_index('component')['ic_type']
         self.ic_types = self.ic_types.to_dict()
         cmap = {ic: ic_label_cmap[ic_type]
@@ -214,7 +245,7 @@ class QCGUI:
                               in sorted(self.project_root.rglob("*.edf"))]
                 root.destroy()
                 print('***', files_list)
-                return files_list # directory
+                return files_list  # directory
             return dash.no_update
 
         @self.app.callback(
@@ -233,5 +264,7 @@ class QCGUI:
             prevent_initial_call=True
         )
         def save_file(n_clicks):
-            self.pipeline.save(get_bids_path_from_fname(self.drop_down.value))
+            self.update_bad_ics()
+            self.pipeline.save(get_bids_path_from_fname(self.fpath), overwrite=True)
+            print('file saved!')
             return dash.no_update
