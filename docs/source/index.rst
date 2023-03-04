@@ -3,17 +3,68 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to pyLossless's documentation!
-======================================
+PyLossless EEG Processing Pipeline
+==================================
 
 .. note::
    This repository is in a constant state of flux and not yet ready for outside use!
-
+   
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :hidden:
+
+   install
+   implementation
+   API/API_index
+   generated/index
+   contributing
 
 
+
+.. grid::
+   
+   .. grid-item-card::
+
+      |:mechanical_arm:| Automated
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      Automatic Processing Pipeline
+      cleans your EEG data. |:broom:|
+
+
+   .. grid-item-card::
+
+      |:snake:| Built on Python
+      ^^^^^^^^^^^^^^^^^^^^^^^^^
+      Ported from MATLAB for easier
+      use and access!
+
+   .. grid-item-card::
+
+      |:recycle:| Non-destructive
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      Keeps your EEG continuous, so
+      you can epoch your data however
+      and whenever you want to.
+
+.. grid::
+
+   .. grid-item-card:: 
+
+      |:pencil:| Artifacts are Noted
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      Bad channels, times, and
+      components are stored as
+      ``Annotations`` in your
+      raw data. 
+
+   .. grid-item-card::
+
+      |:woman_technologist:| Streamlined Review
+      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+      Web dashboard built with Plotly/Dash helps
+      you Review the pipeline output and make
+      informed decisions about your data
+      
 
 Motivation
 ==================
@@ -40,10 +91,3 @@ choose which annotations to use for preprocessing in a piecemeal fashion, or
 simply use the raw data without excluding any artifacts based on provided
 annotations. Artifacts are annotated for channels, epochs, and independent
 components; see Desjardins et al (2021) for a more detailed presentation.
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
