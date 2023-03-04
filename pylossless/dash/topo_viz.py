@@ -18,8 +18,10 @@ from mne.utils.check import _check_sphere
 from mne.viz.topomap import _setup_interp, _check_extrapolate
 
 from . import ic_label_cmap
+from .css_defaults import CSS
 
 from copy import copy
+
 axis = {'showgrid': False, # thin lines in the background
          'visible': False,  # numbers below
         }
@@ -41,10 +43,13 @@ class TopoData:
 
 
 class TopoViz:
-    def __init__(self, app, montage, data: TopoData, rows=5, cols=4,
-                 margin_x=4/5, width=600, height=800, margin_y=2/5,
-                 topo_slider_id=None, head_contours_color="black"):
+    def __init__(self, app, montage=None, data=None,  # : TopoData,
+                 rows=5, cols=4, margin_x=4/5, width=450, height=700,
+                 margin_y=2/5, topo_slider_id=None,
+                 head_contours_color="black", cmap='RdBu_r',
+                 show_sensors=True, refresh_input=None):
         """ """
+        self.refresh_input = refresh_input
         self.montage = montage
         self.data = data
         self.app = app
@@ -54,14 +59,17 @@ class TopoViz:
         self.height = height
         self.heatmap_traces = None
         self.colorbar = False
+        self.cmap = cmap
+        self.titles = None
+        self.show_sensors = show_sensors
         fig = make_subplots(rows=rows, cols=cols,
                             horizontal_spacing=0.01,
                             vertical_spacing=0.01)
         self.graph = dcc.Graph(figure=fig, id='topo-graph',
-                               className='dcc-graph')
+                               className=CSS['topo-dcc'])  # 'dcc-graph')
         self.graph_div = html.Div(children=[self.graph],
-                                  style={"border":"2px red solid"},
-                                  className='dcc-graph-div')
+                                  id='topo-graph-div',
+                                  className=CSS['topo-dcc-div'])
 
         self.margin_x = margin_x
         self.margin_y = margin_y
@@ -69,38 +77,55 @@ class TopoViz:
         self.topo_slider = None
         self.use_topo_slider = topo_slider_id
         self.head_contours_color = head_contours_color
-
-        names = self.data.topo_values.columns.tolist()
-        self.info = create_info(names, sfreq=256, ch_types="eeg")
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            RawArray(np.zeros((len(names), 1)), self.info, copy=None,
-                     verbose=False).set_montage(montage)
-
+        self.info = None
         self.pos = None
         self.contours = None
         self.set_head_pos_contours()
 
         self.init_slider()
-        self.initialize_layout()
+        self.initialize_layout(subplot_titles=self.titles,
+                               show_sensors=show_sensors)
         self.set_div()
         self.set_callback()
 
+    def load_recording(self, montage, data):
+        self.montage = montage
+        self.data = data
+        if self.data:
+            names = self.data.topo_values.columns.tolist()
+            self.info = create_info(names, sfreq=256, ch_types="eeg")
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                RawArray(np.zeros((len(names), 1)), self.info, copy=None,
+                         verbose=False).set_montage(montage)
+        self.set_head_pos_contours()
+        self.topo_slider.max = self.nb_topo - 1
+        self.topo_slider.value = self.nb_topo - 1
+        self.initialize_layout()
+
     def set_head_pos_contours(self, sphere=None, picks=None):
+        if not self.info:
+            return
         sphere = _check_sphere(sphere, self.info)
         self.pos, self.outlines = _get_pos_outlines(self.info, picks, sphere,
                                                     to_sphere=True)
 
-    def get_head_scatters(self, color="back"):
+    def get_head_scatters(self, color="back", show_sensors=True):
         outlines_scat = [go.Scatter(x=x, y=y, line=dict(color=color),
                                     mode='lines', showlegend=False)
                         for key, (x, y) in self.outlines.items()
                         if 'clip' not in key]
-        pos_scat = go.Scatter(x=self.pos.T[0], y=self.pos.T[1],
-                              line=dict(color=color), mode='markers',
-                              showlegend=False)
+        if show_sensors:
+            pos_scat = go.Scatter(x=self.pos.T[0], y=self.pos.T[1],
+                                line=dict(color=color), mode='markers',
+                                marker=dict(color=color,
+                                            size=2,
+                                            opacity=.5),
+                                showlegend=False)
 
-        return outlines_scat + [pos_scat]
+            return outlines_scat + [pos_scat]
+        else:
+            return outlines_scat
 
     def get_heatmap_data(self, i, j, ch_type="eeg", res=64,
                          extrapolate='auto'):
@@ -125,28 +150,32 @@ class TopoViz:
         x_rad , y_rad = self.outlines["clip_radius"]
         Zi[np.sqrt(((Xi - x0)/x_rad)**2 + ((Yi-y0)/y_rad)**2) > 1] = np.nan
 
-        return {"x":Xi[0], "y": Yi[:, 0], "z": Zi}
+        return {"x": Xi[0], "y": Yi[:, 0], "z": Zi}
 
-    def initialize_layout(self, slider_val=None):
-
-        if slider_val != None:
+    def initialize_layout(self, slider_val=None, subplot_titles=None,
+                          show_sensors=True):
+        """ """
+        if not self.data:
+            return
+        if slider_val is not None:
             self.offset = self.topo_slider.max-slider_val
 
         ic_names = self.data.topo_values.index
         ic_names = ic_names[self.offset: self.offset+self.rows*self.cols]
         self.graph.figure = make_subplots(rows=self.rows, cols=self.cols,
-                            horizontal_spacing=0.03,
-                            vertical_spacing=0.03,
-                            subplot_titles=ic_names)
+                                          horizontal_spacing=0.03,
+                                          vertical_spacing=0.03,
+                                          subplot_titles=ic_names)
 
         self.heatmap_traces = [[go.Heatmap(showscale=self.colorbar,
+                                           colorscale=self.cmap,
                                            **self.get_heatmap_data(i, j))
                                 for j in np.arange(self.cols)]
-                                for i in np.arange(self.rows)]
+                               for i in np.arange(self.rows)]
 
         for no, (i, j) in enumerate(product(np.arange(self.rows),
                                             np.arange(self.cols))):
-            if no + self.offset >= self.data.nb_topo: # out of range
+            if no + self.offset >= self.data.nb_topo:  # out of range
                 break
 
             if isinstance(self.head_contours_color, str):
@@ -155,7 +184,9 @@ class TopoViz:
                 color = self.head_contours_color[ic_names[no]]
             else:
                 color = "black"
-            for trace in self.get_head_scatters(color=color):
+
+            for trace in self.get_head_scatters(color=color,
+                                                show_sensors=self.show_sensors):
                 self.graph.figure.add_trace(trace, row=i+1, col=j+1)
             self.graph.figure.add_trace(self.heatmap_traces[i][j],
                                         row=i+1, col=j+1)
@@ -168,58 +199,75 @@ class TopoViz:
             autosize=False,
             width=self.width,
             height=self.height,
-            plot_bgcolor="white")
-        self.graph.figure['layout'].update(margin=dict(l=0,r=0,b=0,t=20))
+            plot_bgcolor='rgba(0,0,0,0)',  #'#EAEAF2', #'rgba(44,44,44,.5)',
+            paper_bgcolor='rgba(0,0,0,0)')  #'#EAEAF2')  #'rgba(44,44,44,.5)')
+        self.graph.figure['layout'].update(margin=dict(l=0, r=0, b=0, t=0))
+
+    @property
+    def nb_topo(self):
+        if self.data:
+            return self.data.nb_topo
+        return self.rows * self.cols
 
     def init_slider(self):
         self.topo_slider = dcc.Slider(id='topo-slider',
-                                min=self.rows * self.cols -1,
-                                max=self.data.nb_topo -1,
-                                step=1,
-                                marks=None,
-                                value=self.data.nb_topo -1,
-                                included=False,
-                                updatemode='mouseup',
-                                vertical=True,
-                                verticalHeight=self.graph.figure.layout.height)
+                                      min=self.rows * self.cols - 1,
+                                      max=self.nb_topo - 1,
+                                      step=1,
+                                      marks=None,
+                                      value=self.nb_topo - 1,
+                                      included=False,
+                                      updatemode='mouseup',
+                                      vertical=True,
+                                      verticalHeight=self.graph.figure.layout.height)
+        self.topo_slider_div = html.Div(dcc.Slider)
 
-        
     def set_div(self):
         if self.use_topo_slider is None:
             # outer_div includes slider obj
-            outer_div = [html.Div(self.topo_slider,
-                                  style={"border":"2px purple solid",
-                                         'display':'inline-block'}),
-                                  self.graph_div]
+            graph_components = [self.topo_slider_div, self.graph_div]
         else:
             # outer_div is just the graph
-            outer_div = [self.graph_div]
-        self.container_plot = html.Div(children=outer_div,
-                                       style={"border":"2px black solid"},
-                                       className="outer-timeseries-div")
+            graph_components = [self.graph_div]
+        self.container_plot = html.Div(children=graph_components,
+                                       className=CSS['topo-container'])
 
     def set_callback(self):
         args = [Output('topo-graph', 'figure')]
         if self.use_topo_slider:
             args += [Input(self.use_topo_slider, 'value')]
-        else: 
+        else:
             args += [Input('topo-slider', 'value')]
+        if self.refresh_input:
+            args += [self.refresh_input]
 
         @self.app.callback(*args, suppress_callback_exceptions=False)
-        def callback(slider_val):             
-            self.initialize_layout(slider_val=slider_val)
+        def callback(slider_val, *args):
+            self.initialize_layout(slider_val=slider_val,
+                                   subplot_titles=self.titles,
+                                   show_sensors=self.show_sensors)
             return self.graph.figure
 
 
 class TopoVizICA(TopoViz):
     def __init__(self, app, montage, ica, ic_labels=None, **kwargs):
         """ """
-
-        if ic_labels:
-            kwargs["head_contours_color"] = {comp: ic_label_cmap[label]
-                                             for comp, label
-                                             in ic_labels.items()}
-        data = TopoData([dict(zip(montage.ch_names, component))
-                              for component in ica.get_components().T])
-        data.topo_values.index = list(ic_labels.keys())
+        data = self.init_vars(montage, ica, ic_labels)
         super(TopoVizICA, self).__init__(app, montage, data, **kwargs)
+
+    def init_vars(self, montage, ica, ic_labels):
+        if not montage or not ica or not ic_labels:
+            return None
+        if ic_labels:
+            self.head_contours_color = {comp: ic_label_cmap[label]
+                                        for comp, label
+                                        in ic_labels.items()}
+        data = TopoData([dict(zip(montage.ch_names, component))
+                         for component in ica.get_components().T])
+        data.topo_values.index = list(ic_labels.keys())
+        print('%%%%%', data)
+        return data
+
+    def load_recording(self, montage, ica, ic_labels):
+        data = self.init_vars(montage, ica, ic_labels)
+        super(TopoVizICA, self).load_recording(montage, data)
