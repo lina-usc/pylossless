@@ -1227,7 +1227,7 @@ class LosslessPipeline():
             derivatives_path = get_bids_path_from_fname(derivatives_path)
         self.raw = mne_bids.read_raw_bids(derivatives_path)
         bpath = derivatives_path.copy()
-        # Save ICAs
+        # Load ICAs
         for this_ica in ['ica1', 'ica2']:
             suffix = this_ica + '_ica'
             ica_bidspath = bpath.update(extension='.fif', suffix=suffix,
@@ -1235,7 +1235,7 @@ class LosslessPipeline():
             setattr(self, this_ica,
                     mne.preprocessing.read_ica(ica_bidspath.fpath))
 
-        # Save IC labels
+        # Load IC labels
         iclabels_bidspath = bpath.update(extension='.tsv', suffix='iclabels',
                                          check=False)
         self.flagged_ics.load_tsv(iclabels_bidspath.fpath)
