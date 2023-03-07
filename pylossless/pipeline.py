@@ -1085,8 +1085,9 @@ class LosslessPipeline():
         bpath = derivatives_path.copy()
         for this_ica, self_ica, in zip(['ica1', 'ica2'],
                                        [self.ica1, self.ica2]):
+            suffix = this_ica + '_ica'
             ica_bidspath = bpath.update(extension='.fif',
-                                        suffix=this_ica,
+                                        suffix=suffix,
                                         check=False)
             self_ica.save(ica_bidspath, overwrite=overwrite)
 
