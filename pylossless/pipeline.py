@@ -212,8 +212,8 @@ class FlaggedICs(dict):
         self.data_frame = _icalabel_to_data_frame(ica)
 
     def save_tsv(self, fname):
-     """Save IC labels.
-        
+        """Save IC labels.
+
         Parameters
         ----------
         fname : str | pathlib.Path
