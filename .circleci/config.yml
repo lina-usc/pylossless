@@ -3,6 +3,9 @@ orbs:
   python: circleci/python@2.0.3
   heroku: circleci/heroku@1.2.6
 
+dependencies:
+  pre:
+    - pip install pytest
 jobs:
   build_and_test: # this can be any name you choose
     executor: python/default
