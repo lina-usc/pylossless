@@ -3,9 +3,6 @@ orbs:
   python: circleci/python@2.0.3
   heroku: circleci/heroku@1.2.6
 
-dependencies:
-  pre:
-    - pip install pytest
 jobs:
   build_and_test: # this can be any name you choose
     executor: python/default
@@ -13,6 +10,13 @@ jobs:
       - checkout
       - python/install-packages:
           pkg-manager: pip
+      - run:
+          name: Install Python dependencies
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
+            pip install pytest
       - run:
           name: Run tests
           command: python -m pytest tests/test_simulated.py
