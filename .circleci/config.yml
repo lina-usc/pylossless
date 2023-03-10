@@ -11,16 +11,12 @@ jobs:
       - python/install-packages:
           pkg-manager: pip
       - run:
-          name: Install Python dependencies
+          name: Install pytest dependency
           command: |
-            python3 -m venv venv
-            . venv/bin/activate
-            pip install -r requirements.txt
             pip install pytest
       - run:
           name: Run tests
           command: |
-            . venv/bin/activate
             python -m pytest tests/test_simulated.py
       - persist_to_workspace:
           root: ~/project
