@@ -19,7 +19,9 @@ jobs:
             pip install pytest
       - run:
           name: Run tests
-          command: python -m pytest tests/test_simulated.py
+          command: |
+            . venv/bin/activate
+            python -m pytest tests/test_simulated.py
       - persist_to_workspace:
           root: ~/project
           paths:
