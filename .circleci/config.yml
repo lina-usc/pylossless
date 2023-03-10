@@ -11,7 +11,7 @@ jobs:
       - python/install-packages:
           pkg-manager: pip
       - run:
-          name: Install pytest dependency
+          name: Install pytest dependency  # TODO: replace this by handling dependencies in setup.py
           command: |
             pip install pytest
       - run:
