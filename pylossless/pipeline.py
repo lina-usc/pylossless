@@ -517,6 +517,8 @@ def marks_array2flags(inarray, flag_dim='epoch', outlier_method='q',
     dims = get_operate_dim(inarray, flag_dim)
     assert (len(dims) == 1)
     critrow = outlier_mask.mean(dims[0])
+    if 'epoch' in dims:
+        critrow = outlier_mask.mean('ch')
 
     # set the flag index threshold (may add quantile option here as well)
     if flag_method == 'fixed':
@@ -894,12 +896,12 @@ class LosslessPipeline():
                     del config_epoch['outlier_method']
                 elif config_epoch['outlier_method'] not in ('q', 'z', 'fixed'):
                     raise NotImplementedError
-        flag_sd_t_inds = marks_array2flags(data_sd, flag_dim='epoch',
+        flag_sd_t_inds = marks_array2flags(data_sd, flag_dim='ch',
                                            **config_epoch)[1]
         self.flagged_epochs.add_flag_cat('ch_sd', flag_sd_t_inds, self.raw, epochs)
 
         # flag channels for ch_sd
-        flag_sd_ch_inds = marks_array2flags(data_sd, flag_dim='ch',
+        flag_sd_ch_inds = marks_array2flags(data_sd, flag_dim='epoch',
                                             **self.config['ch_ch_sd'])[1]
 
         bad_ch_names = epochs_xr.ch[flag_sd_ch_inds]
