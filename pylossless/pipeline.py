@@ -516,9 +516,12 @@ def marks_array2flags(inarray, flag_dim='epoch', outlier_method='q',
     # average column of outlier_mask
     dims = get_operate_dim(inarray, flag_dim)
     assert (len(dims) == 1)
-    critrow = outlier_mask.mean(dims[0])
     if 'epoch' in dims:
         critrow = outlier_mask.mean('ch')
+    elif 'ch' in dims:
+        critrow = outlier_mask.mean('epoch')
+    else:
+        raise ValueError("flagdim must be 'epoch' or 'ch'")
 
     # set the flag index threshold (may add quantile option here as well)
     if flag_method == 'fixed':
