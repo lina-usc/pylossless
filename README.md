@@ -81,7 +81,7 @@ Great! We have our two ingredients (a dataset and a configuration file), and we 
 
 ```python
 pipeline = ll.LosslessPipeline('my_project_ll_config.yaml')
-pipeline.run(raw)
+pipeline.run(bids_path)
 
 ```
 
