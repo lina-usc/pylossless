@@ -1,9 +1,15 @@
-import yaml
-from pathlib import Path
+"""Module file contains Config class which defines procedures"""
+
 import sys
+from pathlib import Path
+import yaml
 
 
+# TODO: Add parameters and references for below functions.
+# TODO: Add magic methods and constructors for this class.
 class Config(dict):
+    """Representation of configuration files for a pipeline procedure.
+    """
 
     DEFAULT_CONFIG_PATH = (Path(__file__).parent.parent /
                            "assets" / "ll_default_config.yaml")

@@ -1,38 +1,29 @@
-# coding: utf-8
-
 """Clases and Functions for running the Lossless Pipeline."""
 
-from mne.utils import logger
-import mne_bids
-from mne_bids import get_bids_path_from_fname, BIDSPath
-import numpy as np
 from pathlib import Path
-import tempfile
+from functools import partial
 
-# BIDS
-import mne
-
-# Find breaks
-from mne.preprocessing import annotate_break
-
-# Co-Registration
-from mne.coreg import Coregistration
-
-# nearest neighbours
+# Math and data structures
+import numpy as np
 import pandas as pd
 import xarray as xr
 import scipy
 from scipy.spatial import distance_matrix
-from functools import partial
-from tqdm.notebook import tqdm
 
-# ICA
+# BIDS, MNE, and ICA
+import mne
+from mne.preprocessing import annotate_break # Find breaks
 from mne.preprocessing import ICA
+from mne.coreg import Coregistration
+from mne.utils import logger
 import mne_icalabel
-from mne_icalabel.annotation import write_components_tsv
 from mne_icalabel.config import ICLABEL_LABELS_TO_MNE
+import mne_bids
+from mne_bids import get_bids_path_from_fname, BIDSPath
 
+from tqdm.notebook import tqdm
 from .config import Config
+
 
 class FlaggedChs(dict):
     """Object for handling flagged channels in an instance of mne.Raw.
@@ -81,7 +72,10 @@ class FlaggedChs(dict):
                                              if ch not in self['manual']],
                                **kwargs)
 
+    # TODO: Add parameters and return.
     def save_tsv(self, fname):
+        """Serialize channel annotations.
+        """
         labels = []
         ch_names = []
         for key in self:
@@ -91,9 +85,12 @@ class FlaggedChs(dict):
                       "ch_names": ch_names}).to_csv(fname,
                                                     index=False, sep="\t")
 
+    # TODO: Add parameters and return.
     def load_tsv(self, fname):
-        df = pd.read_csv(fname, sep='\t')
-        for label, grp_df in df.groupby("labels"):
+        """Load serialized channel annotations.
+        """
+        out_df = pd.read_csv(fname, sep='\t')
+        for label, grp_df in out_df.groupby("labels"):
             self[label] = grp_df.ch_names.values
 
 
@@ -140,7 +137,10 @@ class FlaggedEpochs(dict):
         self['manual'] = np.unique(np.concatenate(list(self.values())))
         add_pylossless_annotations(raw, bad_epoch_inds, kind, epochs)
 
+    # TODO: Add parameters and return.
     def load_from_raw(self, raw):
+        """Load flagged bad epochs data from raw file.
+        """
         sfreq = raw.info['sfreq']
         for annot in raw.annotations:
             if annot['description'].startswith('bad_pylossless'):
@@ -222,7 +222,10 @@ class FlaggedICs(dict):
         self.fname = fname
         self.data_frame.to_csv(fname, sep='\t', index=False, na_rep='n/a')
 
+    # TODO: Add parameters.
     def load_tsv(self, fname, data_frame=None):
+        """Load flagged ICs from file.  
+        """
         self.fname = fname
         if data_frame is None:
             data_frame = pd.read_csv(fname, sep='\t')
@@ -371,7 +374,7 @@ def variability_across_epochs(epochs_xr, var_measure='sd',
         raise NotImplementedError
 
 
-# TODO change naming of 'init' and init_dir specifically,
+# TODO: change naming of 'init' and init_dir specifically,
 # neg/pos/both for lower/upper bound options.
 def marks_array2flags(inarray, flag_dim='epoch', outlier_method='q',
                       init_vals=(), init_dir='both', init_crit=(),
@@ -515,7 +518,7 @@ def marks_array2flags(inarray, flag_dim='epoch', outlier_method='q',
 
     # average column of outlier_mask
     dims = get_operate_dim(inarray, flag_dim)
-    assert (len(dims) == 1)
+    assert len(dims) == 1
     critrow = outlier_mask.mean(dims[0])
 
     # set the flag index threshold (may add quantile option here as well)
@@ -634,7 +637,7 @@ def chan_neighbour_r(epochs, nneigbr, method):
     return m_neigbr_r.rename(ref_chan="ch")
 
 
-# TODO check that annot type contains all unique flags
+# TODO: check that annot type contains all unique flags
 def marks_flag_gap(raw, min_gap_ms, included_annot_type=None,
                    out_annot_name='bad_pylossless_gap'):
     """Mark small gaps in time between pylossless annotations.
@@ -732,7 +735,7 @@ def warp_locs(self, raw):
     if 'montage_info' in self.config['replace_string']:
         if isinstance(self.config['replace_string']['montage_info'], str):
             pass
-            # TODO if it is a BIDS channel tsv, load the tsv,sd_t_f_vals
+            # TODO: if it is a BIDS channel tsv, load the tsv,sd_t_f_vals
             # else read the file that is assumed to be a transformation matrix.
         else:
             pass
@@ -833,7 +836,7 @@ class LosslessPipeline():
 
     def run_staging_script(self):
         """Run a staging script if specified in config."""
-        # TODO
+        # TODO:
         if 'staging_script' in self.config:
             staging_script = Path(self.config['staging_script'])
             if staging_script.exists():
@@ -963,8 +966,8 @@ class LosslessPipeline():
         trim_mean = partial(scipy.stats.mstats.trimmed_mean, limits=(trim, trim))
         trim_std = partial(scipy.stats.mstats.trimmed_std, limits=(trim, trim))
 
-        z = self.config['bridge']['bridge_z']
-        mask = msr > msr.reduce(trim_mean, dim="ch") + z*msr.reduce(trim_std, dim="ch")
+        z_val = self.config['bridge']['bridge_z']
+        mask = msr > msr.reduce(trim_mean, dim="ch") + z_val*msr.reduce(trim_std, dim="ch")
 
         bad_ch_names = data_r_ch.ch.values[mask]
         self.flagged_chs.add_flag_cat(kind='bridge',
@@ -1078,7 +1081,7 @@ class LosslessPipeline():
                                 overwrite=overwrite,
                                 format='EDF',
                                 allow_preload=True)
-        #  TODO address derivatives support in MNE bids.
+        # TODO: address derivatives support in MNE bids.
         # use shutils ( or pathlib?) to rename file with ll suffix
 
         # Save ICAs
@@ -1096,7 +1099,7 @@ class LosslessPipeline():
                                          suffix='iclabels',
                                          check=False)
         self.flagged_ics.save_tsv(iclabels_bidspath)
-        # TODO epoch marks and ica marks are not currently saved into annots
+        # TODO: epoch marks and ica marks are not currently saved into annots
         # raw.save(derivatives_path, overwrite=True, split_naming='bids')
         config_bidspath = bpath.update(extension='.yaml',
                                        suffix='ll_config',
@@ -1110,13 +1113,14 @@ class LosslessPipeline():
         self.flagged_chs.save_tsv(flagged_chs_fpath.fpath.name)
 
     def filter(self):
+        """Run filter procedure based on structured config args"""
         # 5.a. Filter lowpass/highpass
         self.raw.filter(**self.config['filtering']['filter_args'])
 
         if 'notch_filter_args' in self.config['filtering']:
             notch_args = self.config['filtering']['notch_filter_args']
             # in raw.notch_filter, freqs=None is ok if method=spectrum_fit
-            if notch_args['freqs'] is None and 'method' not in notch_args:
+            if not notch_args['freqs'] and 'method' not in notch_args:
                 logger.debug('No notch filter arguments provided. Skipping')
             else:
                 self.raw.notch_filter(**notch_args)
@@ -1145,6 +1149,7 @@ class LosslessPipeline():
         overwrite : bool (default False).
             Whether to overwrite existing files of the same name.
         """
+        # Linter ID'd below as bad practice - likely need a structure fix
         self.bids_path = bids_path
         self.raw = mne_bids.read_raw_bids(self.bids_path)
         self.raw.load_data()
@@ -1153,7 +1158,9 @@ class LosslessPipeline():
         if save:
             self.save(self.get_derivative_path(bids_path), overwrite=overwrite)
 
+    # TODO: Finish docstring
     def run_with_raw(self, raw):
+        """Wrapper for executing pipeline."""
         self.raw = raw
         self._run()
         return self.raw
@@ -1203,7 +1210,7 @@ class LosslessPipeline():
         # 12. Calculate IC SD
         self.flag_epoch_ic_sd1()
 
-        # 13. TODO integrate labels from IClabels to self.flagged_ics
+        # 13. TODO: integrate labels from IClabels to self.flagged_ics
         self.run_ica('run2')
 
         # 14. Flag very small time periods between flagged time
@@ -1221,8 +1228,9 @@ class LosslessPipeline():
         for path in paths:
             self.run(path)
 
+    # TODO: Finish docstring
     def load_ll_derivative(self, derivatives_path):
-        """ """
+        """Load a completed pylossless derivative state."""
         if not isinstance(derivatives_path, BIDSPath):
             derivatives_path = get_bids_path_from_fname(derivatives_path)
         self.raw = mne_bids.read_raw_bids(derivatives_path)
@@ -1255,7 +1263,9 @@ class LosslessPipeline():
 
         return self
 
+    # TODO: Finish docstring
     def get_derivative_path(self, bids_path, derivative_name='pylossless'):
+        """Helper function for building derivative paths and files."""
         lossless_suffix = bids_path.suffix if bids_path.suffix else ""
         lossless_suffix += '_ll'
         lossless_root = bids_path.root / 'derivatives' / derivative_name
