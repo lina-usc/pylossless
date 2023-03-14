@@ -520,8 +520,10 @@ def marks_array2flags(inarray, flag_dim='epoch', outlier_method='q',
         critrow = outlier_mask.mean('ch')
     elif 'ch' in dims:
         critrow = outlier_mask.mean('epoch')
+    elif 'ic' in dims:
+        critrow = outlier_mask.mean('epoch')
     else:
-        raise ValueError("flagdim must be 'epoch' or 'ch'")
+        raise ValueError(f"flagdim must be 'epoch', 'ch', or 'ic', got {dims}")
 
     # set the flag index threshold (may add quantile option here as well)
     if flag_method == 'fixed':
@@ -1056,12 +1058,13 @@ class LosslessPipeline():
         # Calculate IC sd by window
         epochs = self.get_epochs()
         epochs_xr = epochs_to_xr(epochs, kind="ic", ica=self.ica1)
-        epoch_ic_sd1 = variability_across_epochs(epochs_xr)
+        #epoch_ic_sd1 = variability_across_epochs(epochs_xr)
+        data_sd = epochs_xr.std('time')
 
         # Create the windowing sd criteria
         kwargs = self.config['ica']['ic_ic_sd']
-        flag_epoch_ic_inds = marks_array2flags(epoch_ic_sd1,
-                                               flag_dim='ic', **kwargs)[1]
+        flag_epoch_ic_inds = marks_array2flags(data_sd,
+                                               flag_dim='epoch', **kwargs)[1]
 
         self.flagged_epochs.add_flag_cat('ic_sd1', flag_epoch_ic_inds,
                                          self.raw, epochs)
