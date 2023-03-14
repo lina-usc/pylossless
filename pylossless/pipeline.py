@@ -1116,7 +1116,6 @@ class LosslessPipeline():
         if 'notch_filter_args' in self.config['filtering']:
             notch_args = self.config['filtering']['notch_filter_args']
             # in raw.notch_filter, freqs=None is ok if method=spectrum_fit
-            print('DEBUGGING: ', notch_args)
             if not notch_args['freqs'] and 'method' not in notch_args:
                 logger.debug('No notch filter arguments provided. Skipping')
             else:
