@@ -1,11 +1,13 @@
-# Authors: Christian O'Reilly <christian.oreilly@sc.edu>;
-# Scott Huberty <scott.huberty@mail.mcgill.ca>
-# James Desjardins <jim.a.desjardins@gmail.com>
-# License: MIT
+"""
+    Authors: Christian O'Reilly <christian.oreilly@sc.edu>;
+    Scott Huberty <scott.huberty@mail.mcgill.ca>
+    James Desjardins <jim.a.desjardins@gmail.com>
+    License: MIT
+"""
 
 from setuptools import setup
 
-install_requires = ['numpy', 'EDFlib', 'mne', 'mne_bids', 'pandas', 
+install_requires = ['numpy', 'EDFlib', 'mne', 'mne_bids', 'pandas',
                     'xarray', 'scipy', 'mne_icalabel', 'pyyaml', 
                     'IProgress', 'ipywidgets', 'scikit-learn']
 
@@ -20,4 +22,5 @@ setup(
     packages=['pylossless'],
     install_requires=install_requires,
     include_package_data=True,
-    entry_points={"console_scripts": ["pylossless_qc=pylossless.dash.app:main"]})
+    entry_points={"console_scripts": ["pylossless_qc=pylossless.dash.app:main"]}
+)
