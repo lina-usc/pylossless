@@ -128,3 +128,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Demo thing to let people not pollute repos
+my_project_ll_config.yaml
