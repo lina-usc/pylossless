@@ -63,6 +63,9 @@ class FlaggedChs(dict):
             bad_ch_names : list | tuple
                 Channel names. Will be the values for the `kind` `dict` `key`.
         """
+        logger.debug(f'NEW BAD CHANNELS {bad_ch_names}')
+        if isinstance(bad_ch_names, xr.DataArray):
+            bad_ch_names = bad_ch_names.values
         self[kind] = bad_ch_names
         _mark_bad_channel(ch_names=bad_ch_names, raw=raw)
         self['manual'] = np.unique(np.concatenate(list(self.values())))
@@ -555,7 +558,7 @@ def marks_array2flags(inarray, flag_dim='epoch', outlier_method='q',
 
 def _mark_bad_channel(ch_names, raw):
     """Add a channel name to inst.info['bads']"""
-    raw.info['bads'].extend(ch_names.values)
+    raw.info['bads'].extend(ch_names)
 
 def add_pylossless_annotations(raw, inds, event_type, epochs):
     """Add annotations for flagged epochs.
