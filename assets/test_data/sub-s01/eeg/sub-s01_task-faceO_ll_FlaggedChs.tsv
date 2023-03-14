@@ -1,0 +1,60 @@
+labels	ch_names
+manual	A10
+manual	A11
+manual	A12
+manual	A25
+manual	A26
+manual	A27
+manual	A5
+manual	A8
+manual	A9
+manual	C1
+manual	C10
+manual	C12
+manual	C15
+manual	C17
+manual	C28
+manual	Status
+outliers	"<xarray.DataArray 'ch' ()>
+array('A5', dtype='<U6')
+Coordinates:
+    ch       <U6 'A5'"
+outliers	"<xarray.DataArray 'ch' ()>
+array('A27', dtype='<U6')
+Coordinates:
+    ch       <U6 'A27'"
+outliers	"<xarray.DataArray 'ch' ()>
+array('C1', dtype='<U6')
+Coordinates:
+    ch       <U6 'C1'"
+outliers	"<xarray.DataArray 'ch' ()>
+array('C10', dtype='<U6')
+Coordinates:
+    ch       <U6 'C10'"
+outliers	"<xarray.DataArray 'ch' ()>
+array('C12', dtype='<U6')
+Coordinates:
+    ch       <U6 'C12'"
+outliers	"<xarray.DataArray 'ch' ()>
+array('C15', dtype='<U6')
+Coordinates:
+    ch       <U6 'C15'"
+outliers	"<xarray.DataArray 'ch' ()>
+array('C17', dtype='<U6')
+Coordinates:
+    ch       <U6 'C17'"
+outliers	"<xarray.DataArray 'ch' ()>
+array('C28', dtype='<U6')
+Coordinates:
+    ch       <U6 'C28'"
+outliers	"<xarray.DataArray 'ch' ()>
+array('Status', dtype='<U6')
+Coordinates:
+    ch       <U6 'Status'"
+bridge	A9
+bridge	A10
+bridge	A11
+bridge	A12
+bridge	A25
+bridge	A26
+rank	A8
