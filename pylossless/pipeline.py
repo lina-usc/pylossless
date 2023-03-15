@@ -24,7 +24,7 @@ import xarray as xr
 import scipy
 from scipy.spatial import distance_matrix
 from functools import partial
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 
 # ICA
 from mne.preprocessing import ICA
