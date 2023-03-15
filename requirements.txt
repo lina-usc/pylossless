@@ -1,5 +1,5 @@
 numpy>=1.16.2
-EDFlib
+EDFlib-Python
 mne>=1.3
 mne_bids
 pandas
@@ -7,9 +7,6 @@ xarray
 scipy>=1.2.1
 mne_icalabel
 pyyaml
-IProgress
-ipywidgets
-scikit-learn
 
 # Dash
 gunicorn>=19.8.1
