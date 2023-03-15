@@ -1,4 +1,4 @@
-"""Clases and Functions for running the Lossless Pipeline."""
+"""Classes and Functions for running the Lossless Pipeline."""
 
 from pathlib import Path
 from functools import partial
@@ -299,7 +299,7 @@ def get_operate_dim(array, flag_dim):
     ----------
     array : Xarray DataArray
         An instance of `Xarray.DataArray` that was constructed from an
-        `mne.Epochs` object, using `pylossless.pipleine.epochs_to_xr`.
+        `mne.Epochs` object, using `pylossless.pipeline.epochs_to_xr`.
     flag_dim : str
         Name of the Xarray.DataArray.dims to remove. Must be one of 'epoch',
         'ch', or 'ic'.
@@ -324,7 +324,7 @@ def variability_across_epochs(epochs_xr, var_measure='sd',
     ----------
     epochs_xr : `Xarray.DataArray`
         An instance of `Xarray.DataArray` that was constructed from an
-        `mne.Epochs` object, using `pylossless.pipleine.epochs_to_xr`.
+        `mne.Epochs` object, using `pylossless.pipeline.epochs_to_xr`.
     var_measure : str (default 'sd')
         The measure to assess variability. Must be one of 'sd' or 'absmean'.
     epochs_inds : list | tuple (default `None`)
@@ -333,7 +333,7 @@ def variability_across_epochs(epochs_xr, var_measure='sd',
         `epochs_xr['epoch']`. If `None`, The Epoch is ignored.
     ch_names : list | tuple (default `None`)
         Names of the channels that should be included in the variability
-        assessment. Names must corresond to existing values in
+        assessment. Names must correspond to existing values in
         `epochs_xr['ch']`. If `None`, channel name dimension is ignored.
     ic_inds : list | tuple (default `None`)
         Indices of the independent components in epochs_xr['ic'] to be
@@ -383,7 +383,7 @@ def marks_array2flags(inarray, flag_dim='epoch', outlier_method='q',
     This function takes an array with typically created by chan_variance or
     chan_neighbour_r and marks either periods of time or sources as outliers.
     Often these discovered time periods are artefactual and are marked as such.
-    An array of values representating the distribution of values inside an
+    An array of values representing the distribution of values inside an
     epoch are passed to the function. Next, these values are put through one
     of three outlier detection schemes. Epochs that are outliers are marked
     as 1's and are 0 otherwise in a second data array. This array is then
@@ -426,7 +426,7 @@ def marks_array2flags(inarray, flag_dim='epoch', outlier_method='q',
     flag_crit : float
         Second pass for flagging.
         If `outler_method` == `'fixed'` and `'fixed'` is selected for
-        `flag_method`, This value should bea threshhold that something must
+        `flag_method`, This value should bea threshold that something must
         pass to be flagged. i.e. if 0.2 (20%) of channels behaving as
         outliers. If `outlier_method` == `'q'`, this value scales the distance
         along with `init_crit`.
@@ -442,7 +442,7 @@ def marks_array2flags(inarray, flag_dim='epoch', outlier_method='q',
     outind : np.array
         Array of 1's and 0's. 1's represent flagged sources/time.
         Indices are only flagged if out_dist array fall above a second
-        outlier threshhold.
+        outlier threshold.
      out_dist : np.array
         Distribution of rejection array. Either the mean row-wise or
         column-wise of outlier_mask.
@@ -457,7 +457,7 @@ def marks_array2flags(inarray, flag_dim='epoch', outlier_method='q',
     be filled while `init_crit` is to be left empty. This would have the
     effect of marking some interval, e.g. [0 50] as being an outlier.
     If `'fixed'` is selected for `'flag_method'`, only `'flag_crit'` should be
-    filled. This translates to a threshhold that something must pass
+    filled. This translates to a threshold that something must pass
     to be flagged. i.e. if 0.2 (20%) of channels are behaving as
     outliers, then the period of time is flagged. Conversely if
     `'flag_dim'` is row, if a source is bad 20% of the time it is marked
@@ -852,7 +852,7 @@ class LosslessPipeline():
     def flag_outlier_chs(self):
         """Flag outlier Channels."""
         # Window the continuous data
-        # logging_log('INFO', 'Windowing the continous data...');
+        # logging_log('INFO', 'Windowing the continuous data...');
         epochs_xr = epochs_to_xr(self.get_epochs(), kind="ch")
 
         # Determines comically bad channels,
@@ -919,7 +919,7 @@ class LosslessPipeline():
 
     def get_n_nbr(self):
         """Calculate nearest neighbour correlation for channels."""
-        # Calculate nearest neighbout correlation on
+        # Calculate nearest neighbour correlation on
         # non-'manual' flagged channels and epochs...
         epochs = self.get_epochs()
         n_nbr_ch = self.config['nearest_neighbors']['n_nbr_ch']
@@ -933,7 +933,7 @@ class LosslessPipeline():
         data array : `numpy.array`
             an instance of `numpy.array`
         """
-        # Calculate nearest neighbout correlation on
+        # Calculate nearest neighbour correlation on
         # non-'manual' flagged channels and epochs...
         data_r_ch = self.get_n_nbr()[0]
 
@@ -956,7 +956,7 @@ class LosslessPipeline():
         data_r_ch : `numpy.array`
             an instance of `numpy.array`
         """
-        # Uses the correlation of neighboors
+        # Uses the correlation of neighbours
         # calculated to flag bridged channels.
 
         msr = data_r_ch.median("epoch") / data_r_ch.reduce(scipy.stats.iqr,
@@ -1013,7 +1013,7 @@ class LosslessPipeline():
         section looks at the correlation, but between all channels and for
         epochs of time. Time segments are flagged for removal.
         """
-        # Calculate nearest neighbout correlation on
+        # Calculate nearest neighbour correlation on
         # non-'manual' flagged channels and epochs...
         data_r_ch, epochs = self.get_n_nbr()
 
@@ -1037,7 +1037,7 @@ class LosslessPipeline():
         Parameters
         ----------
         run : str
-            Must be 'run1' or 'run2'. 'run1' is the intial ICA use to flag
+            Must be 'run1' or 'run2'. 'run1' is the initial ICA use to flag
             epochs, 'run2' is the final ICA used to classify components with
             `mne_icalabel`.
         """
