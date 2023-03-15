@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 import dash
-from dash import dcc, html
+from dash import dcc, html, no_update
 from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
 
@@ -78,15 +78,13 @@ class QCGUI:
                                            refresh_input=refresh_input)
         self.eeg_visualizer = MNEVisualizer(self.app,
                                             self.raw,
-                                            time_slider=self.ica_visualizer
-                                                            .dash_ids['time-slider'],
                                             dcc_graph_kwargs=dict(config={'modeBarButtonsToRemove':['zoom','pan']}),
                                             annot_created_callback=self.annot_created_callback,
-                                            refresh_input=refresh_input)
+                                            refresh_input=refresh_input,
+                                            show_time_slider=False)
 
         montage = self.raw.get_montage() if self.raw else None
         self.ica_topo = TopoVizICA(self.app, montage, self.ica, self.ic_types,
-                                   topo_slider_id=self.ica_visualizer.dash_ids['ch-slider'],
                                    show_sensors=True,
                                    refresh_input=refresh_input)
 
@@ -268,3 +266,45 @@ class QCGUI:
             self.pipeline.save(get_bids_path_from_fname(self.fpath), overwrite=True)
             print('file saved!')
             return dash.no_update
+
+        @self.app.callback(
+                Output(self.eeg_visualizer.dash_ids['time-slider'],
+                       'value'),
+                Output(self.ica_visualizer.dash_ids['time-slider'],
+                       'value'),
+                Input(self.eeg_visualizer.dash_ids['time-slider'],
+                      'value'),
+                Input(self.ica_visualizer.dash_ids['time-slider'],
+                      'value'),
+                prevent_initial_call=True)
+        def sync_time_sliders(eeg_time_slider, ica_time_slider):
+            ctx = dash.callback_context
+            if ctx.triggered:
+                trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+                print(trigger_id)
+                if trigger_id == self.eeg_visualizer.dash_ids['time-slider']:
+                    value = eeg_time_slider
+                    return no_update, value
+                elif trigger_id == self.ica_visualizer.dash_ids['time-slider']:
+                    value = ica_time_slider
+                    return value, no_update
+
+        @self.app.callback(
+                Output(self.ica_visualizer.dash_ids['ch-slider'],
+                       'value'),
+                Output('topo-slider',  'value'),
+                Input(self.ica_visualizer.dash_ids['ch-slider'],
+                      'value'),
+                Input('topo-slider', 'value'),
+                prevent_initial_call=True)
+        def sync_ica_sliders(ica_ch_slider, ica_topo_slider):
+            ctx = dash.callback_context
+            if ctx.triggered:
+                trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+                print(trigger_id)
+                if trigger_id == self.ica_visualizer.dash_ids['ch-slider']:
+                    value = ica_ch_slider
+                    return no_update, value
+                elif trigger_id == 'topo-slider':
+                    value = ica_topo_slider
+                    return value, no_update
