@@ -74,8 +74,7 @@ class FlaggedChs(dict):
 
     # TODO: Add parameters and return.
     def save_tsv(self, fname):
-        """Serialize channel annotations.
-        """
+        """Serialize channel annotations."""
         labels = []
         ch_names = []
         for key in self:
@@ -87,8 +86,7 @@ class FlaggedChs(dict):
 
     # TODO: Add parameters and return.
     def load_tsv(self, fname):
-        """Load serialized channel annotations.
-        """
+        """Load serialized channel annotations."""
         out_df = pd.read_csv(fname, sep='\t')
         for label, grp_df in out_df.groupby("labels"):
             self[label] = grp_df.ch_names.values
@@ -139,8 +137,7 @@ class FlaggedEpochs(dict):
 
     # TODO: Add parameters and return.
     def load_from_raw(self, raw):
-        """Load flagged bad epochs data from raw file.
-        """
+        """Load flagged bad epochs data from raw file."""
         sfreq = raw.info['sfreq']
         for annot in raw.annotations:
             if annot['description'].startswith('bad_pylossless'):
@@ -224,8 +221,7 @@ class FlaggedICs(dict):
 
     # TODO: Add parameters.
     def load_tsv(self, fname, data_frame=None):
-        """Load flagged ICs from file.
-        """
+        """Load flagged ICs from file."""
         self.fname = fname
         if data_frame is None:
             data_frame = pd.read_csv(fname, sep='\t')
@@ -1130,7 +1126,7 @@ class LosslessPipeline():
         self.flagged_chs.save_tsv(flagged_chs_fpath.fpath.name)
 
     def filter(self):
-        """Run filter procedure based on structured config args"""
+        """Run filter procedure based on structured config args."""
         # 5.a. Filter lowpass/highpass
         self.raw.filter(**self.config['filtering']['filter_args'])
 
@@ -1176,7 +1172,7 @@ class LosslessPipeline():
 
     # TODO: Finish docstring
     def run_with_raw(self, raw):
-        """Wrapper for executing pipeline."""
+        """Execute pipeline on a raw object."""
         self.raw = raw
         self._run()
         return self.raw
@@ -1281,7 +1277,7 @@ class LosslessPipeline():
 
     # TODO: Finish docstring
     def get_derivative_path(self, bids_path, derivative_name='pylossless'):
-        """Helper function for building derivative paths and files."""
+        """Build derivative path for file."""
         lossless_suffix = bids_path.suffix if bids_path.suffix else ""
         lossless_suffix += '_ll'
         lossless_root = bids_path.root / 'derivatives' / derivative_name
