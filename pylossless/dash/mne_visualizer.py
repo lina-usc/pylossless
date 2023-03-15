@@ -24,7 +24,8 @@ def _add_watermark_annot():
 class MNEVisualizer:
 
     def __init__(self, app, inst, dcc_graph_kwargs=None,
-                 dash_id_suffix='', ch_slider=None, time_slider=None,
+                 dash_id_suffix='',
+                 show_time_slider=True, show_ch_slider=True,
                  scalings='auto', zoom=2, remove_dc=True,
                  annot_created_callback=None, refresh_input=None):
         """ text
@@ -84,9 +85,8 @@ class MNEVisualizer:
         self.graph_div = html.Div([self.graph],
                                   style=STYLE['timeseries-div'],
                                   className=CSS['timeseries-div'])
-
-        self.use_ch_slider = ch_slider
-        self.use_time_slider = time_slider
+        self.show_time_slider = show_time_slider
+        self.show_ch_slider = show_ch_slider
         self.shift_down = False
         self.inst = inst
 
@@ -279,14 +279,9 @@ class MNEVisualizer:
 
     def set_callback(self):
         args = [Output(self.dash_ids['graph'], 'figure')]
-        if self.use_ch_slider:
-            args += [Input(self.use_ch_slider, 'value')]
-        else: 
-            args += [Input(self.dash_ids['ch-slider'], 'value')]
-        if self.use_time_slider:
-            args += [Input(self.use_time_slider, 'value')]
-        else:
-            args += [Input(self.dash_ids['time-slider'], 'value')]
+        args += [Input(self.dash_ids['ch-slider'], 'value')]
+
+        args += [Input(self.dash_ids['time-slider'], 'value')]
         args += [Input(self.dash_ids['graph'], "clickData"),
                  Input(self.dash_ids['graph'], "hoverData")]
         if self.refresh_input:
@@ -299,7 +294,7 @@ class MNEVisualizer:
 
             update_layout_ids = [self.dash_ids['ch-slider'],
                                  self.dash_ids['time-slider'],
-                                 self.use_time_slider, self.use_ch_slider]
+                                 ]
             if self.refresh_input:
                 update_layout_ids.append(self.refresh_input.component_id)
 
@@ -392,7 +387,10 @@ class MNEVisualizer:
                                          vertical=True,
                                          verticalHeight=300)
         self.channel_slider_div = html.Div(self.channel_slider,
-                                           className=CSS['ch-slider-div'])
+                                           className=CSS['ch-slider-div'],
+                                           style={})
+        if not self.show_ch_slider:
+            self.channel_slider_div.style.update({'display': 'none'})
 
         marks_keys = np.round(np.linspace(self.times[0], self.times[-1], 10))
         self.time_slider = dcc.Slider(id=self.dash_ids['time-slider'],
@@ -402,25 +400,21 @@ class MNEVisualizer:
                                       value=self.win_start,
                                       vertical=False,
                                       included=False,
-                                      updatemode='mouseup')
-        self.time_slider_div = html.Div(self.time_slider, className=CSS['time-slider-div'])
+                                      updatemode='mouseup',
+                                      )
+        self.time_slider_div = html.Div(self.time_slider,
+                                        className=CSS['time-slider-div'],
+                                        style={})
+        if not self.show_time_slider:
+            self.time_slider_div.style.update({'display': 'none'})
 
     def set_div(self):
         """build the final hmtl.Div to be returned to user."""
-        if self.use_ch_slider is None:
-            # include both the timeseries graph and channel slider
-            graph_components = [self.channel_slider_div, self.graph_div]
-        else:
-            # just the graph, exclude the ch slider
-            graph_components = [self.graph_div]
-        if self.use_time_slider is None:
-            # include the time slider
-            graph_components = graph_components + [self.time_slider_div]
-
-        else:
-            # don't include the time slider.
-            graph_components = graph_components
-
+        # include both the timeseries graph and the sliders
+        # note that the order of components is important
+        graph_components = [self.channel_slider_div,
+                            self.graph_div,
+                            self.time_slider_div]
         # pass the list of components into an html.Div
         self.container_plot = html.Div(id=self.dash_ids['container-plot'],
                                        className=CSS['timeseries-container'],
