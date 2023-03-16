@@ -1130,7 +1130,7 @@ class LosslessPipeline():
         flagged_chs_fpath = bpath.update(extension='.tsv',
                                          suffix='ll_FlaggedChs',
                                          check=False)
-        self.flagged_chs.save_tsv(flagged_chs_fpath.fpath.name)
+        self.flagged_chs.save_tsv(flagged_chs_fpath.fpath)
 
     def filter(self):
         """Run filter procedure based on structured config args."""
@@ -1257,6 +1257,7 @@ class LosslessPipeline():
         # Load ICAs
         for this_ica in ['ica1', 'ica2']:
             suffix = this_ica + '_ica'
+            print('$$$ ', bpath)
             ica_bidspath = bpath.update(extension='.fif', suffix=suffix,
                                         check=False)
             setattr(self, this_ica,
@@ -1275,7 +1276,7 @@ class LosslessPipeline():
         flagged_chs_fpath = bpath.update(extension='.tsv',
                                          suffix='ll_FlaggedChs',
                                          check=False)
-        self.flagged_chs.load_tsv(flagged_chs_fpath.fpath.name)
+        self.flagged_chs.load_tsv(flagged_chs_fpath.fpath)
 
         # Load Flagged Epochs
         self.flagged_epochs.load_from_raw(self.raw)
