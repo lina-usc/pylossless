@@ -11,11 +11,23 @@ jobs:
       - python/install-packages:
           pkg-manager: pip
       - run:
-          name: Install pytest dependency  # TODO: replace this by handling dependencies in setup.py
+          name: Install testing dependencies
           command: |
-            pip install pytest
+            pip install -r requirements_testing.txt
       - run:
-          name: Run tests
+          name: Check for flakes
+          command: |
+            flake8 ./pylossless/config.py ./pylossless/pipeline.py
+      - run:
+          name: Check for typos
+          command: |
+            codespell ./pylossless/config.py ./pylossless/pipeline.py
+      - run:
+          name: Check Docstings
+          command: |
+            pydocstyle ./pylossless/config.py ./pylossless/pipeline.py
+      - run:
+          name: Test pipeline
           command: |
             python -m pytest tests/test_simulated.py
       - persist_to_workspace:
