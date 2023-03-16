@@ -24,7 +24,7 @@ import xarray as xr
 import scipy
 from scipy.spatial import distance_matrix
 from functools import partial
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 
 # ICA
 from mne.preprocessing import ICA
@@ -1116,7 +1116,7 @@ class LosslessPipeline():
         if 'notch_filter_args' in self.config['filtering']:
             notch_args = self.config['filtering']['notch_filter_args']
             # in raw.notch_filter, freqs=None is ok if method=spectrum_fit
-            if notch_args['freqs'] is None and 'method' not in notch_args:
+            if not notch_args['freqs'] and 'method' not in notch_args:
                 logger.debug('No notch filter arguments provided. Skipping')
             else:
                 self.raw.notch_filter(**notch_args)
