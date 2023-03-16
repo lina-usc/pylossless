@@ -11,5 +11,18 @@ This pipeline is built on the idea that sharing and pooling data across the scie
 
 ## 📘 Installation and usage instructions
 
+
+This package is not yet deployed on PyPI. It can therefore be installed with
+
+```bash
+$ git clone git@github.com:lina-usc/pylossless.git
+$ pip install --editable ./pylossless
+```
+for an editable installation, or simply with 
+```bash
+$ pip install git+https://github.com/lina-usc/pylossless.git
+```
+for a static version. 
+
 Please find the documentation at
 [**pylossless.readthedocs.io**](https://pylossless.readthedocs.io/en/latest/index.html).
