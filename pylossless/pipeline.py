@@ -29,7 +29,6 @@ from mne_icalabel.config import ICLABEL_LABELS_TO_MNE
 import mne_bids
 from mne_bids import get_bids_path_from_fname, BIDSPath
 
-from tqdm.notebook import tqdm
 from .config import Config
 
 
@@ -270,7 +269,7 @@ def epochs_to_xr(epochs, kind="ch", ica=None):
 
 
 def _icalabel_to_data_frame(ica):
-    """ """
+    """Export IClabels to pandas DataFrame."""
     # initialize status, description and IC type
     status = ["good"] * ica.n_components_
     status_description = ["n/a"] * ica.n_components_
