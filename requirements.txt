@@ -7,6 +7,7 @@ xarray
 scipy>=1.2.1
 mne_icalabel
 pyyaml
+scikit-learn
 
 # Dash
 gunicorn>=19.8.1

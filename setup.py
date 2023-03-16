@@ -8,7 +8,8 @@
 from setuptools import setup
 
 install_requires = ['numpy', 'EDFlib-Python', 'mne', 'mne_bids', 'pandas',
-                    'xarray', 'scipy', 'mne_icalabel', 'pyyaml']
+                    'xarray', 'scipy', 'mne_icalabel', 'pyyaml',
+                    'scikit-learn']
 
 setup(
     name='pylossless',
