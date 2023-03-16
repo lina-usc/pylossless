@@ -1,6 +1,6 @@
 # Authors: Christian O'Reilly <christian.oreilly@sc.edu>
 #          Scott Huberty <seh33@uw.edu>
-#          Tyler Collins <tk11br@sharcnet.ca>
+#          Tyler Collins <collins.tyler.k@gmail.com>
 #
 # License: MIT
 
