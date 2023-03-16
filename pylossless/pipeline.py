@@ -9,6 +9,8 @@ import pandas as pd
 import xarray as xr
 import scipy
 from scipy.spatial import distance_matrix
+from functools import partial
+from tqdm import tqdm
 
 # BIDS, MNE, and ICA
 import mne

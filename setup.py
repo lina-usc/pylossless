@@ -7,10 +7,10 @@ License: MIT
 
 from setuptools import setup
 
-install_requires = ['numpy', 'EDFlib', 'mne', 'mne_bids', 'pandas',
-                    'xarray', 'scipy', 'mne_icalabel', 'pyyaml', 
-                    'IProgress', 'ipywidgets', 'scikit-learn']
-
+install_requires = ['numpy', 'EDFlib-Python', 'mne', 'mne_bids', 'pandas',
+                    'xarray', 'scipy', 'mne_icalabel', 'pyyaml',
+                    'scikit-learn']
+        
 setup(
     name='pylossless',
     version="0.0.1",
