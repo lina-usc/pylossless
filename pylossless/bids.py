@@ -1,3 +1,9 @@
+# Authors: Christian O'Reilly <christian.oreilly@sc.edu>
+#          Scott Huberty <seh33@uw.edu>
+#          Tyler Collins <tk11br@sharcnet.ca>
+#
+# License: MIT
+
 """Helper functions for extending mne_bids functionality."""
 
 from mne_bids import BIDSPath, write_raw_bids

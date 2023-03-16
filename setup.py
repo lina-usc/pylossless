@@ -1,7 +1,8 @@
 """ Authors:
-Christian O'Reilly <christian.oreilly@sc.edu>;
-Scott Huberty <scott.huberty@mail.mcgill.ca>
+Christian O'Reilly <christian.oreilly@sc.edu>
+Scott Huberty <seh33@uw.edu>
 James Desjardins <jim.a.desjardins@gmail.com>
+Tyler Collins <tk11br@sharcnet.ca>
 License: MIT
 """
 
