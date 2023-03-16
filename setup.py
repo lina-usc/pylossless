@@ -1,8 +1,9 @@
-"""
-    Authors: Christian O'Reilly <christian.oreilly@sc.edu>;
-    Scott Huberty <scott.huberty@mail.mcgill.ca>
-    James Desjardins <jim.a.desjardins@gmail.com>
-    License: MIT
+""" Authors:
+Christian O'Reilly <christian.oreilly@sc.edu>
+Scott Huberty <seh33@uw.edu>
+James Desjardins <jim.a.desjardins@gmail.com>
+Tyler Collins <tk11br@sharcnet.ca>
+License: MIT
 """
 
 from setuptools import setup
@@ -10,7 +11,7 @@ from setuptools import setup
 install_requires = ['numpy', 'EDFlib-Python', 'mne', 'mne_bids', 'pandas',
                     'xarray', 'scipy', 'mne_icalabel', 'pyyaml',
                     'scikit-learn']
-
+        
 setup(
     name='pylossless',
     version="0.0.1",

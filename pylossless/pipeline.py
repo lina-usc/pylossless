@@ -1,42 +1,41 @@
-# coding: utf-8
+# Authors: Christian O'Reilly <christian.oreilly@sc.edu>
+#          Scott Huberty <seh33@uw.edu>
+#          James Desjardins <jim.a.desjardins@gmail.com>
+#          Tyler Collins <tk11br@sharcnet.ca>
+#
+# License: MIT
 
-"""Clases and Functions for running the Lossless Pipeline."""
+"""Classes and Functions for running the Lossless Pipeline."""
 
-from mne.utils import logger
-import mne_bids
-from mne_bids import get_bids_path_from_fname, BIDSPath
-import numpy as np
 from pathlib import Path
-import tempfile
+from functools import partial
 
-# BIDS
-import mne
-
-# Find breaks
-from mne.preprocessing import annotate_break
-
-# Co-Registration
-from mne.coreg import Coregistration
-
-# nearest neighbours
+# Math and data structures
+import numpy as np
 import pandas as pd
 import xarray as xr
 import scipy
 from scipy.spatial import distance_matrix
-from functools import partial
 from tqdm import tqdm
 
-# ICA
+# BIDS, MNE, and ICA
+import mne
+from mne.preprocessing import annotate_break
 from mne.preprocessing import ICA
+from mne.coreg import Coregistration
+from mne.utils import logger
 import mne_icalabel
-from mne_icalabel.annotation import write_components_tsv
 from mne_icalabel.config import ICLABEL_LABELS_TO_MNE
+import mne_bids
+from mne_bids import get_bids_path_from_fname, BIDSPath
 
+from tqdm.notebook import tqdm
 from .config import Config
+
 
 class FlaggedChs(dict):
     """Object for handling flagged channels in an instance of mne.Raw.
-    
+
     Methods
     -------
     add_flag_cat:
@@ -72,7 +71,7 @@ class FlaggedChs(dict):
 
     def rereference(self, inst, **kwargs):
         """Re-reference instance of mne.Raw.
-        
+
         Parameters
         ----------
         inst : mne.Raw
@@ -85,7 +84,9 @@ class FlaggedChs(dict):
                                              if ch not in self['manual']],
                                **kwargs)
 
+    # TODO: Add parameters and return.
     def save_tsv(self, fname):
+        """Serialize channel annotations."""
         labels = []
         ch_names = []
         for key in self:
@@ -95,15 +96,17 @@ class FlaggedChs(dict):
                       "ch_names": ch_names}).to_csv(fname,
                                                     index=False, sep="\t")
 
+    # TODO: Add parameters and return.
     def load_tsv(self, fname):
-        df = pd.read_csv(fname, sep='\t')
-        for label, grp_df in df.groupby("labels"):
+        """Load serialized channel annotations."""
+        out_df = pd.read_csv(fname, sep='\t')
+        for label, grp_df in out_df.groupby("labels"):
             self[label] = grp_df.ch_names.values
 
 
 class FlaggedEpochs(dict):
     """Object for handling flagged Epochs in an instance of mne.Epochs.
-    
+
     Methods
     -------
     add_flag_cat:
@@ -113,7 +116,7 @@ class FlaggedEpochs(dict):
 
     def __init__(self, *args, **kwargs):
         """Initialize class.
-        
+
         Parameters
         ----------
         args : list | tuple
@@ -144,7 +147,9 @@ class FlaggedEpochs(dict):
         self['manual'] = np.unique(np.concatenate(list(self.values())))
         add_pylossless_annotations(raw, bad_epoch_inds, kind, epochs)
 
+    # TODO: Add parameters and return.
     def load_from_raw(self, raw):
+        """Load flagged bad epochs data from raw file."""
         sfreq = raw.info['sfreq']
         for annot in raw.annotations:
             if annot['description'].startswith('bad_pylossless'):
@@ -185,7 +190,7 @@ class FlaggedICs(dict):
 
     def __init__(self, *args, **kwargs):
         """Initialize class.
-        
+
         Parameters
         ----------
         args : list | tuple
@@ -199,7 +204,7 @@ class FlaggedICs(dict):
 
     def label_components(self, epochs, ica):
         """Classify components using mne_icalabel.
-        
+
         Parameters
         ----------
         epochs : mne.Epochs
@@ -226,11 +231,14 @@ class FlaggedICs(dict):
         self.fname = fname
         self.data_frame.to_csv(fname, sep='\t', index=False, na_rep='n/a')
 
+    # TODO: Add parameters.
     def load_tsv(self, fname, data_frame=None):
+        """Load flagged ICs from file."""
         self.fname = fname
         if data_frame is None:
             data_frame = pd.read_csv(fname, sep='\t')
         self.data_frame = data_frame
+
 
 def epochs_to_xr(epochs, kind="ch", ica=None):
     """Create an Xarray DataArray from an instance of mne.Epochs.
@@ -295,14 +303,15 @@ def _icalabel_to_data_frame(ica):
         )
     )
 
+
 def get_operate_dim(array, flag_dim):
     """Get the Xarray.DataArray dimension to use with pipeline funcs.
-    
+
     Parameters
     ----------
     array : Xarray DataArray
         An instance of `Xarray.DataArray` that was constructed from an
-        `mne.Epochs` object, using `pylossless.pipleine.epochs_to_xr`.
+        `mne.Epochs` object, using `pylossless.pipeline.epochs_to_xr`.
     flag_dim : str
         Name of the Xarray.DataArray.dims to remove. Must be one of 'epoch',
         'ch', or 'ic'.
@@ -327,7 +336,7 @@ def variability_across_epochs(epochs_xr, var_measure='sd',
     ----------
     epochs_xr : `Xarray.DataArray`
         An instance of `Xarray.DataArray` that was constructed from an
-        `mne.Epochs` object, using `pylossless.pipleine.epochs_to_xr`.
+        `mne.Epochs` object, using `pylossless.pipeline.epochs_to_xr`.
     var_measure : str (default 'sd')
         The measure to assess variability. Must be one of 'sd' or 'absmean'.
     epochs_inds : list | tuple (default `None`)
@@ -336,7 +345,7 @@ def variability_across_epochs(epochs_xr, var_measure='sd',
         `epochs_xr['epoch']`. If `None`, The Epoch is ignored.
     ch_names : list | tuple (default `None`)
         Names of the channels that should be included in the variability
-        assessment. Names must corresond to existing values in
+        assessment. Names must correspond to existing values in
         `epochs_xr['ch']`. If `None`, channel name dimension is ignored.
     ic_inds : list | tuple (default `None`)
         Indices of the independent components in epochs_xr['ic'] to be
@@ -360,7 +369,7 @@ def variability_across_epochs(epochs_xr, var_measure='sd',
         epochs_xr = epochs_xr.sel(ic=ic_inds)
 
     if var_measure == 'sd':
-        return epochs_xr.std(dim="epoch")  # returns array of shape (n_chans, n_times)
+        return epochs_xr.std(dim="epoch")  # returns n_chans, n_times array
     if var_measure == 'absmean':
         return np.abs(epochs_xr).mean(dim="epoch")
 
@@ -375,7 +384,7 @@ def variability_across_epochs(epochs_xr, var_measure='sd',
         raise NotImplementedError
 
 
-# TODO change naming of 'init' and init_dir specifically,
+# TODO: change naming of 'init' and init_dir specifically,
 # neg/pos/both for lower/upper bound options.
 def marks_array2flags(inarray, flag_dim='epoch', outlier_method='q',
                       init_vals=(), init_dir='both', init_crit=(),
@@ -386,7 +395,7 @@ def marks_array2flags(inarray, flag_dim='epoch', outlier_method='q',
     This function takes an array with typically created by chan_variance or
     chan_neighbour_r and marks either periods of time or sources as outliers.
     Often these discovered time periods are artefactual and are marked as such.
-    An array of values representating the distribution of values inside an
+    An array of values representing the distribution of values inside an
     epoch are passed to the function. Next, these values are put through one
     of three outlier detection schemes. Epochs that are outliers are marked
     as 1's and are 0 otherwise in a second data array. This array is then
@@ -401,8 +410,8 @@ def marks_array2flags(inarray, flag_dim='epoch', outlier_method='q',
 
     flag_dim : str
         Must be one of 'epoch', 'ch', 'ic'. Col flags time, row flags
-        sources. 
-    
+        sources.
+
     outlier_method : str
         Must be one of 'q', 'z', or 'fixed'.
 
@@ -429,7 +438,7 @@ def marks_array2flags(inarray, flag_dim='epoch', outlier_method='q',
     flag_crit : float
         Second pass for flagging.
         If `outler_method` == `'fixed'` and `'fixed'` is selected for
-        `flag_method`, This value should bea threshhold that something must
+        `flag_method`, This value should bea threshold that something must
         pass to be flagged. i.e. if 0.2 (20%) of channels behaving as
         outliers. If `outlier_method` == `'q'`, this value scales the distance
         along with `init_crit`.
@@ -441,11 +450,11 @@ def marks_array2flags(inarray, flag_dim='epoch', outlier_method='q',
     -------
     outlier_mask : np.array
         Mask of periods of time that are flagged as outliers
-    
+
     outind : np.array
         Array of 1's and 0's. 1's represent flagged sources/time.
         Indices are only flagged if out_dist array fall above a second
-        outlier threshhold.
+        outlier threshold.
      out_dist : np.array
         Distribution of rejection array. Either the mean row-wise or
         column-wise of outlier_mask.
@@ -460,7 +469,7 @@ def marks_array2flags(inarray, flag_dim='epoch', outlier_method='q',
     be filled while `init_crit` is to be left empty. This would have the
     effect of marking some interval, e.g. [0 50] as being an outlier.
     If `'fixed'` is selected for `'flag_method'`, only `'flag_crit'` should be
-    filled. This translates to a threshhold that something must pass
+    filled. This translates to a threshold that something must pass
     to be flagged. i.e. if 0.2 (20%) of channels are behaving as
     outliers, then the period of time is flagged. Conversely if
     `'flag_dim'` is row, if a source is bad 20% of the time it is marked
@@ -495,7 +504,8 @@ def marks_array2flags(inarray, flag_dim='epoch', outlier_method='q',
         u_out = m_dist + (u_dist - m_dist) * init_crit
 
     elif outlier_method == 'z':
-        trim_mean = partial(scipy.stats.mstats.trimmed_mean, limits=(trim, trim))
+        trim_mean = partial(scipy.stats.mstats.trimmed_mean,
+                            limits=(trim, trim))
         m_dist = inarray.reduce(trim_mean, dim=operate_dim)
 
         trim_std = partial(scipy.stats.mstats.trimmed_std, limits=(trim, trim))
@@ -562,7 +572,7 @@ def _mark_bad_channel(ch_names, raw):
 
 def add_pylossless_annotations(raw, inds, event_type, epochs):
     """Add annotations for flagged epochs.
-    
+
     Parameters
     ----------
     raw : mne.Raw
@@ -573,7 +583,7 @@ def add_pylossless_annotations(raw, inds, event_type, epochs):
         One of 'ch_sd', 'low_r', 'ic_sd1'
     epochs : mne.Epochs
         an instance of mne.Epochs
-    
+
     Returns
     -------
     Raw : mne.Raw
@@ -649,11 +659,11 @@ def chan_neighbour_r(epochs, nneigbr, method):
     return m_neigbr_r.rename(ref_chan="ch")
 
 
-# TODO check that annot type contains all unique flags
+# TODO: check that annot type contains all unique flags
 def marks_flag_gap(raw, min_gap_ms, included_annot_type=None,
                    out_annot_name='bad_pylossless_gap'):
     """Mark small gaps in time between pylossless annotations.
-    
+
     Parameters
     ----------
     raw : mne.Raw
@@ -668,7 +678,7 @@ def marks_flag_gap(raw, min_gap_ms, included_annot_type=None,
         'bad_pylossless_ic_sd1', 'bad_pylossless_gap').
     out_annot_name : str (default 'bad_pylossless_gap')
         The description for the `mne.Annotation` That is created for any gaps.
-    
+
     Returns
     -------
     Annotations : `mne.Annotations`
@@ -704,7 +714,7 @@ def marks_flag_gap(raw, min_gap_ms, included_annot_type=None,
 def coregister(raw_edf, fiducials="estimated",  # get fiducials from fsaverage
                show_coreg=False, verbose=False):
     """Coregister Raw object to `'fsaverage'`.
-    
+
     Parameters
     ----------
     raw_edf : mne.Raw
@@ -716,7 +726,7 @@ def coregister(raw_edf, fiducials="estimated",  # get fiducials from fsaverage
         If True, shows the coregistration result in a plot.
     verbose : bool | str (default False)
         sets the logging level for `mne.Coregistration`.
-    
+
     Returns
     -------
     coregistration | numpy.array
@@ -738,16 +748,16 @@ def coregister(raw_edf, fiducials="estimated",  # get fiducials from fsaverage
 # Warp locations to standard head surface:
 def warp_locs(self, raw):
     """Warp locs.
-    
+
     Parameters:
     -----------
     raw : mne.Raw
-        an instance of mne.Raw 
+        an instance of mne.Raw
     """
     if 'montage_info' in self.config['replace_string']:
         if isinstance(self.config['replace_string']['montage_info'], str):
             pass
-            # TODO if it is a BIDS channel tsv, load the tsv,sd_t_f_vals
+            # TODO: if it is a BIDS channel tsv, load the tsv,sd_t_f_vals
             # else read the file that is assumed to be a transformation matrix.
         else:
             pass
@@ -762,7 +772,7 @@ class LosslessPipeline():
 
     def __init__(self, config_fname=None):
         """Initialize class.
-        
+
         Parameters
         ----------
         config_fname : pathlib.Path
@@ -796,8 +806,9 @@ class LosslessPipeline():
         if analysis_montage in mne.channels.montage.get_builtin_montages():
             # If chanlocs is a string of one the standard MNE montages
             montage = mne.channels.make_standard_montage(analysis_montage)
+            montage_kwargs = self.config['project']['set_montage_kwargs']
             self.raw.set_montage(montage,
-                            **self.config['project']['set_montage_kwargs'])
+                                 **montage_kwargs)
         else:  # If the montage is a filepath of a custom montage
             raise ValueError('self.config["project"]["analysis_montage"]'
                              ' should be one of the default MNE montages as'
@@ -807,7 +818,7 @@ class LosslessPipeline():
 
     def get_epochs(self, detrend=None, preload=True):
         """Create mne.Epochs according to user arguments.
-        
+
         Parameters
         ----------
         detrend : int | None (default None)
@@ -821,7 +832,7 @@ class LosslessPipeline():
         preload : bool (default True)
             Load epochs from disk when creating the object or wait before
             accessing each epoch (more memory efficient but can be slower).
-        
+
         Returns
         -------
         Epochs : mne.Epochs
@@ -848,7 +859,7 @@ class LosslessPipeline():
 
     def run_staging_script(self):
         """Run a staging script if specified in config."""
-        # TODO
+        # TODO:
         if 'staging_script' in self.config:
             staging_script = Path(self.config['staging_script'])
             if staging_script.exists():
@@ -864,7 +875,7 @@ class LosslessPipeline():
     def flag_outlier_chs(self):
         """Flag outlier Channels."""
         # Window the continuous data
-        # logging_log('INFO', 'Windowing the continous data...');
+        # logging_log('INFO', 'Windowing the continuous data...');
         epochs_xr = epochs_to_xr(self.get_epochs(), kind="ch")
 
         # Determines comically bad channels,
@@ -912,7 +923,10 @@ class LosslessPipeline():
                     raise NotImplementedError
         flag_sd_t_inds = marks_array2flags(data_sd, flag_dim='ch',
                                            **config_epoch)[1]
-        self.flagged_epochs.add_flag_cat('ch_sd', flag_sd_t_inds, self.raw, epochs)
+        self.flagged_epochs.add_flag_cat('ch_sd',
+                                         flag_sd_t_inds,
+                                         self.raw,
+                                         epochs)
 
         # flag channels for ch_sd
         flag_sd_ch_inds = marks_array2flags(data_sd, flag_dim='epoch',
@@ -930,7 +944,7 @@ class LosslessPipeline():
 
     def get_n_nbr(self):
         """Calculate nearest neighbour correlation for channels."""
-        # Calculate nearest neighbout correlation on
+        # Calculate nearest neighbour correlation on
         # non-'manual' flagged channels and epochs...
         epochs = self.get_epochs()
         n_nbr_ch = self.config['nearest_neighbors']['n_nbr_ch']
@@ -938,13 +952,13 @@ class LosslessPipeline():
 
     def flag_ch_low_r(self):
         """Check neighboring channels for too high or low of a correlation.
-        
+
         Returns
         -------
         data array : `numpy.array`
             an instance of `numpy.array`
         """
-        # Calculate nearest neighbout correlation on
+        # Calculate nearest neighbour correlation on
         # non-'manual' flagged channels and epochs...
         data_r_ch = self.get_n_nbr()[0]
 
@@ -962,27 +976,32 @@ class LosslessPipeline():
 
     def flag_ch_bridge(self, data_r_ch):
         """Flag bridged channels.
-        
+
         Parameters
         ----------
         data_r_ch : `numpy.array`
             an instance of `numpy.array`
         """
-        # Uses the correlation of neighboors
+        # Uses the correlation of neighbours
         # calculated to flag bridged channels.
 
-        msr = data_r_ch.median("epoch") / data_r_ch.reduce(scipy.stats.iqr, dim="epoch")
+        msr = data_r_ch.median("epoch") / data_r_ch.reduce(scipy.stats.iqr,
+                                                           dim="epoch")
 
         trim = self.config['bridge']['bridge_trim']
         if trim >= 1:
             trim /= 100
         trim /= 2
 
-        trim_mean = partial(scipy.stats.mstats.trimmed_mean, limits=(trim, trim))
-        trim_std = partial(scipy.stats.mstats.trimmed_std, limits=(trim, trim))
+        trim_mean = partial(scipy.stats.mstats.trimmed_mean,
+                            limits=(trim, trim))
+        trim_std = partial(scipy.stats.mstats.trimmed_std,
+                           limits=(trim, trim))
 
-        z = self.config['bridge']['bridge_z']
-        mask = msr > msr.reduce(trim_mean, dim="ch") + z*msr.reduce(trim_std, dim="ch")
+        z_val = self.config['bridge']['bridge_z']
+        mask = (msr > msr.reduce(trim_mean, dim="ch")
+                + z_val*msr.reduce(trim_std, dim="ch")
+                )
 
         bad_ch_names = data_r_ch.ch.values[mask]
         self.flagged_chs.add_flag_cat(kind='bridge',
@@ -1001,24 +1020,28 @@ class LosslessPipeline():
             an instance of `numpy.array`.
         """
         if len(self.flagged_chs['manual']):
-            ch_sel = [ch for ch in data_r_ch.ch.values if ch not in self.flagged_chs['manual']]
+            ch_sel = [ch for ch in data_r_ch.ch.values
+                      if ch not in self.flagged_chs['manual']]
             data_r_ch = data_r_ch.sel(ch=ch_sel)
 
-        bad_ch_names = [str(data_r_ch.median("epoch").idxmax(dim="ch").to_numpy())]
+        bad_ch_names = [str(data_r_ch.median("epoch")
+                                     .idxmax(dim="ch")
+                                     .to_numpy()
+                            )]
         self.flagged_chs.add_flag_cat(kind='rank',
                                       bad_ch_names=bad_ch_names,
                                       raw=self.raw)
 
     def flag_epoch_low_r(self):
         """Flag epochs where too many channels are bridged.
-        
+
         Notes
         -----
         Similarly to the neighbor r calculation done between channels this
         section looks at the correlation, but between all channels and for
         epochs of time. Time segments are flagged for removal.
         """
-        # Calculate nearest neighbout correlation on
+        # Calculate nearest neighbour correlation on
         # non-'manual' flagged channels and epochs...
         data_r_ch, epochs = self.get_n_nbr()
 
@@ -1032,16 +1055,17 @@ class LosslessPipeline():
 
     def flag_epoch_gap(self):
         """Flag small time periods between pylossless annotations."""
-        annots = marks_flag_gap(self.raw, self.config['epoch_gap']['min_gap_ms'])
+        annots = marks_flag_gap(self.raw,
+                                self.config['epoch_gap']['min_gap_ms'])
         self.raw.set_annotations(self.raw.annotations + annots)
 
     def run_ica(self, run):
         """Run ICA.
-        
+
         Parameters
         ----------
         run : str
-            Must be 'run1' or 'run2'. 'run1' is the intial ICA use to flag
+            Must be 'run1' or 'run2'. 'run1' is the initial ICA use to flag
             epochs, 'run2' is the final ICA used to classify components with
             `mne_icalabel`.
         """
@@ -1065,7 +1089,7 @@ class LosslessPipeline():
 
     def flag_epoch_ic_sd1(self):
         """Calculate the IC standard Deviation by epoch window.
-        
+
         Flags windows with too much standard deviation.
         """
         # Calculate IC sd by window
@@ -1086,7 +1110,7 @@ class LosslessPipeline():
 
     def save(self, derivatives_path, overwrite=False):
         """Save the file at the end of the pipeline.
-        
+
         Parameters
         ----------
         derivatives_path : mne_bids.BIDSPath
@@ -1099,7 +1123,7 @@ class LosslessPipeline():
                                 overwrite=overwrite,
                                 format='EDF',
                                 allow_preload=True)
-        #  TODO address derivatives support in MNE bids.
+        # TODO: address derivatives support in MNE bids.
         # use shutils ( or pathlib?) to rename file with ll suffix
 
         # Save ICAs
@@ -1117,7 +1141,7 @@ class LosslessPipeline():
                                          suffix='iclabels',
                                          check=False)
         self.flagged_ics.save_tsv(iclabels_bidspath)
-        # TODO epoch marks and ica marks are not currently saved into annots
+        # TODO: epoch marks and ica marks are not currently saved into annots
         # raw.save(derivatives_path, overwrite=True, split_naming='bids')
         config_bidspath = bpath.update(extension='.yaml',
                                        suffix='ll_config',
@@ -1131,6 +1155,7 @@ class LosslessPipeline():
         self.flagged_chs.save_tsv(flagged_chs_fpath.fpath.name)
 
     def filter(self):
+        """Run filter procedure based on structured config args."""
         # 5.a. Filter lowpass/highpass
         self.raw.filter(**self.config['filtering']['filter_args'])
 
@@ -1152,10 +1177,9 @@ class LosslessPipeline():
         else:
             logger.info('No notch filter arguments provided. Skipping')
 
-
     def run(self, bids_path, save=True, overwrite=False):
         """Run the pylossless pipeline.
-        
+
         Parameters
         ----------
         bids_path : `pathlib.Path`
@@ -1166,6 +1190,7 @@ class LosslessPipeline():
         overwrite : bool (default False).
             Whether to overwrite existing files of the same name.
         """
+        # Linter ID'd below as bad practice - likely need a structure fix
         self.bids_path = bids_path
         self.raw = mne_bids.read_raw_bids(self.bids_path)
         self.raw.load_data()
@@ -1174,7 +1199,9 @@ class LosslessPipeline():
         if save:
             self.save(self.get_derivative_path(bids_path), overwrite=overwrite)
 
+    # TODO: Finish docstring
     def run_with_raw(self, raw):
+        """Execute pipeline on a raw object."""
         self.raw = raw
         self._run()
         return self.raw
@@ -1224,7 +1251,7 @@ class LosslessPipeline():
         # 12. Calculate IC SD
         self.flag_epoch_ic_sd1()
 
-        # 13. TODO integrate labels from IClabels to self.flagged_ics
+        # 13. TODO: integrate labels from IClabels to self.flagged_ics
         self.run_ica('run2')
 
         # 14. Flag very small time periods between flagged time
@@ -1232,7 +1259,7 @@ class LosslessPipeline():
 
     def run_dataset(self, paths):
         """Run a full dataset.
-        
+
         Parameters
         ----------
         paths : list | tuple
@@ -1242,8 +1269,9 @@ class LosslessPipeline():
         for path in paths:
             self.run(path)
 
+    # TODO: Finish docstring
     def load_ll_derivative(self, derivatives_path):
-        """ """
+        """Load a completed pylossless derivative state."""
         if not isinstance(derivatives_path, BIDSPath):
             derivatives_path = get_bids_path_from_fname(derivatives_path)
         self.raw = mne_bids.read_raw_bids(derivatives_path)
@@ -1276,7 +1304,9 @@ class LosslessPipeline():
 
         return self
 
+    # TODO: Finish docstring
     def get_derivative_path(self, bids_path, derivative_name='pylossless'):
+        """Build derivative path for file."""
         lossless_suffix = bids_path.suffix if bids_path.suffix else ""
         lossless_suffix += '_ll'
         lossless_root = bids_path.root / 'derivatives' / derivative_name
