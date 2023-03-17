@@ -13,7 +13,7 @@ jobs:
       - run:
           name: Install testing dependencies
           command: |
-            pip install pylossless[test]
+            pip install -r requirements_testing.txt
       - run:
           name: Check for flakes
           command: |
