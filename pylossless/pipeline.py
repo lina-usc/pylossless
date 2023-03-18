@@ -1,7 +1,7 @@
 # Authors: Christian O'Reilly <christian.oreilly@sc.edu>
 #          Scott Huberty <seh33@uw.edu>
 #          James Desjardins <jim.a.desjardins@gmail.com>
-#          Tyler Collins <tk11br@sharcnet.ca>
+#          Tyler Collins <collins.tyler.k@gmail.com>
 #
 # License: MIT
 
@@ -29,7 +29,6 @@ from mne_icalabel.config import ICLABEL_LABELS_TO_MNE
 import mne_bids
 from mne_bids import get_bids_path_from_fname, BIDSPath
 
-from tqdm.notebook import tqdm
 from .config import Config
 
 
@@ -274,7 +273,7 @@ def epochs_to_xr(epochs, kind="ch", ica=None):
 
 
 def _icalabel_to_data_frame(ica):
-    """ """
+    """Export IClabels to pandas DataFrame."""
     # initialize status, description and IC type
     status = ["good"] * ica.n_components_
     status_description = ["n/a"] * ica.n_components_
@@ -1041,7 +1040,7 @@ class LosslessPipeline():
         flagged_chs_fpath = bpath.update(extension='.tsv',
                                          suffix='ll_FlaggedChs',
                                          check=False)
-        self.flagged_chs.save_tsv(flagged_chs_fpath.fpath.name)
+        self.flagged_chs.save_tsv(flagged_chs_fpath.fpath)
 
     def filter(self):
         """Run filter procedure based on structured config args."""
@@ -1171,6 +1170,7 @@ class LosslessPipeline():
         # Load ICAs
         for this_ica in ['ica1', 'ica2']:
             suffix = this_ica + '_ica'
+            print('$$$ ', bpath)
             ica_bidspath = bpath.update(extension='.fif', suffix=suffix,
                                         check=False)
             setattr(self, this_ica,
@@ -1189,7 +1189,7 @@ class LosslessPipeline():
         flagged_chs_fpath = bpath.update(extension='.tsv',
                                          suffix='ll_FlaggedChs',
                                          check=False)
-        self.flagged_chs.load_tsv(flagged_chs_fpath.fpath.name)
+        self.flagged_chs.load_tsv(flagged_chs_fpath.fpath)
 
         # Load Flagged Epochs
         self.flagged_epochs.load_from_raw(self.raw)
