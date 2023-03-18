@@ -416,9 +416,6 @@ def _get_outliers_quantile(array, dim, lower=0.25, upper=0.75, mid=0.5, k=3):
     lower_val, mid_val, upper_val = array.quantile([lower, mid, upper],
                                                    dim=dim)
     inter_q = upper_val - lower_val
-    print("mid_val", mid_val)
-    print("inter_q ##### ", inter_q)
-    print('Returned ####', mid_val - inter_q*k, mid_val + inter_q*k)
     return mid_val - inter_q*k, mid_val + inter_q*k
 
 
@@ -1232,7 +1229,6 @@ class LosslessPipeline():
         # Load ICAs
         for this_ica in ['ica1', 'ica2']:
             suffix = this_ica + '_ica'
-            print('$$$ ', bpath)
             ica_bidspath = bpath.update(extension='.fif', suffix=suffix,
                                         check=False)
             setattr(self, this_ica,
