@@ -386,14 +386,44 @@ def variability_across_epochs(epochs_xr, var_measure='sd',
 
 
 def _get_outliers_quantile(array, dim, lower=0.25, upper=0.75, mid=0.5, k=3):
-    """  """
+    """Calculate outliers for Epochs or Channels based on the IQR.
+
+    Parameters
+    ----------
+    array : xr.DataArray
+        Array of shape n_channels, n_epochs, representing the stdev across
+        time (samples in epoch) for each channel/epoch pair.
+    dim : str
+        One of 'ch' or 'epoch'. The dimension to operate across.
+    lower : float (default 0.75)
+        The lower bound of the IQR
+    upper : float (default 0.75)
+        The upper bound of the IQR
+    mid : float (default 0.5)
+        The mid-point of the IQR
+    k : int | float
+        factor to multiply the IQR by.
+
+    Returns
+    -------
+    Lower value threshold : xr.DataArray
+        Vector of values (of size n_channels or n_epochs) to be considered
+        as the lower threshold for outliers.
+    Upper value threshold : xr.DataArray
+        Vector of values (of size n_channels or n_epochs) to be considered the
+        upper thresholds for outliers.
+    """
     lower_val, mid_val, upper_val = array.quantile([lower, mid, upper],
                                                    dim=dim)
     inter_q = upper_val - lower_val
+    print("mid_val", mid_val)
+    print("inter_q ##### ", inter_q)
+    print('Returned ####', mid_val - inter_q*k, mid_val + inter_q*k)
     return mid_val - inter_q*k, mid_val + inter_q*k
 
 
 def _get_outliers_trimmed(array, dim, trim=0.2, k=3):
+    """Calculate outliers for Epochs or Channels based on the trimmed mean."""
     trim_mean = partial(scipy.stats.mstats.trimmed_mean,
                         limits=(trim, trim))
     trim_std = partial(scipy.stats.mstats.trimmed_std, limits=(trim, trim))
@@ -403,8 +433,39 @@ def _get_outliers_trimmed(array, dim, trim=0.2, k=3):
 
 
 def _detect_outliers(array, flag_dim='epoch', outlier_method='quantile',
-                     flag_crit=0.2, outliers_kwargs=None, init_dir='both'):
-    """Mark epochs, channels, or ICs as flagged for artefact."""
+                     flag_crit=0.2, init_dir='both', outliers_kwargs=None):
+    """Mark epochs, channels, or ICs as flagged for artefact.
+
+    Parameters
+    ----------
+    array : xr.DataArray
+        Array of shape n_channels, n_epochs, representing the stdev across
+        time (samples in epoch) for each channel/epoch pair.
+    dim : str
+        One of 'ch' or 'epoch'. The dimension to operate across. For example
+        if 'epoch', then detect epochs that are outliers.
+    outlier_method : str (default quantile)
+        one of 'quantile', 'trimmed', or 'fixed'.
+    flag_crit : float
+        Threshold (percentage) to consider an epoch or channel as bad. If
+        operating across channels using default value, then if more then if
+        the channel is an outlier in more than 20% of epochs, it will be
+        flagged. if operating across epochs, then if more than 20% of channels
+        are outliers in an epoch, it will be flagged as bad.
+    init_dir : str
+        One of 'pos', 'neg', or 'both'. Direction to test for outliers. If
+        'pos', only detect outliers at the upper end of the distribution. If
+        'neg', only detect outliers at the lower end of the distribution.
+    outliers_kwargs : dict
+        Set in the pipeline config. 'k', 'lower', and 'upper' kwargs can be
+        passed to _get_outliers_quantile. 'k' can also be passed to
+        _get_outliers_trimmed.
+    Returns
+    -------
+    boolean xr.DataArray of shape n_epochs, n_times, where an epoch x channel
+    coordinate is 1 if it is to be flagged as bad.
+
+    """
     if outliers_kwargs is None:
         outliers_kwargs = {}
 
@@ -443,7 +504,7 @@ def _detect_outliers(array, flag_dim='epoch', outlier_method='quantile',
 
 
 def _mark_bad_channel(ch_names, raw):
-    """Add a channel name to inst.info['bads']"""
+    """Add a channel name to inst.info['bads']."""
     raw.info['bads'].extend(ch_names)
 
 
