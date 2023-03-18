@@ -88,7 +88,7 @@ add_noise(raw_sim, cov_noisy, iir_filter=[0.2, -0.2, 0.04], random_state=rng)
 # MAKE LESS NOISY CHANNELS
 make_these_noisy = ['EEG 015', 'EEG 016']
 cov_less_noisy = make_ad_hoc_cov(raw_sim.copy().pick(make_these_noisy).info,
-                                 std=dict(eeg=.00000035))
+                                 std=dict(eeg=.00000050))
 add_noise(raw_sim,
           cov_less_noisy,
           iir_filter=[0.2, -0.2, 0.04],
@@ -114,8 +114,12 @@ def test_simulated_raw(pipeline):
     assert np.array_equal(pipeline.flagged_chs['manual'],
                           ['EEG 001', 'EEG 005', 'EEG 009'])
 
+    pipeline.flag_ch_sd_epoch()
+    assert np.array_equal(pipeline.flagged_epochs['ch_sd'],
+                          [2])
+
     # RUN FLAG_CH_SD
-    pipeline.flag_ch_sd()
+    pipeline.flag_ch_sd_ch()
     assert np.array_equal(pipeline.flagged_chs['ch_sd'],
                           ['EEG 015', 'EEG 016'])
     assert np.array_equal(pipeline.flagged_chs['manual'],
