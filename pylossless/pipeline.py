@@ -411,12 +411,10 @@ def _detect_outliers(array, flag_dim='epoch', outlier_method='quantile',
 
     # Computing lower and upper bounds for outlier detection
     operate_dim = get_operate_dim(array, flag_dim)
-    print('### ', operate_dim)
 
     if outlier_method == 'quantile':
         l_out, u_out = _get_outliers_quantile(array, flag_dim,
                                               **outliers_kwargs)
-        print('#### ', l_out)
 
     elif outlier_method == 'trimmed':
         l_out, u_out = _get_outliers_trimmed(array, flag_dim,
@@ -433,7 +431,6 @@ def _detect_outliers(array, flag_dim='epoch', outlier_method='quantile',
     # and marking items along dimension flag_dim if this number is
     # larger than
     outlier_mask = xr.zeros_like(array, dtype=bool)
-    print('### ', outlier_mask)
 
     if init_dir == 'pos' or init_dir == 'both':  # for positive outliers
         outlier_mask = outlier_mask | (array > u_out)
