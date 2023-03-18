@@ -323,7 +323,7 @@ def get_operate_dim(array, flag_dim):
         with the `flag_dim` removed from the list.
     """
     dims = list(array.dims)
-    assert len(dims) == 2 
+    assert len(dims) == 2
     dims.remove(flag_dim)
     return dims[0]
 
@@ -793,8 +793,9 @@ class LosslessPipeline():
         data_sd = epochs_xr.std("time")
 
         # flag channels for ch_sd
-        flag_sd_ch_inds = _detect_outliers(data_sd, flag_dim='ch', init_dir='pos',
-                                            **self.config['ch_ch_sd'])
+        flag_sd_ch_inds = _detect_outliers(data_sd, flag_dim='ch',
+                                           init_dir='pos',
+                                           **self.config['ch_ch_sd'])
 
         bad_ch_names = epochs_xr.ch[flag_sd_ch_inds]
         self.flagged_chs.add_flag_cat(kind='ch_sd',
@@ -806,10 +807,10 @@ class LosslessPipeline():
         # all steps (?) uses the get_epochs() function
         self.flagged_chs.rereference(self.raw)
 
-
     def flag_ch_sd_epoch(self):
         """Flag epochs with outlying standard deviation."""
         # TODO: flag "ch_sd" should be renamed "time_sd"
+        outlier_methods = ('quantile', 'trimmed', 'fixed')
         epochs = self.get_epochs()
         epochs_xr = epochs_to_xr(epochs, kind="ch")
         data_sd = epochs_xr.std("time")
@@ -820,15 +821,16 @@ class LosslessPipeline():
             if 'outlier_method' in config_epoch:
                 if config_epoch['outlier_method'] is None:
                     del config_epoch['outlier_method']
-                elif config_epoch['outlier_method'] not in ('quantile', 'trimmed', 'fixed'):
+                elif config_epoch['outlier_method'] not in outlier_methods:
                     raise NotImplementedError
-        flag_sd_t_inds = _detect_outliers(data_sd, flag_dim='epoch', init_dir='pos',
+        flag_sd_t_inds = _detect_outliers(data_sd,
+                                          flag_dim='epoch',
+                                          init_dir='pos',
                                           **config_epoch)
         self.flagged_epochs.add_flag_cat('ch_sd',
                                          flag_sd_t_inds,
                                          self.raw,
                                          epochs)
-
 
     def get_n_nbr(self):
         """Calculate nearest neighbour correlation for channels."""
@@ -852,8 +854,8 @@ class LosslessPipeline():
 
         # Create the window criteria vector for flagging low_r chan_info...
         flag_r_ch_inds = _detect_outliers(data_r_ch, flag_dim='ch',
-                                           init_dir='neg',
-                                           **self.config['ch_low_r'])
+                                          init_dir='neg',
+                                          **self.config['ch_low_r'])
 
         # Edit the channel flag info structure
         bad_ch_names = data_r_ch.ch[flag_r_ch_inds].values.tolist()
@@ -934,8 +936,8 @@ class LosslessPipeline():
         data_r_ch, epochs = self.get_n_nbr()
 
         flag_r_t_inds = _detect_outliers(data_r_ch, flag_dim='epoch',
-                                          init_dir='neg',
-                                          **self.config['epoch_low_r'])
+                                         init_dir='neg',
+                                         **self.config['epoch_low_r'])
 
         self.flagged_epochs.add_flag_cat('low_r',
                                          flag_r_t_inds,
@@ -983,13 +985,12 @@ class LosslessPipeline():
         # Calculate IC sd by window
         epochs = self.get_epochs()
         epochs_xr = epochs_to_xr(epochs, kind="ic", ica=self.ica1)
-        #epoch_ic_sd1 = variability_across_epochs(epochs_xr)
         data_sd = epochs_xr.std('time')
 
         # Create the windowing sd criteria
         kwargs = self.config['ica']['ic_ic_sd']
         flag_epoch_ic_inds = _detect_outliers(data_sd,
-                                               flag_dim='epoch', **kwargs)
+                                              flag_dim='epoch', **kwargs)
 
         self.flagged_epochs.add_flag_cat('ic_sd1', flag_epoch_ic_inds,
                                          self.raw, epochs)
