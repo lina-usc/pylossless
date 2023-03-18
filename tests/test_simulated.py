@@ -88,7 +88,7 @@ add_noise(raw_sim, cov_noisy, iir_filter=[0.2, -0.2, 0.04], random_state=rng)
 # MAKE LESS NOISY CHANNELS
 make_these_noisy = ['EEG 015', 'EEG 016']
 cov_less_noisy = make_ad_hoc_cov(raw_sim.copy().pick(make_these_noisy).info,
-                                 std=dict(eeg=.00000054))
+                                 std=dict(eeg=.00000053))
 add_noise(raw_sim,
           cov_less_noisy,
           iir_filter=[0.2, -0.2, 0.04],
