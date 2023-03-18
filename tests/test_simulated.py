@@ -128,4 +128,4 @@ def test_simulated_raw(pipeline):
 
     # Delete temp config file
     tmp_config_fname = Path(pipeline.config_fname).absolute()
-    tmp_config_fname.unlink()  # delete config file
+    tmp_config_fname.unlink()
