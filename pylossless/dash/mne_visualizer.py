@@ -70,12 +70,11 @@ class MNEVisualizer:
         self.annotation_inprogress = None
         self.annot_created_callback = annot_created_callback
         self.new_annot_desc = 'selected_time'
+        self.annotations = None
 
         # setting component ids based on dash_id_suffix
-        default_ids = ['graph', 'ch-slider', 'time-slider',
-                       'container-plot', 'keyboard', 'output']
-        self.dash_ids = {id_: (id_ + dash_id_suffix) for id_ in default_ids}
-
+        default_ids = ['graph', 'ch-slider', 'time-slider', 'container-plot', 'keyboard', 'output', 'mne-annotations']
+        self.dash_ids = {id_: (id_ + f'_{dash_id_suffix}') for id_ in default_ids}
         self.dcc_graph_kwargs = dict(id=self.dash_ids['graph'],
                                      className=CSS['timeseries'],
                                      style=STYLE['timeseries'],
@@ -110,6 +109,7 @@ class MNEVisualizer:
         self.time_slider.max = self.times[-1] - self.win_size
         self.time_slider.marks = {int(key): str(int(key))
                                   for key in marks_keys}
+        self.initialize_annotations()
         self.update_layout()
 
     @property
@@ -145,16 +145,17 @@ class MNEVisualizer:
         "will divide returned value to data for timeseries"
         return 2 * self.scalings[ch_type] / self.zoom
 
-    def _get_annot_text(self, annotation):
-        return dict(x=annotation['onset'] + annotation['duration'] / 2,
+    def _get_annot_text(self, annotation, name=None):
+        return dict(x=annotation['onset'] + annotation['duration'] /2,
                     y=self.layout.yaxis['range'][1],
                     text=annotation['description'],
+                    name=name,
                     showarrow=False,
                     yshift=10,
                     font={'color': '#F1F1F1'})
 
-    def _get_annot_shape(self, annotation):
-        return dict(name=annotation['description'],
+    def _get_annot_shape(self, annotation, name='description'):
+        return dict(name=name,
                     type="rect",
                     xref="x",
                     yref="y",
@@ -180,9 +181,26 @@ class MNEVisualizer:
         if not self.inst:
             return
         tmin, tmax = self.win_start, self.win_start + self.win_size
-        annots = self.inst.annotations.copy().crop(tmin, tmax,
-                                                   use_orig_time=False)
-        self.add_annot_shapes(annots)
+
+        viewable_shapes = [shape for shape
+                           in self.annotations.data['shapes']
+                           if tmin < shape['x0'] < tmax]
+        viewable_annotations = [text for text
+                                in self.annotations.data['descriptions']
+                                if tmin < text['x'] < tmax]
+        self.layout.shapes = viewable_shapes
+        self.layout.annotations = viewable_annotations
+
+    def initialize_annotations(self):
+        if self.inst:
+            annots = list()
+            texts = list()
+            for i, annot in enumerate(self.inst.annotations):
+                annots.append(self._get_annot_shape(annot, name=i))
+                texts.append(self._get_annot_text(annot, name=i))
+            _id = self.dash_ids['mne-annotations']
+            data_dict = dict(shapes=annots, descriptions=texts)
+            self.annotations = dcc.Store(id=_id, data=data_dict)
 
 ############################
 # Create Timeseries Layouts
