@@ -281,7 +281,6 @@ class QCGUI:
             ctx = dash.callback_context
             if ctx.triggered:
                 trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-                print(trigger_id)
                 if trigger_id == self.eeg_visualizer.dash_ids['time-slider']:
                     value = eeg_time_slider
                     return no_update, value
@@ -301,7 +300,6 @@ class QCGUI:
             ctx = dash.callback_context
             if ctx.triggered:
                 trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-                print(trigger_id)
                 if trigger_id == self.ica_visualizer.dash_ids['ch-slider']:
                     value = ica_ch_slider
                     return no_update, value
