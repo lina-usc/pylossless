@@ -1,0 +1,5 @@
+gunicorn>=19.8.1
+dash>=1.0.0, <2.9.0
+dash-extensions>=0.1.7
+colorlover>=0.2.1
+dash_bootstrap_components
