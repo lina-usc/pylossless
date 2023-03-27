@@ -51,7 +51,7 @@ class FlaggedChs(dict):
         if 'manual' not in self:
             self['manual'] = []
 
-    def add_flag_cat(self, kind, bad_ch_names, raw):
+    def add_flag_cat(self, kind, bad_ch_names):
         """Append a list of channel names to the 'manual' dict key.
 
         Parameters:
@@ -65,7 +65,6 @@ class FlaggedChs(dict):
         if isinstance(bad_ch_names, xr.DataArray):
             bad_ch_names = bad_ch_names.values
         self[kind] = bad_ch_names
-        _mark_bad_channel(ch_names=bad_ch_names, raw=raw)
         self['manual'] = np.unique(np.concatenate(list(self.values())))
 
     def rereference(self, inst, **kwargs):
@@ -500,11 +499,6 @@ def _detect_outliers(array, flag_dim='epoch', outlier_method='quantile',
     return np.where(prop_outliers > flag_crit)[0]
 
 
-def _mark_bad_channel(ch_names, raw):
-    """Add a channel name to inst.info['bads']."""
-    raw.info['bads'].extend(ch_names)
-
-
 def add_pylossless_annotations(raw, inds, event_type, epochs):
     """Add annotations for flagged epochs.
 
@@ -835,8 +829,7 @@ class LosslessPipeline():
 
         bad_ch_names = mean_ch_dist.ch[mean_ch_dist > mdn+6*deviation]
         self.flagged_chs.add_flag_cat(kind='outliers',
-                                      bad_ch_names=bad_ch_names,
-                                      raw=self.raw)
+                                      bad_ch_names=bad_ch_names)
 
         # TODO: Verify: It is unclear this is necessary.
         # get_epochs() is systematically rereferencing and
@@ -857,8 +850,7 @@ class LosslessPipeline():
 
         bad_ch_names = epochs_xr.ch[flag_sd_ch_inds]
         self.flagged_chs.add_flag_cat(kind='ch_sd',
-                                      bad_ch_names=bad_ch_names,
-                                      raw=self.raw)
+                                      bad_ch_names=bad_ch_names)
 
         # TODO: Verify: It is unclear this is necessary.
         # get_epochs() is systematically rereferencing and
@@ -917,8 +909,7 @@ class LosslessPipeline():
 
         # Edit the channel flag info structure
         bad_ch_names = data_r_ch.ch[flag_r_ch_inds].values.tolist()
-        self.flagged_chs.add_flag_cat(kind='low_r', bad_ch_names=bad_ch_names,
-                                      raw=self.raw)
+        self.flagged_chs.add_flag_cat(kind='low_r', bad_ch_names=bad_ch_names)
 
         return data_r_ch
 
@@ -953,8 +944,7 @@ class LosslessPipeline():
 
         bad_ch_names = data_r_ch.ch.values[mask]
         self.flagged_chs.add_flag_cat(kind='bridge',
-                                      bad_ch_names=bad_ch_names,
-                                      raw=self.raw)
+                                      bad_ch_names=bad_ch_names)
 
     def flag_ch_rank(self, data_r_ch):
         """Flag the channel that is the least unique.
@@ -977,8 +967,7 @@ class LosslessPipeline():
                                      .to_numpy()
                             )]
         self.flagged_chs.add_flag_cat(kind='rank',
-                                      bad_ch_names=bad_ch_names,
-                                      raw=self.raw)
+                                      bad_ch_names=bad_ch_names)
 
     def flag_epoch_low_r(self):
         """Flag epochs where too many channels are bridged.
