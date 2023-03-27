@@ -71,18 +71,22 @@ class QCGUI:
         # a selection of a new file, so that the two callbacks
         # are executed sequentially.
         refresh_input = Input('file-dropdown', 'placeholder')
-        self.ica_visualizer = ICVisualizer(self.app, self.raw_ica,
-                                           dash_id_suffix='ica',
-                                           annot_created_callback=self.annot_created_callback,
-                                           cmap=cmap,
-                                           ic_types=self.ic_types,
-                                           refresh_input=refresh_input)
-        self.eeg_visualizer = MNEVisualizer(self.app,
-                                            self.raw,
-                                            dcc_graph_kwargs=dict(config={'modeBarButtonsToRemove':['zoom','pan']}),
-                                            annot_created_callback=self.annot_created_callback,
-                                            refresh_input=refresh_input,
-                                            show_time_slider=False)
+        self.ica_visualizer = ICVisualizer(
+            self.app, self.raw_ica,
+            dash_id_suffix='ica',
+            annot_created_callback=self.annot_created_callback,
+            cmap=cmap,
+            ic_types=self.ic_types,
+            refresh_input=refresh_input)
+
+        self.eeg_visualizer = MNEVisualizer(
+            self.app,
+            self.raw,
+            dcc_graph_kwargs=dict(config={'modeBarButtonsToRemove':
+                                          ['zoom', 'pan']}),
+            annot_created_callback=self.annot_created_callback,
+            refresh_input=refresh_input,
+            show_time_slider=False)
 
         montage = self.raw.get_montage() if self.raw else None
         self.ica_topo = TopoVizICA(self.app, montage, self.ica, self.ic_types,

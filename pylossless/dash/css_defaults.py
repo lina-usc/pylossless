@@ -92,8 +92,8 @@ CSS['topo-slider-div'] = "d-inline-block align-middle"
 # bootstrap for topo dcc-graph
 CSS['topo-dcc'] = "bg-secondary bg-opacity-50 border rounded"  # border-info
 
-# bootstrap for div containing topo-dcc
-CSS['topo-dcc-div'] = 'bg-secondary bg-opacity-50 d-inline-block align-top'  # border border-warning
+# bootstrap for div containing topo-dcc; border border-warning
+CSS['topo-dcc-div'] = 'bg-secondary bg-opacity-50 d-inline-block align-top'
 STYLE['topo-dcc-div'] = {'width': '90%'}  # so that slider can fit to the left
 
 # boostrap for final container: self.container_plot

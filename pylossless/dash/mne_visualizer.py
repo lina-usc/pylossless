@@ -246,11 +246,13 @@ class MNEVisualizer:
         # Update the raw timeseries traces
         ch_names = self.inst.ch_names[::-1][first_sel_ch:last_sel_ch]
         self.layout.yaxis['ticktext'] = ch_names
-        ch_types = self.inst.get_channel_types()[::-1][first_sel_ch:last_sel_ch]
+        ch_types_list = self.inst.get_channel_types()
+        ch_types = ch_types_list[::-1][first_sel_ch:last_sel_ch]
         ch_zip = zip(ch_names, data, self.traces, ch_types)
         for i, (ch_name, signal, trace, ch_type) in enumerate(ch_zip):
             trace.x = np.round(times, 3)
-            trace.y = signal/self._get_norm_factor(ch_type) - (self.n_sel_ch - i - 1)
+            trace.y = signal / self._get_norm_factor(ch_type)
+            trace.y -= (self.n_sel_ch - i - 1)
             trace.name = ch_name
             if ch_name in self.inst.info['bads']:
                 trace.line.color = '#d3d3d3'
@@ -268,18 +270,21 @@ class MNEVisualizer:
         self.refresh_annotations()
 
     def initialize_keyboard(self):
-        events =[{"event": "keydown", "props": ["key", "shiftKey"]},
-                 {"event":"keyup", "props":["key","shiftKey"]}]
+        events = [{"event": "keydown", "props": ["key", "shiftKey"]},
+                  {"event": "keyup", "props": ["key", "shiftKey"]}]
         event_listener = EventListener(id=self.dash_ids['keyboard'],
                                        events=events)
-        self.app.layout.children.extend([event_listener, html.Div(id=self.dash_ids["output"])])
-        @self.app.callback(Output(self.dash_ids['output'], "children"), [Input(self.dash_ids['keyboard'], "event")])
+        self.app.layout.children.extend([event_listener,
+                                         html.Div(id=self.dash_ids["output"])])
+
+        @self.app.callback(Output(self.dash_ids['output'], "children"),
+                           [Input(self.dash_ids['keyboard'], "event")])
         def event_callback(event):
             if event is None:
                 return ''
             if event['key'] == 'Shift':
                 self.shift_down = event['shiftKey']
-            return '' 
+            return ''
 
     ###############
     # CALLBACKS
@@ -317,39 +322,45 @@ class MNEVisualizer:
                                 # finishing an annotation
                                 self.layout.xaxis['spikedash'] = 'dash'
                                 self.layout.xaxis['spikecolor'] = 'black'
-                                new_annot = mne.Annotations(onset=[self.annotating_start],
-                                                        duration=[click_data['points'][0]['x'] - self.annotating_start],
-                                                        description=self.new_annot_desc,
-                                                        orig_time=self.inst.annotations.orig_time)
+                                new_annot = mne.Annotations(
+                                    onset=[self.annotating_start],
+                                    duration=[click_data['points'][0]['x'] - self.annotating_start],
+                                    description=self.new_annot_desc,
+                                    orig_time=self.inst.annotations.orig_time)
                                 self.annotating = not self.annotating
                                 if self.annot_created_callback is not None:
                                     self.annot_created_callback(new_annot)
                                 else:
-                                    self.inst.set_annotations(self.inst.annotations + new_annot)
-                                    #self.refresh_annotations()
-                                    self.update_layout() # TODO replace update_layout to ensure refresh without updating whole layout
+                                    self.inst.set_annotations(
+                                        self.inst.annotations + new_annot
+                                    )
+                                    # TODO replace update_layout to ensure
+                                    # refresh without updating whole layout
+                                    self.update_layout()
                             else:
                                 # starting an annotation
                                 self.annotating_start = click_data['points'][0]['x']
                                 self.layout.xaxis['spikedash'] = 'solid'
                                 self.layout.xaxis['spikecolor'] = 'red'
                                 shape = dict(type="rect",
-                                            xref="x",
-                                            yref="y",
-                                            x0=click_data['points'][0]['x'],
-                                            y0=self.layout.yaxis['range'][0],
-                                            x1=click_data['points'][0]['x'],
-                                            y1=self.layout.yaxis['range'][1],
-                                            fillcolor="red",
-                                            opacity=0.45,
-                                            line_width=0,
-                                            layer="below")
+                                             xref="x",
+                                             yref="y",
+                                             x0=click_data['points'][0]['x'],
+                                             y0=self.layout.yaxis['range'][0],
+                                             x1=click_data['points'][0]['x'],
+                                             y1=self.layout.yaxis['range'][1],
+                                             fillcolor="red",
+                                             opacity=0.45,
+                                             line_width=0,
+                                             layer="below")
                                 self.annotation_inprogress = shape
                                 self.annotating = not self.annotating
-                                self.update_layout() # TODO replace update_layout to ensure refresh without updating whole layout
+                                # TODO replace update_layout to
+                                # ensure refresh without updating whole layout
+                                self.update_layout()
                                 # self.refresh_annotations()
 
-                        else: # not shift_down
+                        else:  # not shift_down
                             ch_name = self.traces[click_data["points"][0]["curveNumber"]].name
                             if ch_name in self.inst.info['bads']:
                                 self.inst.info['bads'].pop()
@@ -359,18 +370,22 @@ class MNEVisualizer:
 
                     elif dash_event == 'hoverData':
                         if self.annotating:
-                            # self.annotating_current = hover_data['points'][0]['x']
+                            # self.annotating_current =
+                            #   hover_data['points'][0]['x']
                             self.annotation_inprogress['x1'] = hover_data['points'][0]['x']
-                            self.update_layout() # TODO replace update_layout to ensure refresh without updating whole layout
+                            # TODO replace update_layout to ensure
+                            # refresh without updating whole layout
+                            self.update_layout()
                         else:
                             return no_update
                     else:
                         # self.select_trace()
-                        pass # for selecting traces
+                        pass  # for selecting traces
                 elif object_ in update_layout_ids:
                     self.update_layout(ch_slider_val=ch, time_slider_val=time)
 
             return self.graph.figure
+
     @property
     def nb_channels(self):
         if self.inst:
@@ -401,10 +416,11 @@ class MNEVisualizer:
             self.channel_slider_div.style.update({'display': 'none'})
 
         marks_keys = np.round(np.linspace(self.times[0], self.times[-1], 10))
+        marks_dict = {int(key): str(int(key)) for key in marks_keys}
         self.time_slider = dcc.Slider(id=self.dash_ids['time-slider'],
                                       min=self.times[0],
                                       max=self.times[-1] - self.win_size,
-                                      marks={int(key): str(int(key)) for key in marks_keys},
+                                      marks=marks_dict,
                                       value=self.win_start,
                                       vertical=False,
                                       included=False,

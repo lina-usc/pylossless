@@ -207,8 +207,8 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
             autosize=False,
             width=self.width,
             height=self.height,
-            plot_bgcolor='rgba(0,0,0,0)',  #'#EAEAF2', #'rgba(44,44,44,.5)',
-            paper_bgcolor='rgba(0,0,0,0)')  #'#EAEAF2')  #'rgba(44,44,44,.5)')
+            plot_bgcolor='rgba(0,0,0,0)',  # '#EAEAF2', #'rgba(44,44,44,.5)',
+            paper_bgcolor='rgba(0,0,0,0)')  # '#EAEAF2')  #'rgba(44,44,44,.5)')
         self.graph.figure['layout'].update(margin=dict(l=0, r=0, b=0, t=20))
 
     @property
@@ -218,7 +218,6 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
         return self.rows * self.cols
 
     def init_slider(self):
-        figure_layout_handler = self.graph.figure.layout.height
         self.topo_slider = dcc.Slider(id='topo-slider',
                                       min=self.rows * self.cols - 1,
                                       max=self.nb_topo - 1,
