@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 import numpy as np
 
 from mne.io import BaseRaw
-from mne import  BaseEpochs, Evoked
+from mne import BaseEpochs, Evoked
 import mne
 from mne.utils import _validate_type
 
@@ -40,7 +40,8 @@ class MNEVisualizer:
                 text
             dash_id_suffix : float
                 each component id in the users app file needs to be unique.
-                if using more than 1 MNEVisualizer object in a single application.
+                if using more than 1 MNEVisualizer object in a single
+                application.
             ch_slider : bool
                 text
             time_slider : float
@@ -52,7 +53,7 @@ class MNEVisualizer:
         self.refresh_input = refresh_input
         self.app = app
         self.scalings_arg = scalings
-        self._inst = None        
+        self._inst = None
         self.n_sel_ch = 20  # n of channels to display in plot
         self.win_start = 0  # min time to disp on plot
         self.win_size = 10  # max time to disp on plot
@@ -69,7 +70,8 @@ class MNEVisualizer:
         self.new_annot_desc = 'selected_time'
 
         # setting component ids based on dash_id_suffix
-        default_ids = ['graph', 'ch-slider', 'time-slider', 'container-plot', 'keyboard', 'output']
+        default_ids = ['graph', 'ch-slider', 'time-slider',
+                       'container-plot', 'keyboard', 'output']
         self.dash_ids = {id_: (id_ + dash_id_suffix) for id_ in default_ids}
 
         self.dcc_graph_kwargs = dict(id=self.dash_ids['graph'],
@@ -90,7 +92,7 @@ class MNEVisualizer:
         self.shift_down = False
         self.inst = inst
 
-        # initialization subroutines          
+        # initialization subroutines
         self.init_sliders()
         self.set_div()
         self.initialize_layout()
@@ -143,12 +145,12 @@ class MNEVisualizer:
         return 2 * self.scalings[ch_type] / self.zoom
 
     def _get_annot_text(self, annotation):
-        return dict(x=annotation['onset'] + annotation['duration'] /2,
+        return dict(x=annotation['onset'] + annotation['duration'] / 2,
                     y=self.layout.yaxis['range'][1],
                     text=annotation['description'],
                     showarrow=False,
                     yshift=10,
-                    font={'color':'#F1F1F1'})
+                    font={'color': '#F1F1F1'})
 
     def _get_annot_shape(self, annotation):
         return dict(name=annotation['description'],
@@ -177,7 +179,8 @@ class MNEVisualizer:
         if not self.inst:
             return
         tmin, tmax = self.win_start, self.win_start + self.win_size
-        annots = self.inst.annotations.copy().crop(tmin, tmax, use_orig_time=False)
+        annots = self.inst.annotations.copy().crop(tmin, tmax,
+                                                   use_orig_time=False)
         self.add_annot_shapes(annots)
 
 ############################
@@ -197,7 +200,8 @@ class MNEVisualizer:
         if not self.inst:
             DEFAULT_LAYOUT['annotations'] = _add_watermark_annot()
 
-        DEFAULT_LAYOUT['yaxis'].update({"tickvals": np.arange(-self.n_sel_ch + 1, 1),
+        tickvals_handler = np.arange(-self.n_sel_ch + 1, 1)
+        DEFAULT_LAYOUT['yaxis'].update({"tickvals": tickvals_handler,
                                         'ticktext': [''] * self.n_sel_ch,
                                         'range': [-self.n_sel_ch, 1]})
         self.layout = go.Layout(**DEFAULT_LAYOUT)
@@ -211,7 +215,8 @@ class MNEVisualizer:
         self.traces = [go.Scatter(name=ii, **trace_kwargs)
                        for ii in range(self.n_sel_ch)]
 
-        self.update_layout(ch_slider_val=self.channel_slider.max, time_slider_val=0)
+        self.update_layout(ch_slider_val=self.channel_slider.max,
+                           time_slider_val=0)
 
     def update_layout(self,
                       ch_slider_val=None,
@@ -227,7 +232,8 @@ class MNEVisualizer:
 
         # Update selected channels
         first_sel_ch = self._ch_slider_val - self.n_sel_ch + 1
-        last_sel_ch = self._ch_slider_val + 1  # +1 bc this is used in slicing below, & end is not inclued
+        # +1 bc this is used in slicing below, & end is not inclued
+        last_sel_ch = self._ch_slider_val + 1
 
         # Update times
         start_samp, stop_samp = self.inst.time_as_index([tmin, tmax])
@@ -235,13 +241,14 @@ class MNEVisualizer:
         data, times = self.inst[::-1, start_samp:stop_samp]
         data = data[first_sel_ch:last_sel_ch, :]
         if self.remove_dc:
-            data -= np.nanmean(data, axis=1)[:, np.newaxis] 
+            data -= np.nanmean(data, axis=1)[:, np.newaxis]
 
         # Update the raw timeseries traces
         ch_names = self.inst.ch_names[::-1][first_sel_ch:last_sel_ch]
         self.layout.yaxis['ticktext'] = ch_names
         ch_types = self.inst.get_channel_types()[::-1][first_sel_ch:last_sel_ch]
-        for i, (ch_name, signal, trace, ch_type) in enumerate(zip(ch_names, data, self.traces, ch_types)):
+        ch_zip = zip(ch_names, data, self.traces, ch_types)
+        for i, (ch_name, signal, trace, ch_type) in enumerate(ch_zip):
             trace.x = np.round(times, 3)
             trace.y = signal/self._get_norm_factor(ch_type) - (self.n_sel_ch - i - 1)
             trace.name = ch_name
@@ -263,7 +270,8 @@ class MNEVisualizer:
     def initialize_keyboard(self):
         events =[{"event": "keydown", "props": ["key", "shiftKey"]},
                  {"event":"keyup", "props":["key","shiftKey"]}]
-        event_listener = EventListener(id=self.dash_ids['keyboard'], events=events)
+        event_listener = EventListener(id=self.dash_ids['keyboard'],
+                                       events=events)
         self.app.layout.children.extend([event_listener, html.Div(id=self.dash_ids["output"])])
         @self.app.callback(Output(self.dash_ids['output'], "children"), [Input(self.dash_ids['keyboard'], "event")])
         def event_callback(event):
@@ -304,7 +312,7 @@ class MNEVisualizer:
                 update_layout_ids.append(self.refresh_input.component_id)
 
             ctx = dash.callback_context
-            assert(len(ctx.triggered) == 1)
+            assert len(ctx.triggered) == 1
             if len(ctx.triggered[0]['prop_id'].split('.')) == 2:
                 object_, dash_event = ctx.triggered[0]["prop_id"].split('.')
                 if object_ == self.dash_ids['graph']:
@@ -363,7 +371,7 @@ class MNEVisualizer:
                             return no_update
                     else:
                         # self.select_trace()
-                        pass # for selecting traces                    
+                        pass # for selecting traces
                 elif object_ in update_layout_ids:
                     self.update_layout(ch_slider_val=ch, time_slider_val=time)
 
@@ -403,7 +411,8 @@ class MNEVisualizer:
                                       vertical=False,
                                       included=False,
                                       updatemode='mouseup')
-        self.time_slider_div = html.Div(self.time_slider, className=CSS['time-slider-div'])
+        self.time_slider_div = html.Div(self.time_slider,
+                                        className=CSS['time-slider-div'])
 
     def set_div(self):
         """build the final hmtl.Div to be returned to user."""
@@ -460,7 +469,8 @@ class ICVisualizer(MNEVisualizer):
 
         # Update selected channels
         first_sel_ch = self._ch_slider_val - self.n_sel_ch + 1
-        last_sel_ch = self._ch_slider_val + 1  # +1 bc this is used in slicing below, & end is not inclued
+        # +1 bc this is used in slicing below, & end is not inclued
+        last_sel_ch = self._ch_slider_val + 1
 
         # Update the raw timeseries traces
         self.ic_types
@@ -472,8 +482,8 @@ class ICVisualizer(MNEVisualizer):
                 trace.line.color = self.cmap[ch_name]
             # IC Hover template will show IC number and Time by default
             trace.hovertemplate = (f'<b>Component</b>: {ch_name}' +
-                                    '<br><b>Time</b>: %{x}s<br>' +
-                                    '<extra></extra>')
+                                   '<br><b>Time</b>: %{x}s<br>' +
+                                   '<extra></extra>')
             if self.ic_types:
                 # update hovertemplate with IC label
                 label = self.ic_types[ch_name]
