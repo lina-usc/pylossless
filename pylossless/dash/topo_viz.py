@@ -19,7 +19,7 @@ from mne.viz.topomap import _get_pos_outlines
 from mne.viz.topomap import _setup_interp, _check_extrapolate
 
 from . import ic_label_cmap
-from .css_defaults import CSS
+from .css_defaults import CSS, STYLE
 
 # thin lines in the background and numbers below
 axis = {'showgrid': False, 'visible': False}
@@ -46,11 +46,10 @@ class TopoData:  # TODO: Fix/finish doc comments for this class.
 class TopoViz:  # TODO: Fix/finish doc comments for this class.
     """Represenation of a classic EEG topographic map."""
     def __init__(self, app, montage=None, data=None,  # : TopoData,
-                 rows=5, cols=4, margin_x=4/5, width=450, height=700,
-                 margin_y=2/5, topo_slider_id=None,
-                 head_contours_color="black", cmap='RdBu_r',
-                 show_sensors=True, refresh_input=None):
-        """Constructor for html based Topographic Map"""
+                 rows=5, cols=4, margin_x=4/5, width=400, height=600,
+                 margin_y=2/5, head_contours_color="black", cmap='RdBu_r',
+                 show_sensors=True, show_slider=True, refresh_input=None):
+        """ """
         self.refresh_input = refresh_input
         self.montage = montage
         self.data = data
@@ -64,20 +63,21 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
         self.cmap = cmap
         self.titles = None
         self.show_sensors = show_sensors
+        self.show_slider = show_slider
         fig = make_subplots(rows=rows, cols=cols,
                             horizontal_spacing=0.01,
                             vertical_spacing=0.01)
         self.graph = dcc.Graph(figure=fig, id='topo-graph',
-                               className=CSS['topo-dcc'])  # 'dcc-graph')
+                               className=CSS['topo-dcc'])
         self.graph_div = html.Div(children=[self.graph],
                                   id='topo-graph-div',
-                                  className=CSS['topo-dcc-div'])
+                                  className=CSS['topo-dcc-div'],
+                                  style=STYLE['topo-dcc-div'])
 
         self.margin_x = margin_x
         self.margin_y = margin_y
         self.offset = 0
         self.topo_slider = None
-        self.use_topo_slider = topo_slider_id
         self.head_contours_color = head_contours_color
         self.info = None
         self.pos = None
@@ -207,9 +207,9 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
             autosize=False,
             width=self.width,
             height=self.height,
-            plot_bgcolor='rgba(0,0,0,0)',  # '#EAEAF2', #'rgba(44,44,44,.5)',
-            paper_bgcolor='rgba(0,0,0,0)')  # '#EAEAF2')  #'rgba(44,44,44,.5)')
-        self.graph.figure['layout'].update(margin=dict(l=0, r=0, b=0, t=0))
+            plot_bgcolor='rgba(0,0,0,0)',  #'#EAEAF2', #'rgba(44,44,44,.5)',
+            paper_bgcolor='rgba(0,0,0,0)')  #'#EAEAF2')  #'rgba(44,44,44,.5)')
+        self.graph.figure['layout'].update(margin=dict(l=0, r=0, b=0, t=20))
 
     @property
     def nb_topo(self):
@@ -228,25 +228,22 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
                                       included=False,
                                       updatemode='mouseup',
                                       vertical=True,
-                                      verticalHeight=figure_layout_handler)
-        self.topo_slider_div = html.Div(dcc.Slider)
+                                      verticalHeight=400)
+        self.topo_slider_div = html.Div(self.topo_slider,
+                                        className=CSS['topo-slider-div'],
+                                        style={})
+        if not self.show_slider:
+            self.topo_slider_div.style.update({'display': 'none'})
 
     def set_div(self):
-        if self.use_topo_slider is None:
-            # outer_div includes slider obj
-            graph_components = [self.topo_slider_div, self.graph_div]
-        else:
-            # outer_div is just the graph
-            graph_components = [self.graph_div]
+        # outer_div includes slider obj
+        graph_components = [self.topo_slider_div, self.graph_div]
         self.container_plot = html.Div(children=graph_components,
                                        className=CSS['topo-container'])
 
     def set_callback(self):
         args = [Output('topo-graph', 'figure')]
-        if self.use_topo_slider:
-            args += [Input(self.use_topo_slider, 'value')]
-        else:
-            args += [Input('topo-slider', 'value')]
+        args += [Input('topo-slider', 'value')]
         if self.refresh_input:
             args += [self.refresh_input]
 
@@ -274,7 +271,6 @@ class TopoVizICA(TopoViz):
         data = TopoData([dict(zip(montage.ch_names, component))
                          for component in ica.get_components().T])
         data.topo_values.index = list(ic_labels.keys())
-        print('%%%%%', data)
         return data
 
     def load_recording(self, montage, ica, ic_labels):

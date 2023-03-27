@@ -69,8 +69,10 @@ ica:
             method: fastica
             random_state: 97
         run2:
+            fit_params:
+                extended: true
             max_iter: auto
-            method: fastica
+            method: infomax
             random_state: 97
 in_path: []
 montage_info:

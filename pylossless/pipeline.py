@@ -61,6 +61,9 @@ class FlaggedChs(dict):
             bad_ch_names : list | tuple
                 Channel names. Will be the values for the `kind` `dict` `key`.
         """
+        logger.debug(f'NEW BAD CHANNELS {bad_ch_names}')
+        if isinstance(bad_ch_names, xr.DataArray):
+            bad_ch_names = bad_ch_names.values
         self[kind] = bad_ch_names
         self['manual'] = np.unique(np.concatenate(list(self.values())))
 
@@ -307,6 +310,7 @@ def get_operate_dim(array, flag_dim):
     array : Xarray DataArray
         An instance of `Xarray.DataArray` that was constructed from an
         `mne.Epochs` object, using `pylossless.pipeline.epochs_to_xr`.
+        `array` need to be 2D.
     flag_dim : str
         Name of the Xarray.DataArray.dims to remove. Must be one of 'epoch',
         'ch', or 'ic'.
@@ -318,8 +322,9 @@ def get_operate_dim(array, flag_dim):
         with the `flag_dim` removed from the list.
     """
     dims = list(array.dims)
+    assert len(dims) == 2
     dims.remove(flag_dim)
-    return dims
+    return dims[0]
 
 
 def variability_across_epochs(epochs_xr, var_measure='sd',
@@ -379,179 +384,119 @@ def variability_across_epochs(epochs_xr, var_measure='sd',
         raise NotImplementedError
 
 
-# TODO: change naming of 'init' and init_dir specifically,
-# neg/pos/both for lower/upper bound options.
-def marks_array2flags(inarray, flag_dim='epoch', outlier_method='q',
-                      init_vals=(), init_dir='both', init_crit=(),
-                      flag_method='z_score', flag_vals=(),
-                      flag_crit=(), trim=0):
-    """Mark epochs, channels, or ICs as flagged for artefact.
-
-    This function takes an array with typically created by chan_variance or
-    chan_neighbour_r and marks either periods of time or sources as outliers.
-    Often these discovered time periods are artefactual and are marked as such.
-    An array of values representing the distribution of values inside an
-    epoch are passed to the function. Next, these values are put through one
-    of three outlier detection schemes. Epochs that are outliers are marked
-    as 1's and are 0 otherwise in a second data array. This array is then
-    averaged column-wise or row-wise. Column-wise averaging results in
-    flagging of time, while row-wise results in rejection of sources. This
-    averaged distribution is put through another round of outlier detection.
-    This time, if data points are outliers, they are flagged.
+def _get_outliers_quantile(array, dim, lower=0.25, upper=0.75, mid=0.5, k=3):
+    """Calculate outliers for Epochs or Channels based on the IQR.
 
     Parameters
     ----------
-    inarray : Xarray.DataArray
-
-    flag_dim : str
-        Must be one of 'epoch', 'ch', 'ic'. Col flags time, row flags
-        sources.
-
-    outlier_method : str
-        Must be one of 'q', 'z', or 'fixed'.
-
-    init_vals : list | tuple (default empty tuple)
-        A list or tuple containing two elements, the lower and upper bound to
-        be used as thresholds. if `outlier_method` == `'q'`, the thresholds
-        should be quantiles between 0 and 1 e.g. `[.3, .7]`. If
-        `outlier_method` == `'fixed'`, the thresholds should be `int` or
-        `float`, marking some threshold for exclusion .e.g `[0, 50]`. If
-        `outlier_method` == 'z', this parameter is ignored.
-    init_dir : str (default 'both')
-        Must be one of 'pos', 'neg', 'both'. Allows looking for unusually low
-        (neg) correlations, high (pos), or both.
-    init_crit : int
-        If `outlier_method` == `'q'`, this value scales the distancea long with
-        `flag_crit`.
-        If `outlier_method` == `'fixed'`, this parameter is ignored.
-    flag_method : str
-        must be one of 'q', 'z', or 'fixed'. Second pass responsible for
-        flagging aggregate array.
-    flag_vals :
-        Second pass for flagging.. if `outlier_method` == `'q'`, the quantile
-        to use, e.g [.7].
-    flag_crit : float
-        Second pass for flagging.
-        If `outler_method` == `'fixed'` and `'fixed'` is selected for
-        `flag_method`, This value should bea threshold that something must
-        pass to be flagged. i.e. if 0.2 (20%) of channels behaving as
-        outliers. If `outlier_method` == `'q'`, this value scales the distance
-        along with `init_crit`.
-    trim  : int
-        Numerical value of trimmed mean and std. Only valid when
-        `outlier_method` == `'z'`.
+    array : xr.DataArray
+        Array of shape n_channels, n_epochs, representing the stdev across
+        time (samples in epoch) for each channel/epoch pair.
+    dim : str
+        One of 'ch' or 'epoch'. The dimension to operate across.
+    lower : float (default 0.75)
+        The lower bound of the IQR
+    upper : float (default 0.75)
+        The upper bound of the IQR
+    mid : float (default 0.5)
+        The mid-point of the IQR
+    k : int | float
+        factor to multiply the IQR by.
 
     Returns
     -------
-    outlier_mask : np.array
-        Mask of periods of time that are flagged as outliers
-
-    outind : np.array
-        Array of 1's and 0's. 1's represent flagged sources/time.
-        Indices are only flagged if out_dist array fall above a second
-        outlier threshold.
-     out_dist : np.array
-        Distribution of rejection array. Either the mean row-wise or
-        column-wise of outlier_mask.
-
-    Notes
-    -----
-    Read below for an indepth description of the outlier_methods:
-    fixed
-    This method does no investigation of the distribution. Instead
-    specific criteria are given via `vals` and `crit`. If `'fixed'`
-    is selected for the `outlier_method` option, only `init_vals` should
-    be filled while `init_crit` is to be left empty. This would have the
-    effect of marking some interval, e.g. [0 50] as being an outlier.
-    If `'fixed'` is selected for `'flag_method'`, only `'flag_crit'` should be
-    filled. This translates to a threshold that something must pass
-    to be flagged. i.e. if 0.2 (20%) of channels are behaving as
-    outliers, then the period of time is flagged. Conversely if
-    `'flag_dim'` is row, if a source is bad 20% of the time it is marked
-    as a bad channel.
-    q (Quantile)
-    `'init_vals'` allows for the specification of which
-    quantiles to use, e.g. [.3 .7]. When using `'flag_vals'`, only specify
-    one quantile, e.g [.7]. The absolute difference between the
-    median and these quantiles returns a distance. `'init_crit'` and
-    `'flag_crit'` scales this distance. If values are found to be outside
-    of this, they are flagged.
-    z (z-score)
-    Typical z-score calculation for distance. Vals and crit options
-    not used for this methodology. See trim option above for control.
+    Lower value threshold : xr.DataArray
+        Vector of values (of size n_channels or n_epochs) to be considered
+        as the lower threshold for outliers.
+    Upper value threshold : xr.DataArray
+        Vector of values (of size n_channels or n_epochs) to be considered the
+        upper thresholds for outliers.
     """
-    # Calculate mean and standard deviation for each column
-    operate_dim = get_operate_dim(inarray, flag_dim)
-    if outlier_method == 'q':
-        if len(init_vals) == 1:
-            qval = [.5 - init_vals[0], .5, .5 + init_vals[0]]
-        elif len(init_vals) == 2:
-            qval = [init_vals[0], .5, init_vals[1]]
-        elif len(init_vals) == 3:
-            qval = init_vals
-        else:
-            raise ValueError('init_vals argument must be 1, 2, or 3')
+    lower_val, mid_val, upper_val = array.quantile([lower, mid, upper],
+                                                   dim=dim)
+    inter_q = upper_val - lower_val
+    return mid_val - inter_q*k, mid_val + inter_q*k
 
-        m_dist = inarray.quantile(qval[1], dim=operate_dim)
-        l_dist = inarray.quantile(qval[0], dim=operate_dim)
-        u_dist = inarray.quantile(qval[2], dim=operate_dim)
-        l_out = m_dist - (m_dist - l_dist) * init_crit
-        u_out = m_dist + (u_dist - m_dist) * init_crit
 
-    elif outlier_method == 'z':
-        trim_mean = partial(scipy.stats.mstats.trimmed_mean,
-                            limits=(trim, trim))
-        m_dist = inarray.reduce(trim_mean, dim=operate_dim)
+def _get_outliers_trimmed(array, dim, trim=0.2, k=3):
+    """Calculate outliers for Epochs or Channels based on the trimmed mean."""
+    trim_mean = partial(scipy.stats.mstats.trimmed_mean,
+                        limits=(trim, trim))
+    trim_std = partial(scipy.stats.mstats.trimmed_std, limits=(trim, trim))
+    m_dist = array.reduce(trim_mean, dim=dim)
+    s_dist = array.reduce(trim_std, dim=dim)
+    return m_dist - s_dist*k, m_dist + s_dist*k
 
-        trim_std = partial(scipy.stats.mstats.trimmed_std, limits=(trim, trim))
-        s_dist = inarray.reduce(trim_std, dim=operate_dim)
-        l_dist = m_dist - s_dist
-        u_dist = m_dist + s_dist
-        l_out = m_dist - s_dist * init_crit
-        u_out = m_dist + s_dist * init_crit
+
+def _detect_outliers(array, flag_dim='epoch', outlier_method='quantile',
+                     flag_crit=0.2, init_dir='both', outliers_kwargs=None):
+    """Mark epochs, channels, or ICs as flagged for artefact.
+
+    Parameters
+    ----------
+    array : xr.DataArray
+        Array of shape n_channels, n_epochs, representing the stdev across
+        time (samples in epoch) for each channel/epoch pair.
+    dim : str
+        One of 'ch' or 'epoch'. The dimension to operate across. For example
+        if 'epoch', then detect epochs that are outliers.
+    outlier_method : str (default quantile)
+        one of 'quantile', 'trimmed', or 'fixed'.
+    flag_crit : float
+        Threshold (percentage) to consider an epoch or channel as bad. If
+        operating across channels using default value, then if more then if
+        the channel is an outlier in more than 20% of epochs, it will be
+        flagged. if operating across epochs, then if more than 20% of channels
+        are outliers in an epoch, it will be flagged as bad.
+    init_dir : str
+        One of 'pos', 'neg', or 'both'. Direction to test for outliers. If
+        'pos', only detect outliers at the upper end of the distribution. If
+        'neg', only detect outliers at the lower end of the distribution.
+    outliers_kwargs : dict
+        Set in the pipeline config. 'k', 'lower', and 'upper' kwargs can be
+        passed to _get_outliers_quantile. 'k' can also be passed to
+        _get_outliers_trimmed.
+    Returns
+    -------
+    boolean xr.DataArray of shape n_epochs, n_times, where an epoch x channel
+    coordinate is 1 if it is to be flagged as bad.
+
+    """
+    if outliers_kwargs is None:
+        outliers_kwargs = {}
+
+    # Computing lower and upper bounds for outlier detection
+    operate_dim = get_operate_dim(array, flag_dim)
+
+    if outlier_method == 'quantile':
+        l_out, u_out = _get_outliers_quantile(array, flag_dim,
+                                              **outliers_kwargs)
+
+    elif outlier_method == 'trimmed':
+        l_out, u_out = _get_outliers_trimmed(array, flag_dim,
+                                             **outliers_kwargs)
 
     elif outlier_method == 'fixed':
-        l_out, u_out = init_vals
-
-    # flag outlying values
-    outlier_mask = xr.zeros_like(inarray, dtype=bool)
-
-    if init_dir == 'pos' or init_dir == 'both':  # for positive outliers
-        outlier_mask = outlier_mask | (inarray > u_out)
-
-    if init_dir == 'neg' or init_dir == 'both':  # for negative outliers
-        outlier_mask = outlier_mask | (inarray < l_out)
-
-    # average column of outlier_mask
-    dims = get_operate_dim(inarray, flag_dim)
-    assert len(dims) == 1
-    critrow = outlier_mask.mean(dims[0])
-
-    # set the flag index threshold (may add quantile option here as well)
-    if flag_method == 'fixed':
-        rowthresh = flag_crit
-
-    elif flag_method == 'z_score':
-        mccritrow = np.mean(critrow)
-        sccritrow = np.std(critrow)
-        rowthresh = mccritrow + sccritrow * flag_crit
-
-    elif flag_method == 'q':
-        qval = [.5, flag_vals]
-        mccritrow = np.quantile(critrow, qval[0])
-        sccritrow = np.quantile(critrow, qval[1])
-        rowthresh = mccritrow + (sccritrow - mccritrow) * flag_crit
+        l_out, u_out = outliers_kwargs["lower"], outliers_kwargs["upper"]
 
     else:
-        raise ValueError("flag_method must be flag_method, z_score, or q")
+        raise ValueError("outlier_method must be 'quantile', 'trimmed'"
+                         f", or 'fixed'. Got {outlier_method}")
 
-    # get indices of rows beyond threshold
-    # outind = np.where(critrow > rowthresh)[0]
-    outind = np.where(critrow > rowthresh)[0]
+    # Calculating the proportion of outliers along dimension operate_dim
+    # and marking items along dimension flag_dim if this number is
+    # larger than
+    outlier_mask = xr.zeros_like(array, dtype=bool)
 
-    out_dist = np.array([m_dist, l_dist, u_dist, l_out, u_out])
+    if init_dir == 'pos' or init_dir == 'both':  # for positive outliers
+        outlier_mask = outlier_mask | (array > u_out)
 
-    return outlier_mask, outind, out_dist
+    if init_dir == 'neg' or init_dir == 'both':  # for negative outliers
+        outlier_mask = outlier_mask | (array < l_out)
+
+    # average column of outlier_mask
+    prop_outliers = outlier_mask.mean(operate_dim)
+    return np.where(prop_outliers > flag_crit)[0]
 
 
 def add_pylossless_annotations(raw, inds, event_type, epochs):
@@ -858,6 +803,7 @@ class LosslessPipeline():
 
     def flag_outlier_chs(self):
         """Flag outlier Channels."""
+        # TODO: Re-use _detect_outliers here.
         # Window the continuous data
         # logging_log('INFO', 'Windowing the continuous data...');
         epochs_xr = epochs_to_xr(self.get_epochs(), kind="ch")
@@ -890,8 +836,31 @@ class LosslessPipeline():
         # all steps (?) uses the get_epochs() function
         self.flagged_chs.rereference(self.raw)
 
-    def flag_ch_sd(self):
+    def flag_ch_sd_ch(self):
         """Flag channels with outlying standard deviation."""
+        # TODO: flag "ch_sd" should be renamed "time_sd"
+        # TODO: doc for step 3 and 4 need to be updated
+        epochs_xr = epochs_to_xr(self.get_epochs(), kind="ch")
+        data_sd = epochs_xr.std("time")
+
+        # flag channels for ch_sd
+        flag_sd_ch_inds = _detect_outliers(data_sd, flag_dim='ch',
+                                           init_dir='pos',
+                                           **self.config['ch_ch_sd'])
+
+        bad_ch_names = epochs_xr.ch[flag_sd_ch_inds]
+        self.flagged_chs.add_flag_cat(kind='ch_sd',
+                                      bad_ch_names=bad_ch_names)
+
+        # TODO: Verify: It is unclear this is necessary.
+        # get_epochs() is systematically rereferencing and
+        # all steps (?) uses the get_epochs() function
+        self.flagged_chs.rereference(self.raw)
+
+    def flag_ch_sd_epoch(self):
+        """Flag epochs with outlying standard deviation."""
+        # TODO: flag "ch_sd" should be renamed "time_sd"
+        outlier_methods = ('quantile', 'trimmed', 'fixed')
         epochs = self.get_epochs()
         epochs_xr = epochs_to_xr(epochs, kind="ch")
         data_sd = epochs_xr.std("time")
@@ -902,27 +871,16 @@ class LosslessPipeline():
             if 'outlier_method' in config_epoch:
                 if config_epoch['outlier_method'] is None:
                     del config_epoch['outlier_method']
-                elif config_epoch['outlier_method'] not in ('q', 'z', 'fixed'):
+                elif config_epoch['outlier_method'] not in outlier_methods:
                     raise NotImplementedError
-        flag_sd_t_inds = marks_array2flags(data_sd, flag_dim='epoch',
-                                           **config_epoch)[1]
+        flag_sd_t_inds = _detect_outliers(data_sd,
+                                          flag_dim='epoch',
+                                          init_dir='pos',
+                                          **config_epoch)
         self.flagged_epochs.add_flag_cat('ch_sd',
                                          flag_sd_t_inds,
                                          self.raw,
                                          epochs)
-
-        # flag channels for ch_sd
-        flag_sd_ch_inds = marks_array2flags(data_sd, flag_dim='ch',
-                                            **self.config['ch_ch_sd'])[1]
-
-        bad_ch_names = epochs_xr.ch[flag_sd_ch_inds]
-        self.flagged_chs.add_flag_cat(kind='ch_sd',
-                                      bad_ch_names=bad_ch_names)
-
-        # TODO: Verify: It is unclear this is necessary.
-        # get_epochs() is systematically rereferencing and
-        # all steps (?) uses the get_epochs() function
-        self.flagged_chs.rereference(self.raw)
 
     def get_n_nbr(self):
         """Calculate nearest neighbour correlation for channels."""
@@ -945,9 +903,9 @@ class LosslessPipeline():
         data_r_ch = self.get_n_nbr()[0]
 
         # Create the window criteria vector for flagging low_r chan_info...
-        flag_r_ch_inds = marks_array2flags(data_r_ch, flag_dim='ch',
-                                           init_dir='neg',
-                                           **self.config['ch_low_r'])[1]
+        flag_r_ch_inds = _detect_outliers(data_r_ch, flag_dim='ch',
+                                          init_dir='neg',
+                                          **self.config['ch_low_r'])
 
         # Edit the channel flag info structure
         bad_ch_names = data_r_ch.ch[flag_r_ch_inds].values.tolist()
@@ -1024,9 +982,9 @@ class LosslessPipeline():
         # non-'manual' flagged channels and epochs...
         data_r_ch, epochs = self.get_n_nbr()
 
-        flag_r_t_inds = marks_array2flags(data_r_ch, flag_dim='epoch',
-                                          init_dir='neg',
-                                          **self.config['epoch_low_r'])[1]
+        flag_r_t_inds = _detect_outliers(data_r_ch, flag_dim='epoch',
+                                         init_dir='neg',
+                                         **self.config['epoch_low_r'])
 
         self.flagged_epochs.add_flag_cat('low_r',
                                          flag_r_t_inds,
@@ -1074,12 +1032,12 @@ class LosslessPipeline():
         # Calculate IC sd by window
         epochs = self.get_epochs()
         epochs_xr = epochs_to_xr(epochs, kind="ic", ica=self.ica1)
-        epoch_ic_sd1 = variability_across_epochs(epochs_xr)
+        data_sd = epochs_xr.std('time')
 
         # Create the windowing sd criteria
         kwargs = self.config['ica']['ic_ic_sd']
-        flag_epoch_ic_inds = marks_array2flags(epoch_ic_sd1,
-                                               flag_dim='ic', **kwargs)[1]
+        flag_epoch_ic_inds = _detect_outliers(data_sd,
+                                              flag_dim='epoch', **kwargs)
 
         self.flagged_epochs.add_flag_cat('ic_sd1', flag_epoch_ic_inds,
                                          self.raw, epochs)
@@ -1197,8 +1155,11 @@ class LosslessPipeline():
         # and leave them out of average reference
         self.flag_outlier_chs()
 
-        # 3-4.flag epochs and channels based on large Channel Stdev.
-        self.flag_ch_sd()
+        # 3.flag channels based on large Stdev. across time
+        self.flag_ch_sd_ch()
+
+        # 4.flag epochs based on large Channel Stdev. across time
+        self.flag_ch_sd_epoch()
 
         # 5. Filtering
         self.filter()
@@ -1257,7 +1218,6 @@ class LosslessPipeline():
         # Load ICAs
         for this_ica in ['ica1', 'ica2']:
             suffix = this_ica + '_ica'
-            print('$$$ ', bpath)
             ica_bidspath = bpath.update(extension='.fif', suffix=suffix,
                                         check=False)
             setattr(self, this_ica,

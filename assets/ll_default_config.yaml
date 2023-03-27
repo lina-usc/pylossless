@@ -89,27 +89,6 @@ slurm_options:
   threads_per_task: []
   time_limit: 2h
 
-
-################################ ICA #################################
-ica:
-  ic_ic_sd:
-    flag_crit: 0.2
-    flag_method: fixed
-    flag_vals: null
-    init_crit: 6
-    outlier_method: q
-    init_vals: [0.3, 0.7]
-
-  # See arguments definition from mne.preprocessing.ICA
-  ica_args:
-    run1:
-      method: fastica
-    run2:
-      method: infomax
-      fit_params:
-        extended: True
-
-
 ########################## Nearest neigbhor ##########################
 nearest_neighbors:
   n_nbr_ch: 3
@@ -123,35 +102,54 @@ bridge:
 
 ch_ch_sd:
   flag_crit: 0.2
-  flag_method: fixed
-  flag_vals: []
-  init_crit: 16
-  outlier_method: q
-  init_vals: [0.3, 0.7]
+  outlier_method: quantile
+  outliers_kwargs:
+    k: 16
+    lower: 0.3
+    upper: 0.7
 
 ch_low_r:
   flag_crit: 0.2
-  flag_method: fixed
-  flag_vals: []
-  init_crit: 16
-  outlier_method: q
-  init_vals: [0.3, 0.7]
+  outlier_method: quantile
+  outliers_kwargs:
+    k: 16
+    lower: 0.3
+    upper: 0.7
 
 epoch_ch_sd:
   flag_crit: 0.2
-  flag_method: fixed
-  flag_vals: []
-  init_crit: 16
-  outlier_method: q
-  init_vals: [0.3, 0.7]
+  outlier_method: quantile
+  outliers_kwargs:
+    k: 16
+    lower: 0.3
+    upper: 0.7
 
 epoch_gap:
   min_gap_ms: 2000
 
 epoch_low_r:
   flag_crit: 0.2
-  flag_method: fixed
-  flag_vals: []
-  init_crit: 16
-  outlier_method: q
-  init_vals: [0.3, 0.7]
+  outlier_method: quantile
+  outliers_kwargs:
+    k: 16
+    lower: 0.3
+    upper: 0.7
+
+################################ ICA #################################
+ica:
+  ic_ic_sd:
+    flag_crit: 0.2
+    outlier_method: quantile
+    outliers_kwargs:
+      k: 6
+      lower: 0.3
+      upper: 0.7
+
+  # See arguments definition from mne.preprocessing.ICA
+  ica_args:
+    run1:
+      method: fastica
+    run2:
+      method: infomax
+      fit_params:
+        extended: True

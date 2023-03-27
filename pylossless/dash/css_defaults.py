@@ -86,11 +86,15 @@ CSS['timeseries-container'] = "w-100"  # border border-success
 # TOPO PLOTS
 ############################################################
 
+# bootstrap format for topo slider div
+CSS['topo-slider-div'] = "d-inline-block align-middle"
+
 # bootstrap for topo dcc-graph
 CSS['topo-dcc'] = "bg-secondary bg-opacity-50 border rounded"  # border-info
 
-# bootstrap for div containing topo-dcc; border border-warning
-CSS['topo-dcc-div'] = 'bg-secondary bg-opacity-50 align-top'
+# bootstrap for div containing topo-dcc
+CSS['topo-dcc-div'] = 'bg-secondary bg-opacity-50 d-inline-block align-top'  # border border-warning
+STYLE['topo-dcc-div'] = {'width': '90%'}  # so that slider can fit to the left
 
 # boostrap for final container: self.container_plot
 CSS['topo-container'] = 'topo-div shadow-lg'  # border border-success
