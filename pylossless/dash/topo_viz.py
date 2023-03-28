@@ -1,48 +1,50 @@
+"""Helper functions and Classes for topographic maps during Lossless QC."""
+
 from itertools import product
+from copy import copy
 import warnings
 
+import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from dash import dcc, html
 from dash.dependencies import Input, Output
 
 import numpy as np
 import pandas as pd
-from copy import copy
 
 from mne import create_info
 from mne.io import RawArray
-
-import plotly.graph_objects as go
-from mne.viz.topomap import _get_pos_outlines
 from mne.utils.check import _check_sphere
+from mne.viz.topomap import _get_pos_outlines
 from mne.viz.topomap import _setup_interp, _check_extrapolate
 
 from . import ic_label_cmap
 from .css_defaults import CSS, STYLE
 
-from copy import copy
-
-axis = {'showgrid': False, # thin lines in the background
-         'visible': False,  # numbers below
-        }
+# thin lines in the background and numbers below
+axis = {'showgrid': False, 'visible': False}
 yaxis = copy(axis)
-yaxis.update(dict(scaleanchor="x", scaleratio=1))
+yaxis.update({"scaleanchor": "x", "scaleratio": 1})
 
-class TopoData:
+
+class TopoData:  # TODO: Fix/finish doc comments for this class.
+    """Handler class for passing Topo Data."""
     def __init__(self, topo_values=()):
-        """topo_values: list of dict """
+        """topo_values: list of dict."""
         self.topo_values = pd.DataFrame(topo_values)
 
     def add_topomap(self, topomap: dict):
-        """topomap: dict"""
+        """topomap: dict."""
         self.topo_values = self.topo_values.append(topomap)
 
     @property
     def nb_topo(self):
+        """topomap: shape."""
         return self.topo_values.shape[0]
 
 
-class TopoViz:
+class TopoViz:  # TODO: Fix/finish doc comments for this class.
+    """Represenation of a classic EEG topographic map."""
     def __init__(self, app, montage=None, data=None,  # : TopoData,
                  rows=5, cols=4, margin_x=4/5, width=400, height=600,
                  margin_y=2/5, head_contours_color="black", cmap='RdBu_r',
@@ -88,7 +90,8 @@ class TopoViz:
         self.set_div()
         self.set_callback()
 
-    def load_recording(self, montage, data):
+    def load_recording(self, montage, data):  # TODO: Finish/fix docstring
+        """Load recording based on montage and data matrix."""
         self.montage = montage
         self.data = data
         if self.data:
@@ -103,29 +106,33 @@ class TopoViz:
         self.topo_slider.value = self.nb_topo - 1
         self.initialize_layout()
 
+    # TODO: Finish/fix docstring
     def set_head_pos_contours(self, sphere=None, picks=None):
+        """Manually set head position contours."""
         if not self.info:
             return
         sphere = _check_sphere(sphere, self.info)
         self.pos, self.outlines = _get_pos_outlines(self.info, picks, sphere,
                                                     to_sphere=True)
 
+    # TODO: Finish/fix docstring
     def get_head_scatters(self, color="back", show_sensors=True):
+        """Build scatter plot from head position data."""
         outlines_scat = [go.Scatter(x=x, y=y, line=dict(color=color),
                                     mode='lines', showlegend=False)
-                        for key, (x, y) in self.outlines.items()
-                        if 'clip' not in key]
+                         for key, (x, y) in self.outlines.items()
+                         if 'clip' not in key]
         if show_sensors:
             pos_scat = go.Scatter(x=self.pos.T[0], y=self.pos.T[1],
-                                line=dict(color=color), mode='markers',
-                                marker=dict(color=color,
-                                            size=2,
-                                            opacity=.5),
-                                showlegend=False)
+                                  line=dict(color=color), mode='markers',
+                                  marker=dict(color=color,
+                                              size=2,
+                                              opacity=.5),
+                                  showlegend=False)
 
             return outlines_scat + [pos_scat]
-        else:
-            return outlines_scat
+
+        return outlines_scat
 
     def get_heatmap_data(self, i, j, ch_type="eeg", res=64,
                          extrapolate='auto'):
@@ -147,7 +154,7 @@ class TopoViz:
 
         # Clip to the outer circler
         x0, y0 = self.outlines["clip_origin"]
-        x_rad , y_rad = self.outlines["clip_radius"]
+        x_rad, y_rad = self.outlines["clip_radius"]
         Zi[np.sqrt(((Xi - x0)/x_rad)**2 + ((Yi-y0)/y_rad)**2) > 1] = np.nan
 
         return {"x": Xi[0], "y": Yi[:, 0], "z": Zi}
@@ -186,7 +193,8 @@ class TopoViz:
                 color = "black"
 
             for trace in self.get_head_scatters(color=color,
-                                                show_sensors=self.show_sensors):
+                                                show_sensors=self.show_sensors
+                                                ):
                 self.graph.figure.add_trace(trace, row=i+1, col=j+1)
             self.graph.figure.add_trace(self.heatmap_traces[i][j],
                                         row=i+1, col=j+1)
@@ -199,8 +207,8 @@ class TopoViz:
             autosize=False,
             width=self.width,
             height=self.height,
-            plot_bgcolor='rgba(0,0,0,0)',  #'#EAEAF2', #'rgba(44,44,44,.5)',
-            paper_bgcolor='rgba(0,0,0,0)')  #'#EAEAF2')  #'rgba(44,44,44,.5)')
+            plot_bgcolor='rgba(0,0,0,0)',  # '#EAEAF2', #'rgba(44,44,44,.5)',
+            paper_bgcolor='rgba(0,0,0,0)')  # '#EAEAF2')  #'rgba(44,44,44,.5)')
         self.graph.figure['layout'].update(margin=dict(l=0, r=0, b=0, t=20))
 
     @property

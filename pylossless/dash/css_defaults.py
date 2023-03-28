@@ -1,3 +1,5 @@
+"""CSS styling constant for Lossless Pipeline in Dash."""
+
 # Author: Scott Huberty <seh33@uw.edu>
 
 # Default Layout for individual scatter plots within timeseries
@@ -72,8 +74,8 @@ CSS['time-slider-div'] = "w-100"
 CSS['timeseries'] = "w-100 d-inline-block"  # border border-info
 STYLE['timeseries'] = {'height': '40vh'}
 
-# bootstrap for timeseries-div: self.graph_div
-CSS['timeseries-div'] = "mh-100 d-inline-block shadow-lg"  #  border border-warnings
+# bootstrap for timeseries-div: self.graph_div; border border-warnings
+CSS['timeseries-div'] = "mh-100 d-inline-block shadow-lg"
 STYLE['timeseries-div'] = {'width': '95%'}
 
 # bootstrap for timeseries-container: self.container_plot
@@ -90,8 +92,8 @@ CSS['topo-slider-div'] = "d-inline-block align-middle"
 # bootstrap for topo dcc-graph
 CSS['topo-dcc'] = "bg-secondary bg-opacity-50 border rounded"  # border-info
 
-# bootstrap for div containing topo-dcc
-CSS['topo-dcc-div'] = 'bg-secondary bg-opacity-50 d-inline-block align-top'  # border border-warning
+# bootstrap for div containing topo-dcc; border border-warning
+CSS['topo-dcc-div'] = 'bg-secondary bg-opacity-50 d-inline-block align-top'
 STYLE['topo-dcc-div'] = {'width': '90%'}  # so that slider can fit to the left
 
 # boostrap for final container: self.container_plot

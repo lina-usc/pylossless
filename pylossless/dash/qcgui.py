@@ -3,7 +3,6 @@ from pathlib import Path
 # file selection
 import tkinter
 from tkinter import filedialog
-import pandas as pd
 import numpy as np
 
 import dash
@@ -12,7 +11,7 @@ from dash.dependencies import Input, Output
 import dash_bootstrap_components as dbc
 
 # loading raw object
-from mne_bids import read_raw_bids, get_bids_path_from_fname
+from mne_bids import get_bids_path_from_fname
 import mne
 
 from .topo_viz import TopoVizICA
@@ -28,8 +27,10 @@ class QCGUI:
 
     def __init__(self, app, fpath=None, project_root=None, verbose=False):
 
+        # TODO: Fix this pathing indexing, can likely cause errors.
         if project_root is None:
-            project_root = Path(__file__).parent.parent.parent / 'assets' / 'test_data'
+            project_root = Path(__file__).parent.parent.parent
+            project_root = project_root / 'assets' / 'test_data'
         self.project_root = Path(project_root)
 
         self.pipeline = LosslessPipeline()
@@ -70,18 +71,22 @@ class QCGUI:
         # a selection of a new file, so that the two callbacks
         # are executed sequentially.
         refresh_input = Input('file-dropdown', 'placeholder')
-        self.ica_visualizer = ICVisualizer(self.app, self.raw_ica,
-                                           dash_id_suffix='ica',
-                                           annot_created_callback=self.annot_created_callback,
-                                           cmap=cmap,
-                                           ic_types=self.ic_types,
-                                           refresh_input=refresh_input)
-        self.eeg_visualizer = MNEVisualizer(self.app,
-                                            self.raw,
-                                            dcc_graph_kwargs=dict(config={'modeBarButtonsToRemove':['zoom','pan']}),
-                                            annot_created_callback=self.annot_created_callback,
-                                            refresh_input=refresh_input,
-                                            show_time_slider=False)
+        self.ica_visualizer = ICVisualizer(
+            self.app, self.raw_ica,
+            dash_id_suffix='ica',
+            annot_created_callback=self.annot_created_callback,
+            cmap=cmap,
+            ic_types=self.ic_types,
+            refresh_input=refresh_input)
+
+        self.eeg_visualizer = MNEVisualizer(
+            self.app,
+            self.raw,
+            dcc_graph_kwargs=dict(config={'modeBarButtonsToRemove':
+                                          ['zoom', 'pan']}),
+            annot_created_callback=self.annot_created_callback,
+            refresh_input=refresh_input,
+            show_time_slider=False)
 
         montage = self.raw.get_montage() if self.raw else None
         self.ica_topo = TopoVizICA(self.app, montage, self.ica, self.ic_types,
@@ -122,15 +127,9 @@ class QCGUI:
         # Layout for file control row
         # derivatives_dir = self.project_root / 'derivatives'
         files_list = []
-
-        ###############################
-        # TESTING
-        #self.project_root = Path("/Users/christian/Code/pylossless/assets/test_data/")
         files_list = [{'label': str(file.name), 'value': str(file)}
-                              for file
-                              in sorted(self.project_root.rglob("*.edf"))]
-        # To be removed after fixing: https://github.com/lina-usc/pylossless/issues/29
-        ###############################
+                      for file
+                      in sorted(self.project_root.rglob("*.edf"))]
 
         dropdown_text = f'current folder: {self.project_root.resolve()}'
         logo_fpath = '../assets/logo.png'
@@ -144,9 +143,9 @@ class QCGUI:
                                  outline=True,
                                  className=CSS['button'])
         self.drop_down = dcc.Dropdown(id='file-dropdown',
-                                 className=CSS['dropdown'],
-                                 placeholder="Select a file",
-                                 options=files_list)
+                                      className=CSS['dropdown'],
+                                      placeholder="Select a file",
+                                      options=files_list)
         control_header_row = dbc.Row([
                                     dbc.Col([folder_button, save_button],
                                             width={'size': 2}),
@@ -183,7 +182,8 @@ class QCGUI:
     def load_recording(self, fpath, verbose=False):
         """  """
         self.fpath = Path(fpath)
-        # iclabel_fpath = self.fpath.parent / self.fpath.name.replace("_eeg.edf", "_iclabels.tsv")
+        # iclabel_fpath = self.fpath.parent /
+        #   self.fpath.name.replace("_eeg.edf", "_iclabels.tsv")
         self.pipeline.load_ll_derivative(self.fpath)
         self.raw = self.pipeline.raw
         self.ica = self.pipeline.ica2
@@ -208,7 +208,8 @@ class QCGUI:
         else:
             self.raw_ica = None
 
-        self.ic_types = self.pipeline.flagged_ics.data_frame  # pd.read_csv(iclabel_fpath, sep='\t')
+        # pd.read_csv(iclabel_fpath, sep='\t')
+        self.ic_types = self.pipeline.flagged_ics.data_frame
         self.ic_types['component'] = [f'ICA{ic:03}'
                                       for ic in self.ic_types.component]
         self.ic_types = self.ic_types.set_index('component')['ic_type']
@@ -218,7 +219,8 @@ class QCGUI:
         self.ica_visualizer.load_recording(self.raw_ica, cmap=cmap,
                                            ic_types=self.ic_types)
         self.eeg_visualizer.load_recording(self.raw)
-        self.ica_topo.load_recording(self.raw.get_montage(), self.ica, self.ic_types)
+        self.ica_topo.load_recording(self.raw.get_montage(),
+                                     self.ica, self.ic_types)
 
     def set_callbacks(self):
         @self.app.callback(
@@ -228,16 +230,17 @@ class QCGUI:
         def folder_button_clicked(n_clicks):
             if n_clicks:
                 root = tkinter.Tk()
-                #root.focus_force()
+                # root.focus_force()
                 # Make folder picker dialog appear on top of other windows
                 root.wm_attributes('-topmost', 1)
-                # Cause the root window to disappear milliseconds after calling the filedialog.
+                # Cause the root window to disappear milliseconds
+                # after calling the filedialog.
                 root.after(100, root.withdraw)
                 directory = Path(filedialog.askdirectory())
                 print('selected directory: ', directory)
                 # self.eeg_visualizer.change_dir(directory)
-                '''files_list = [dbc.DropdownMenuItem(str(file.name), id=str(file))
-                              for file in sorted(self.project_root.rglob("*.edf"))]'''
+                '''files_list = [dbc.DropdownMenuItem(str(f.name), id=str(f))
+                    for f in sorted(self.project_root.rglob("*.edf"))]'''
                 files_list = [{'label': str(file.name), 'value': str(file)}
                               for file
                               in sorted(self.project_root.rglob("*.edf"))]
@@ -258,12 +261,13 @@ class QCGUI:
 
         @self.app.callback(
             Output('dropdown-output', 'children'),
-            Input('save-button','n_clicks'),
+            Input('save-button', 'n_clicks'),
             prevent_initial_call=True
         )
         def save_file(n_clicks):
             self.update_bad_ics()
-            self.pipeline.save(get_bids_path_from_fname(self.fpath), overwrite=True)
+            self.pipeline.save(get_bids_path_from_fname(self.fpath),
+                               overwrite=True)
             print('file saved!')
             return dash.no_update
 
@@ -281,7 +285,6 @@ class QCGUI:
             ctx = dash.callback_context
             if ctx.triggered:
                 trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-                print(trigger_id)
                 if trigger_id == self.eeg_visualizer.dash_ids['time-slider']:
                     value = eeg_time_slider
                     return no_update, value
@@ -301,7 +304,6 @@ class QCGUI:
             ctx = dash.callback_context
             if ctx.triggered:
                 trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-                print(trigger_id)
                 if trigger_id == self.ica_visualizer.dash_ids['ch-slider']:
                     value = ica_ch_slider
                     return no_update, value

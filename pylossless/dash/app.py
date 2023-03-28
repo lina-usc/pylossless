@@ -1,12 +1,14 @@
+"""Launching point for Lossless QC Dash app."""
+
 import dash
-
 import dash_bootstrap_components as dbc
-
 from pylossless.dash.qcgui import QCGUI
 
 
 def get_app(fpath=None, kind="dash"):
-    """ """
+    """Wrapper function for calling either Dash or Jupyter
+    for Lossless QC procedure."""
+
     if kind == "jupyter":
         from jupyter_dash import JupyterDash
         app = JupyterDash(__name__)
