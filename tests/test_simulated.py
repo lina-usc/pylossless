@@ -104,7 +104,7 @@ raw_selection2 = raw_sim.copy().crop(tmin=7, tmax=19.994505956825666)
 
 this_info = raw_selection1.copy().pick(make_these_noisy).info
 cov_less_noisy = make_ad_hoc_cov(this_info,
-                                 std=dict(eeg=.0000008))
+                                 std=dict(eeg=.0000009))
 add_noise(raw_selection1,
           cov_less_noisy,
           iir_filter=[0.2, -0.2, 0.04],
