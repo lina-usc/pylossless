@@ -9,6 +9,7 @@
 
 from pathlib import Path
 from functools import partial
+import time
 
 # Math and data structures
 import numpy as np
@@ -1142,59 +1143,103 @@ class LosslessPipeline():
         self._run()
         return self.raw
 
+    # TODO: Numpy docstring
+    def _lll_logger(self, message, t_0, t_1):
+        """Wrapper function for displaying logging messages."""
+        logger.info(f'LLL: {message}: {(t_1 - t_0):.2f}s')
+
     def _run(self):
+        t_0 = time.time()
         self.set_montage()
+        t_0_montage = time.time()
+        self._lll_logger('Done setting montage after', t_0, t_0_montage)
 
         # 1. Execute the staging script if specified.
         self.run_staging_script()
+        t_1 = time.time()
+        self._lll_logger('Done staging script after', t_0_montage, t_1)
 
         # find breaks
         self.find_breaks()
+        t_1_breaks = time.time()
+        self._lll_logger('Done finding breaks after', t_1, t_1_breaks)
 
         # 2. Determine comically bad channels,
         # and leave them out of average reference
         self.flag_outlier_chs()
+        t_2 = time.time()
+        self._lll_logger('Done flagging comically bad outliers after',
+                         t_1_breaks, t_2)
 
         # 3.flag channels based on large Stdev. across time
         self.flag_ch_sd_ch()
+        t_3 = time.time()
+        self._lll_logger('Done computing "ch_sd" on time after', t_2, t_3)
 
         # 4.flag epochs based on large Channel Stdev. across time
         self.flag_ch_sd_epoch()
+        t_4 = time.time()
+        self._lll_logger('Done computing "ch_sd" on channel after', t_3, t_4)
 
         # 5. Filtering
         self.filter()
+        t_5 = time.time()
+        self._lll_logger('Done filtering after', t_4, t_5)
 
         # 6. calculate nearest neighbort r values
         data_r_ch = self.flag_ch_low_r()
+        t_6 = time.time()
+        self._lll_logger('Done computing neighbour r values after', t_5, t_6)
 
         # 7. Identify bridged channels
-        self.flag_ch_bridge(data_r_ch)
         # TODO: Check why we don not rerefence after this step.
+        self.flag_ch_bridge(data_r_ch)
+        t_7 = time.time()
+        self._lll_logger('Done flagging bridged channels after', t_6, t_7)
 
         # 8. Flag rank channels
-        self.flag_ch_rank(data_r_ch)
         # TODO: Verify: It is unclear this is necessary.
         # get_epochs() is systematically rereferencing and
         # all steps (?) uses the get_epochs() function
+        self.flag_ch_rank(data_r_ch)
         self.flagged_chs.rereference(self.raw)
+        t_8 = time.time()
+        self._lll_logger('Done computing rank channel after', t_7, t_8)
 
         # 9. Calculate nearest neighbour R values for epochs
         self.flag_epoch_low_r()
+        t_9 = time.time()
+        self._lll_logger('Done computing neighbour R values after', t_8, t_9)
 
         # 10. Flag very small time periods between flagged time
         self.flag_epoch_gap()
+        t_10 = time.time()
+        self._lll_logger('Done marking epoch gaps after', t_9, t_10)
 
         # 11. Run ICA
         self.run_ica('run1')
+        t_11 = time.time()
+        self._lll_logger('Done first pass ICA after', t_10, t_11)
 
         # 12. Calculate IC SD
         self.flag_epoch_ic_sd1()
+        t_12 = time.time()
+        self._lll_logger('Done flagging "ic_sd" after', t_11, t_12)
 
         # 13. TODO: integrate labels from IClabels to self.flagged_ics
         self.run_ica('run2')
+        t_13 = time.time()
+        self._lll_logger('Done second pass ICA after', t_12, t_13)
 
         # 14. Flag very small time periods between flagged time
         self.flag_epoch_gap()
+        t_14 = time.time()
+        self._lll_logger('Done marking epoch gaps second pass after',
+                         t_13, t_14)
+
+        # 15. Cleanup/logging message
+        t_final = time.time()
+        self._lll_logger('Completed processing after total time', t_0, t_final)
 
     def run_dataset(self, paths):
         """Run a full dataset.
