@@ -124,12 +124,13 @@ def convert_dataset_to_bids(import_funcs, import_args, bids_path_args,
     for import_kwargs, bids_path_kwargs, func in zip(import_args,
                                                      bids_path_args,
                                                      import_funcs):
-        bids_paths.append(convert_recording_to_bids(func,
-                                                    import_kwargs,
-                                                    bids_path_kwargs,
-                                                    datatype=datatype,
-                                                    bids_root=bids_root,
-                                                    import_events=import_events,
-                                                    **write_kwargs))
+        bids_paths.append(
+            convert_recording_to_bids(func,
+                                      import_kwargs,
+                                      bids_path_kwargs,
+                                      datatype=datatype,
+                                      bids_root=bids_root,
+                                      import_events=import_events,
+                                      **write_kwargs))
 
     return bids_paths

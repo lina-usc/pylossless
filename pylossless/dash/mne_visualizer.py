@@ -251,8 +251,8 @@ class MNEVisualizer:
         ch_zip = zip(ch_names, data, self.traces, ch_types)
         for i, (ch_name, signal, trace, ch_type) in enumerate(ch_zip):
             trace.x = np.round(times, 3)
-            trace.y = signal / self._get_norm_factor(ch_type)
-            trace.y -= (self.n_sel_ch - i - 1)
+            step_trace = signal / self._get_norm_factor(ch_type)
+            trace.y = step_trace - (self.n_sel_ch - i - 1)
             trace.name = ch_name
             if ch_name in self.inst.info['bads']:
                 trace.line.color = '#d3d3d3'
@@ -322,9 +322,10 @@ class MNEVisualizer:
                                 # finishing an annotation
                                 self.layout.xaxis['spikedash'] = 'dash'
                                 self.layout.xaxis['spikecolor'] = 'black'
+                                cd = click_data['points'][0]
                                 new_annot = mne.Annotations(
                                     onset=[self.annotating_start],
-                                    duration=[click_data['points'][0]['x'] - self.annotating_start],
+                                    duration=[cd['x'] - self.annotating_start],
                                     description=self.new_annot_desc,
                                     orig_time=self.inst.annotations.orig_time)
                                 self.annotating = not self.annotating
@@ -334,12 +335,11 @@ class MNEVisualizer:
                                     self.inst.set_annotations(
                                         self.inst.annotations + new_annot
                                     )
-                                    # TODO replace update_layout to ensure
-                                    # refresh without updating whole layout
                                     self.update_layout()
                             else:
                                 # starting an annotation
-                                self.annotating_start = click_data['points'][0]['x']
+                                c_click = click_data['points'][0]
+                                self.annotating_start = c_click['x']
                                 self.layout.xaxis['spikedash'] = 'solid'
                                 self.layout.xaxis['spikecolor'] = 'red'
                                 shape = dict(type="rect",
@@ -355,13 +355,12 @@ class MNEVisualizer:
                                              layer="below")
                                 self.annotation_inprogress = shape
                                 self.annotating = not self.annotating
-                                # TODO replace update_layout to
-                                # ensure refresh without updating whole layout
                                 self.update_layout()
                                 # self.refresh_annotations()
 
                         else:  # not shift_down
-                            ch_name = self.traces[click_data["points"][0]["curveNumber"]].name
+                            c_index = click_data["points"][0]["curveNumber"]
+                            ch_name = self.traces[c_index].name
                             if ch_name in self.inst.info['bads']:
                                 self.inst.info['bads'].pop()
                             else:
@@ -372,9 +371,8 @@ class MNEVisualizer:
                         if self.annotating:
                             # self.annotating_current =
                             #   hover_data['points'][0]['x']
-                            self.annotation_inprogress['x1'] = hover_data['points'][0]['x']
-                            # TODO replace update_layout to ensure
-                            # refresh without updating whole layout
+                            current = hover_data['points'][0]['x']
+                            self.annotation_inprogress['x1'] = current
                             self.update_layout()
                         else:
                             return no_update
