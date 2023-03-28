@@ -27,7 +27,8 @@ class MNEVisualizer:
                  dash_id_suffix='',
                  show_time_slider=True, show_ch_slider=True,
                  scalings='auto', zoom=2, remove_dc=True,
-                 annot_created_callback=None, refresh_input=None):
+                 annot_created_callback=None, refresh_input=None,
+                 show_n_channels=20):
         """ text
             Parameters
             ----------
@@ -55,7 +56,7 @@ class MNEVisualizer:
         self.app = app
         self.scalings_arg = scalings
         self._inst = None
-        self.n_sel_ch = 20  # n of channels to display in plot
+        self.n_sel_ch = show_n_channels
         self.win_start = 0  # min time to disp on plot
         self.win_size = 10  # max time to disp on plot
         self.zoom = zoom
