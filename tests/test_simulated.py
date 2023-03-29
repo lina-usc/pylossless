@@ -63,7 +63,6 @@ raw_sim.pick_types(eeg=True)
 
 # Save Info and Montage for later re-use
 montage = raw_sim.get_montage()
-raw_sim.set_montage(montage)
 info = mne.create_info(ch_names=raw_sim.ch_names,
                        sfreq=raw_sim.info['sfreq'],
                        ch_types=raw_sim.get_channel_types())
