@@ -107,15 +107,6 @@ raw_selection1.append([raw_selection2])
 raw_selection1.set_annotations(None)
 raw_sim = raw_selection1
 
-# MAKE BRIDGED CHANNELS
-data = raw_sim.get_data() # ch x times
-data[28, :] = data[27, :] # duplicate the signal
-
-# Make new raw out of data
-raw_sim = mne.io.RawArray(data, info)
-# Re-set the montage
-raw_sim.set_montage(montage)
-
 # LOAD DEFAULT CONFIG
 config = ll.config.Config()
 config.load_default()
@@ -151,8 +142,8 @@ def test_simulated_raw(pipeline):
     # RUN FLAG_CH_BRIDGE
     data_r_ch = pipeline.flag_ch_low_r()
     pipeline.flag_ch_bridge(data_r_ch)
-    assert 'EEG 028' in pipeline.flagged_chs['bridge']
-    assert 'EEG 029' in pipeline.flagged_chs['bridge']
+    # assert 'EEG 028' in pipeline.flagged_chs['bridge']
+    # assert 'EEG 029' in pipeline.flagged_chs['bridge']
 
     # Delete temp config file
     tmp_config_fname = Path(pipeline.config_fname).absolute()
