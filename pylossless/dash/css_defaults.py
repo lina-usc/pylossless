@@ -9,14 +9,9 @@ DEFAULT_LAYOUT_XAXIS = {'zeroline': False,
                         'title': "time (seconds)",
                         'gridcolor': 'white',
                         'fixedrange': True,
-                        'showspikes': True,
-                        'spikemode': 'across',
-                        'spikesnap': 'cursor',
                         'showline': True,
-                        'spikecolor': 'black',
                         'titlefont': dict(color='#ADB5BD'),
                         'tickfont': dict(color='#ADB5BD'),
-                        'spikedash': 'dash',
                         'automargin': True
                         }
 
