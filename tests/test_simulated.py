@@ -139,11 +139,21 @@ def test_simulated_raw(pipeline):
                           ['EEG 001', 'EEG 005', 'EEG 009',
                            'EEG 015', 'EEG 016'])
 
+    # MAKE BRIDGED CHANNELS
+    data = pipeline.raw.get_data() # ch x times
+    data[28, :] = data[27, :] # duplicate the signal
+
+    # Make new raw out of data
+    raw_sim = mne.io.RawArray(data, info)
+    # Re-set the montage
+    raw_sim.set_montage(montage)
+    pipeline.raw = raw_sim
+
     # RUN FLAG_CH_BRIDGE
     data_r_ch = pipeline.flag_ch_low_r()
     pipeline.flag_ch_bridge(data_r_ch)
-    # assert 'EEG 028' in pipeline.flagged_chs['bridge']
-    # assert 'EEG 029' in pipeline.flagged_chs['bridge']
+    assert 'EEG 028' in pipeline.flagged_chs['bridge']
+    assert 'EEG 029' in pipeline.flagged_chs['bridge']
 
     # Delete temp config file
     tmp_config_fname = Path(pipeline.config_fname).absolute()
