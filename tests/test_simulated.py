@@ -61,6 +61,14 @@ stc = simulate_sparse_stc(src, n_dipoles=n_dipoles, times=times,
 raw_sim = simulate_raw(raw.info, [stc] * 10, forward=fwd, verbose=True)
 raw_sim.pick_types(eeg=True)
 
+
+# Save Info and Montage for later re-use
+montage = raw_sim.get_montage()
+raw_sim.set_montage(montage)
+info = mne.create_info(ch_names=raw_sim.ch_names,
+                       sfreq=raw_sim.info['sfreq'],
+                       ch_types=raw_sim.get_channel_types())
+
 # MAKE A VERY NOISY TIME PERIOD
 raw_selection1 = raw_sim.copy().crop(tmin=0, tmax=2, include_tmax=False)
 raw_selection2 = raw_sim.copy().crop(tmin=2, tmax=3, include_tmax=False)
@@ -76,10 +84,11 @@ raw_selection1.append([raw_selection2, raw_selection3])
 raw_selection1.set_annotations(None)
 raw_sim = raw_selection1
 
-# MAKE SOME VERY NOISY CHANNELS
-cov = make_ad_hoc_cov(raw_sim.info)
+# Make initial noise/variance
+cov = make_ad_hoc_cov(raw_sim.info, std=dict(eeg=0.00000023))
 add_noise(raw_sim, cov, iir_filter=[0.2, -0.2, 0.04], random_state=rng)
 
+# MAKE SOME VERY NOISY CHANNELS
 make_these_noisy = ['EEG 001', 'EEG 005', 'EEG 009']
 cov_noisy = make_ad_hoc_cov(raw_sim.copy().pick(make_these_noisy).info,
                             std=dict(eeg=.000002))
@@ -100,6 +109,15 @@ add_noise(raw_selection1,
 raw_selection1.append([raw_selection2])
 raw_selection1.set_annotations(None)
 raw_sim = raw_selection1
+
+# MAKE BRIDGED CHANNELS
+data = raw_sim.get_data() # ch x times
+data[28, :] = data[27, :] # duplicate the signal
+
+# Make new raw out of data
+raw_sim = mne.io.RawArray(data, info)
+# Re-set the montage
+raw_sim.set_montage(montage)
 
 # LOAD DEFAULT CONFIG
 config = ll.config.Config()
@@ -133,6 +151,10 @@ def test_simulated_raw(pipeline):
                           ['EEG 001', 'EEG 005', 'EEG 009',
                            'EEG 015', 'EEG 016'])
 
+    # RUN FLAG_CH_BRIDGE
+    data_r_ch = pipeline.flag_ch_low_r()
+    pipeline.flag_ch_bridge(data_r_ch)
+
     # Delete temp config file
     tmp_config_fname = Path(pipeline.config_fname).absolute()
-    tmp_config_fname.unlink()
+    tmp_config_fname.unlink()  # delete config file
