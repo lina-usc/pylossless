@@ -70,6 +70,7 @@ class MNEVisualizer:
         self.annot_created_callback = annot_created_callback
         self.new_annot_desc = 'selected_time'
         self.annotations = None
+        self._n_shapes = 0
 
         # setting component ids based on dash_id_suffix
         default_ids = ['graph', 'ch-slider', 'time-slider', 'container-plot', 'output', 'mne-annotations']
@@ -143,6 +144,16 @@ class MNEVisualizer:
         return 2 * self.scalings[ch_type] / self.zoom
 
     def _get_annot_text(self, annotation, name=None):
+        """Get description from mne.annotation.
+        
+        Parameters
+        ----------
+        annotation : mne.annotation
+            an mne.annotation from a raw object.
+        returns
+        -------
+        a dict that can be used as a plotly annotation (text).
+        """
         return dict(x=annotation['onset'] + annotation['duration'] /2,
                     y=self.layout.yaxis['range'][1],
                     text=annotation['description'],
@@ -152,6 +163,7 @@ class MNEVisualizer:
                     font={'color': '#F1F1F1'})
 
     def _get_annot_shape(self, annotation, name='description'):
+        """Make a plotly shape from an mne.annotation."""
         return dict(name=name,
                     type="rect",
                     xref="x",
@@ -165,6 +177,37 @@ class MNEVisualizer:
                     line_width=1,
                     line_color='black',
                     layer="below" if annotation['duration'] else 'above')
+    
+    def _shape_from_selection(self, selections):
+        desc = self.new_annot_desc
+        name = f'{self._n_shapes}_{desc}'
+        return dict(name=name,
+                    editable=True,
+                    type="rect",
+                    xref="x",
+                    yref="y",
+                    x0=selections[0]['x0'],
+                    y0=self.layout.yaxis['range'][0],
+                    x1=selections[0]['x1'],
+                    y1=self.layout.yaxis['range'][1],
+                    fillcolor='red',
+                    opacity=0.51,
+                    line_width=1,
+                    line_color='black',
+                    layer="below")
+    
+    def _plotly_annot_from_selection(self, selections):
+        """Return a plotly annotation from a user-drawn selection."""
+        desc = self.new_annot_desc
+        dur = selections[0]['x1'] - selections[0]['x0']
+        return dict(x=selections[0]['x0'] + dur / 2,
+                    y=self.layout.yaxis['range'][1],
+                    text=desc,
+                    #name=name,
+                    showarrow=False,
+                    yshift=10,
+                    font={'color': '#F1F1F1'})
+
 
     def add_annot_shapes(self, annotations):
         self.layout.shapes = [self._get_annot_shape(annot)
@@ -295,12 +338,13 @@ class MNEVisualizer:
 
         args += [Input(self.dash_ids['time-slider'], 'value')]
         args += [Input(self.dash_ids['graph'], "clickData"),
-                 Input(self.dash_ids['graph'], "hoverData")]
+                 Input(self.dash_ids['graph'], "relayoutData"),
+                 ]
         if self.refresh_input:
             args += [self.refresh_input]
 
         @self.app.callback(*args, suppress_callback_exceptions=False)
-        def callback(ch, time, click_data, hover_data, *args):
+        def callback(ch, time, click_data, relayout_data, *args):
             if not self.inst:
                 return dash.no_update
 
@@ -311,7 +355,7 @@ class MNEVisualizer:
                 update_layout_ids.append(self.refresh_input.component_id)
 
             ctx = dash.callback_context
-            assert len(ctx.triggered) == 1
+            #assert len(ctx.triggered) == 1
             if len(ctx.triggered[0]['prop_id'].split('.')) == 2:
                 object_, dash_event = ctx.triggered[0]["prop_id"].split('.')
                 if object_ == self.dash_ids['graph']:
@@ -323,6 +367,17 @@ class MNEVisualizer:
                         else:
                             self.inst.info['bads'].append(ch_name)
                         self.update_layout()
+                    elif dash_event == 'relayoutData': #'selectedData':
+                        if "selections" in relayout_data:
+                            print('shape creation!!!')
+                            new_shape = go.layout.Shape(self._shape_from_selection(relayout_data['selections']))
+                            new_text = self._plotly_annot_from_selection(relayout_data['selections'])
+                            self.annotations.data['shapes'].append(new_shape)
+                            self.annotations.data['descriptions'].append(new_text)
+                            self.refresh_annotations()
+                            return self.graph.figure
+                        else:
+                            return no_update
                     else:
                         pass  # for selecting traces
                 elif object_ in update_layout_ids:
