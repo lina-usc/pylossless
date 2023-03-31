@@ -69,7 +69,7 @@ class MNEVisualizer:
         self.annotation_inprogress = None
         self.annot_created_callback = annot_created_callback
         self.new_annot_desc = 'selected_time'
-        self.annotations = None
+        self.mne_annots = None
         self._new_shape_id = 0
 
         # setting component ids based on dash_id_suffix
@@ -95,6 +95,7 @@ class MNEVisualizer:
 
         # initialization subroutines
         self.init_sliders()
+        self.init_annot_store()
         self.set_div()
         self.initialize_layout()
         self.set_callback()
@@ -196,9 +197,8 @@ class MNEVisualizer:
                 annots.append(self._get_annot_shape(annot, name=self._new_shape_id))
                 texts.append(self._get_annot_text(annot, name=self._new_shape_id))
                 self._new_shape_id += 1
-            _id = self.dash_ids['mne-annotations']
             data_dict = dict(shapes=annots, descriptions=texts)
-            self.annotations = dcc.Store(id=_id, data=data_dict)
+            self.mne_annots.data = data_dict
 
     def refresh_shapes(self):
         """Identify shapes that are viewable in the current time-window."""
@@ -207,10 +207,10 @@ class MNEVisualizer:
         tmin, tmax = self.win_start, self.win_start + self.win_size
 
         viewable_shapes = [shape for shape
-                           in self.annotations.data['shapes']
+                           in self.mne_annots.data['shapes']
                            if tmin < shape['x0'] < tmax]
         viewable_annotations = [text for text
-                                in self.annotations.data['descriptions']
+                                in self.mne_annots.data['descriptions']
                                 if tmin < text['x'] < tmax]
         self.n_viewable_shapes = len(viewable_shapes)
         self.layout.shapes = viewable_shapes
@@ -380,8 +380,8 @@ class MNEVisualizer:
                             new_shape = go.layout.Shape(self._shape_from_selection(relayout_data['selections']))
                             new_text = go.layout.Annotation(self._plotly_annot_from_selection(relayout_data['selections']))
                             self._new_shape_id += 1
-                            self.annotations.data['shapes'].append(new_shape)
-                            self.annotations.data['descriptions'].append(new_text)
+                            self.mne_annots.data['shapes'].append(new_shape)
+                            self.mne_annots.data['descriptions'].append(new_text)
                             self.refresh_shapes()
                             print('id ', new_shape.name, ' assigned to new shape')
                             print('id ', new_text.name, 'assigned to new text')
@@ -400,18 +400,18 @@ class MNEVisualizer:
                                 deleted = ''.join(deleted)
                                 self.n_viewable_shapes -= 1
                                 print(deleted, ' was deleted')
-                                print('## n shapes b4 deletion ', len(self.annotations.data['shapes']))
+                                print('## n shapes b4 deletion ', len(self.mne_annots.data['shapes']))
                                 shapes = [shape for shape
-                                          in self.annotations.data['shapes']
+                                          in self.mne_annots.data['shapes']
                                           if deleted != shape['name']]
-                                print('## n texts b4 deletion ', len(self.annotations.data['descriptions']))
+                                print('## n texts b4 deletion ', len(self.mne_annots.data['descriptions']))
                                 texts = [text for text
-                                         in self.annotations.data['descriptions']
+                                         in self.mne_annots.data['descriptions']
                                          if deleted != text['name']]
-                                self.annotations.data['shapes'] = shapes
-                                self.annotations.data['descriptions'] = texts
-                                print('## n shapes AFTER deletion ', len(self.annotations.data['shapes']))
-                                print('## n texts AFTER deletion ', len(self.annotations.data['descriptions']))
+                                self.mne_annots.data['shapes'] = shapes
+                                self.mne_annots.data['descriptions'] = texts
+                                print('## n shapes AFTER deletion ', len(self.mne_annots.data['shapes']))
+                                print('## n texts AFTER deletion ', len(self.mne_annots.data['descriptions']))
                             self.refresh_shapes()
                         elif any([key.endswith('x0')
                                   for key in relayout_data.keys()]):
@@ -435,13 +435,13 @@ class MNEVisualizer:
                             text_name = edited_text['name']
                             print(f'shape with id {name} was edited')
                             print(f'text with id {text_name} was edited')
-                            for shape in self.annotations.data['shapes']:
+                            for shape in self.mne_annots.data['shapes']:
                                 if shape['name'] == name:
                                     print(f"found {name} in annotations.data['shapes']")
                                     shape['x0'] = new_x_strt_val
                                     shape['x1'] = new_x_end_val
                                     break
-                            for text in self.annotations.data['descriptions']:
+                            for text in self.mne_annots.data['descriptions']:
                                 if text['name'] == name:
                                     text['x'] = text_new_x
                                     break
@@ -499,6 +499,9 @@ class MNEVisualizer:
                                         style={})
         if not self.show_time_slider:
             self.time_slider_div.style.update({'display': 'none'})
+    
+    def init_annot_store(self):
+        self.mne_annots = dcc.Store(id=self.dash_ids["mne-annotations"])
 
     def set_div(self):
         """build the final hmtl.Div to be returned to user."""
@@ -506,7 +509,8 @@ class MNEVisualizer:
         # note that the order of components is important
         graph_components = [self.channel_slider_div,
                             self.graph_div,
-                            self.time_slider_div]
+                            self.time_slider_div,
+                            self.mne_annots]
         # pass the list of components into an html.Div
         self.container_plot = html.Div(id=self.dash_ids['container-plot'],
                                        className=CSS['timeseries-container'],
