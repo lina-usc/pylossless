@@ -82,8 +82,6 @@ class QCGUI:
         self.eeg_visualizer = MNEVisualizer(
             self.app,
             self.raw,
-            dcc_graph_kwargs=dict(config={'modeBarButtonsToRemove':
-                                          ['zoom', 'pan']}),
             annot_created_callback=self.annot_created_callback,
             refresh_input=refresh_input,
             show_time_slider=False)

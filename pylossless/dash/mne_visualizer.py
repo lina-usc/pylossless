@@ -10,7 +10,7 @@ import numpy as np
 from mne.io import BaseRaw
 from mne import BaseEpochs, Evoked
 import mne
-from mne.utils import _validate_type
+from mne.utils import _validate_type, logger
 
 from .css_defaults import DEFAULT_LAYOUT, CSS, STYLE
 
@@ -70,7 +70,7 @@ class MNEVisualizer:
         self.annot_created_callback = annot_created_callback
         self.new_annot_desc = 'selected_time'
         self.annotations = None
-        self._n_shapes = 0
+        self._new_shape_id = 0
 
         # setting component ids based on dash_id_suffix
         default_ids = ['graph', 'ch-slider', 'time-slider', 'container-plot', 'output', 'mne-annotations']
@@ -80,6 +80,8 @@ class MNEVisualizer:
                                      style=STYLE['timeseries'],
                                      figure={'data': None,
                                              'layout': None},
+                                     config={'modeBarButtonsToAdd': ["eraseshape"],
+                                             'modeBarButtonsToRemove': ['zoom','pan']}
                                      )
         if dcc_graph_kwargs is not None:
             self.dcc_graph_kwargs.update(dcc_graph_kwargs)
@@ -107,7 +109,7 @@ class MNEVisualizer:
         self.time_slider.max = self.times[-1] - self.win_size
         self.time_slider.marks = {int(key): str(int(key))
                                   for key in marks_keys}
-        self.initialize_annotations()
+        self.initialize_shapes()
         self.update_layout()
 
     @property
@@ -143,6 +145,10 @@ class MNEVisualizer:
         "will divide returned value to data for timeseries"
         return 2 * self.scalings[ch_type] / self.zoom
 
+    
+    ###########################################################
+    # Methods for converting MNE annots to Plotly Shapes/annots
+    ###########################################################
     def _get_annot_text(self, annotation, name=None):
         """Get description from mne.annotation.
         
@@ -154,17 +160,21 @@ class MNEVisualizer:
         -------
         a dict that can be used as a plotly annotation (text).
         """
-        return dict(x=annotation['onset'] + annotation['duration'] /2,
-                    y=self.layout.yaxis['range'][1],
-                    text=annotation['description'],
-                    name=name,
-                    showarrow=False,
-                    yshift=10,
-                    font={'color': '#F1F1F1'})
+        return go.layout.Annotation(
+                    dict(x=annotation['onset'] + annotation['duration'] /2,
+                        y=self.layout.yaxis['range'][1],
+                        text=annotation['description'],
+                        name=name,
+                        showarrow=False,
+                        yshift=10,
+                        font={'color': '#F1F1F1'})
+                        )
 
     def _get_annot_shape(self, annotation, name='description'):
         """Make a plotly shape from an mne.annotation."""
-        return dict(name=name,
+        editable = True if 'bad' in annotation['description'] else False
+        return go.layout.Shape(dict(name=name,
+                    editable=editable,
                     type="rect",
                     xref="x",
                     yref="y",
@@ -173,14 +183,44 @@ class MNEVisualizer:
                     x1=annotation['onset'] + annotation['duration'],
                     y1=self.layout.yaxis['range'][1],
                     fillcolor='red',
-                    opacity=0.25 if annotation['duration'] else .75,
+                    opacity=0.51 if annotation['duration'] else .75,
                     line_width=1,
                     line_color='black',
-                    layer="below" if annotation['duration'] else 'above')
+                    layer="below" if annotation['duration'] else 'above'))
+    
+    def initialize_shapes(self):
+        if self.inst:
+            annots = list()
+            texts = list()
+            for annot in self.inst.annotations:
+                annots.append(self._get_annot_shape(annot, name=self._new_shape_id))
+                texts.append(self._get_annot_text(annot, name=self._new_shape_id))
+                self._new_shape_id += 1
+            _id = self.dash_ids['mne-annotations']
+            data_dict = dict(shapes=annots, descriptions=texts)
+            self.annotations = dcc.Store(id=_id, data=data_dict)
+
+    def refresh_shapes(self):
+        """Identify shapes that are viewable in the current time-window."""
+        if not self.inst:
+            return
+        tmin, tmax = self.win_start, self.win_start + self.win_size
+
+        viewable_shapes = [shape for shape
+                           in self.annotations.data['shapes']
+                           if tmin < shape['x0'] < tmax]
+        viewable_annotations = [text for text
+                                in self.annotations.data['descriptions']
+                                if tmin < text['x'] < tmax]
+        self.n_viewable_shapes = len(viewable_shapes)
+        self.layout.shapes = viewable_shapes
+        self.layout.annotations = viewable_annotations
     
     def _shape_from_selection(self, selections):
+        """Make a new plotly shape from a user-drawn selection."""
         desc = self.new_annot_desc
-        name = f'{self._n_shapes}_{desc}'
+        name = self._new_shape_id
+        logger.debug('id for new drawn shape: ', name)
         return dict(name=name,
                     editable=True,
                     type="rect",
@@ -197,50 +237,18 @@ class MNEVisualizer:
                     layer="below")
     
     def _plotly_annot_from_selection(self, selections):
-        """Return a plotly annotation from a user-drawn selection."""
+        """Make a new plotly annotation for a user-drawn shape."""
         desc = self.new_annot_desc
         dur = selections[0]['x1'] - selections[0]['x0']
+        name = self._new_shape_id
+        logger.debug('id for new drawn text: ', name)
         return dict(x=selections[0]['x0'] + dur / 2,
                     y=self.layout.yaxis['range'][1],
                     text=desc,
-                    #name=name,
+                    name=self._new_shape_id,
                     showarrow=False,
                     yshift=10,
                     font={'color': '#F1F1F1'})
-
-
-    def add_annot_shapes(self, annotations):
-        self.layout.shapes = [self._get_annot_shape(annot)
-                              for annot in annotations]
-        self.layout.annotations = [self._get_annot_text(annot)
-                                   for annot in annotations]
-        if self.annotating:
-            self.layout.shapes += (self.annotation_inprogress,)
-
-    def refresh_annotations(self):
-        if not self.inst:
-            return
-        tmin, tmax = self.win_start, self.win_start + self.win_size
-
-        viewable_shapes = [shape for shape
-                           in self.annotations.data['shapes']
-                           if tmin < shape['x0'] < tmax]
-        viewable_annotations = [text for text
-                                in self.annotations.data['descriptions']
-                                if tmin < text['x'] < tmax]
-        self.layout.shapes = viewable_shapes
-        self.layout.annotations = viewable_annotations
-
-    def initialize_annotations(self):
-        if self.inst:
-            annots = list()
-            texts = list()
-            for i, annot in enumerate(self.inst.annotations):
-                annots.append(self._get_annot_shape(annot, name=i))
-                texts.append(self._get_annot_text(annot, name=i))
-            _id = self.dash_ids['mne-annotations']
-            data_dict = dict(shapes=annots, descriptions=texts)
-            self.annotations = dcc.Store(id=_id, data=data_dict)
 
 ############################
 # Create Timeseries Layouts
@@ -326,7 +334,7 @@ class MNEVisualizer:
 
         self.graph.figure['data'] = self.traces
 
-        self.refresh_annotations()
+        self.refresh_shapes()
 
     ###############
     # CALLBACKS
@@ -355,7 +363,6 @@ class MNEVisualizer:
                 update_layout_ids.append(self.refresh_input.component_id)
 
             ctx = dash.callback_context
-            #assert len(ctx.triggered) == 1
             if len(ctx.triggered[0]['prop_id'].split('.')) == 2:
                 object_, dash_event = ctx.triggered[0]["prop_id"].split('.')
                 if object_ == self.dash_ids['graph']:
@@ -367,15 +374,78 @@ class MNEVisualizer:
                         else:
                             self.inst.info['bads'].append(ch_name)
                         self.update_layout()
-                    elif dash_event == 'relayoutData': #'selectedData':
+                    elif dash_event == 'relayoutData':
                         if "selections" in relayout_data:
                             print('shape creation!!!')
                             new_shape = go.layout.Shape(self._shape_from_selection(relayout_data['selections']))
-                            new_text = self._plotly_annot_from_selection(relayout_data['selections'])
+                            new_text = go.layout.Annotation(self._plotly_annot_from_selection(relayout_data['selections']))
+                            self._new_shape_id += 1
                             self.annotations.data['shapes'].append(new_shape)
                             self.annotations.data['descriptions'].append(new_text)
-                            self.refresh_annotations()
-                            return self.graph.figure
+                            self.refresh_shapes()
+                            print('id ', new_shape.name, ' assigned to new shape')
+                            print('id ', new_text.name, 'assigned to new text')
+                            print('###', self.n_viewable_shapes)
+                        elif "shapes" in relayout_data:
+                            print('shape was deleted!!!')
+                            updated_shapes = relayout_data['shapes']
+                            if len(updated_shapes) < self.n_viewable_shapes:
+                                # Shape (i.e. annotation) was deleted
+                                previous_names = [shape['name'] for
+                                                  shape in self.layout.shapes]
+                                new_names = [shape['name'] for
+                                             shape in updated_shapes]
+                                print(f'previous: {previous_names}, new: {new_names}')
+                                deleted = set(previous_names) - set(new_names)
+                                deleted = ''.join(deleted)
+                                self.n_viewable_shapes -= 1
+                                print(deleted, ' was deleted')
+                                print('## n shapes b4 deletion ', len(self.annotations.data['shapes']))
+                                shapes = [shape for shape
+                                          in self.annotations.data['shapes']
+                                          if deleted != shape['name']]
+                                print('## n texts b4 deletion ', len(self.annotations.data['descriptions']))
+                                texts = [text for text
+                                         in self.annotations.data['descriptions']
+                                         if deleted != text['name']]
+                                self.annotations.data['shapes'] = shapes
+                                self.annotations.data['descriptions'] = texts
+                                print('## n shapes AFTER deletion ', len(self.annotations.data['shapes']))
+                                print('## n texts AFTER deletion ', len(self.annotations.data['descriptions']))
+                            self.refresh_shapes()
+                        elif any([key.endswith('x0')
+                                  for key in relayout_data.keys()]):
+                            new_x_strt_key = [key for key in relayout_data.keys()
+                                              if key.endswith('x0')][0]
+                            new_x_end_key = [key for key in relayout_data.keys()
+                                             if key.endswith('x1')][0]
+                            new_x_strt_val = relayout_data[new_x_strt_key]
+                            new_x_end_val = relayout_data[new_x_end_key]
+                            shape_i = (int(new_x_strt_key.split('[', 1)[1]
+                                                         .split(']', 1)[0])
+                                       )
+                            edited_shape = self.layout.shapes[shape_i]
+                            edited_shape['x0'] = new_x_strt_val
+                            edited_shape['x1'] = new_x_end_val
+                            edited_text = self.layout.annotations[shape_i]
+                            dur = edited_shape['x1'] - edited_shape['x0']
+                            text_new_x = edited_shape['x0'] + dur / 2
+                            edited_text['x'] = text_new_x
+                            name = edited_shape['name']
+                            text_name = edited_text['name']
+                            print(f'shape with id {name} was edited')
+                            print(f'text with id {text_name} was edited')
+                            for shape in self.annotations.data['shapes']:
+                                if shape['name'] == name:
+                                    print(f"found {name} in annotations.data['shapes']")
+                                    shape['x0'] = new_x_strt_val
+                                    shape['x1'] = new_x_end_val
+                                    break
+                            for text in self.annotations.data['descriptions']:
+                                if text['name'] == name:
+                                    text['x'] = text_new_x
+                                    break
+                            # Existing shape was amended.
                         else:
                             return no_update
                     else:
