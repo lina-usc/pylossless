@@ -84,7 +84,11 @@ class QCGUI:
             self.raw,
             annot_created_callback=self.annot_created_callback,
             refresh_input=refresh_input,
-            show_time_slider=False)
+            show_time_slider=True)
+
+
+        self.ica_visualizer.mne_annots = self.eeg_visualizer.mne_annots
+        self.ica_visualizer.dash_ids['mne-annotations'] = self.eeg_visualizer.dash_ids['mne-annotations']
 
         montage = self.raw.get_montage() if self.raw else None
         self.ica_topo = TopoVizICA(self.app, montage, self.ica, self.ic_types,
@@ -221,7 +225,7 @@ class QCGUI:
                                      self.ica, self.ic_types)
 
     def set_callbacks(self):
-        @self.app.callback(
+        """@self.app.callback(
             Output('file-dropdown', 'options'),
             Input('folder-selector', 'n_clicks'),
         )
@@ -245,17 +249,18 @@ class QCGUI:
                 root.destroy()
                 print('***', files_list)
                 return files_list  # directory
-            return dash.no_update
+            return dash.no_update"""
 
         @self.app.callback(
             Output('file-dropdown', 'placeholder'),
-            Input('file-dropdown', 'value')
+            Input('file-dropdown', 'value'),
+            prevent_initial_call=True
         )
         def file_selected(value):
+            print('IN THE FILE CALLBACK')
             if value:  # on selection of dropdown item
                 self.load_recording(value)
                 return value
-            return dash.no_update
 
         @self.app.callback(
             Output('dropdown-output', 'children'),
@@ -274,21 +279,38 @@ class QCGUI:
                        'value'),
                 Output(self.ica_visualizer.dash_ids['time-slider'],
                        'value'),
+                Output(self.eeg_visualizer.dash_ids['time-slider'],
+                       component_property='min'),
+                Output(self.eeg_visualizer.dash_ids['time-slider'],
+                       component_property='max'),
+                Output(self.ica_visualizer.dash_ids['time-slider'],
+                       component_property='min'),
+                Output(self.ica_visualizer.dash_ids['time-slider'],
+                       component_property='max'),
                 Input(self.eeg_visualizer.dash_ids['time-slider'],
                       'value'),
                 Input(self.ica_visualizer.dash_ids['time-slider'],
                       'value'),
+                Input('file-dropdown', 'placeholder'),
                 prevent_initial_call=True)
-        def sync_time_sliders(eeg_time_slider, ica_time_slider):
+        def sync_time_sliders(eeg_time_slider, ica_time_slider, selected_file):
             ctx = dash.callback_context
+            print('IN THE TIME CALLBACK')
             if ctx.triggered:
                 trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
                 if trigger_id == self.eeg_visualizer.dash_ids['time-slider']:
                     value = eeg_time_slider
-                    return no_update, value
-                elif trigger_id == self.ica_visualizer.dash_ids['time-slider']:
+                    return no_update, value, no_update, no_update, no_update, no_update
+                if trigger_id == self.ica_visualizer.dash_ids['time-slider']:
                     value = ica_time_slider
-                    return value, no_update
+                    return value, no_update, no_update, no_update, no_update, no_update
+                if trigger_id == 'file-dropdown':
+                    print('HITTTT')
+                    value = self.ica_visualizer.time_slider.value
+                    min_ = self.ica_visualizer.time_slider.min
+                    max_ = self.ica_visualizer.time_slider.max
+                    print('#### ', value)
+                    return value, value, min_, max_, min_, max_
 
         @self.app.callback(
                 Output(self.ica_visualizer.dash_ids['ch-slider'],

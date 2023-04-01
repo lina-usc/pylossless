@@ -369,7 +369,7 @@ def variability_across_epochs(epochs_xr, var_measure='sd',
         epochs_xr = epochs_xr.sel(ic=ic_inds)
 
     if var_measure == 'sd':
-        return epochs_xr.std(dim="epoch")  # returns n_chans, n_times array
+        return epochs_xr.std(dim="time") # epochs_xr.std(dim="epoch")  # returns n_chans, n_times array
     if var_measure == 'absmean':
         return np.abs(epochs_xr).mean(dim="epoch")
 
@@ -820,7 +820,7 @@ class LosslessPipeline():
         perc_70 = trim_ch_sd.quantile(0.7, dim="ch")
         ch_dist /= perc_70 - perc_30  # shape (chans, time)
 
-        mean_ch_dist = ch_dist.mean(dim="time")  # shape (chans)
+        mean_ch_dist = ch_dist.mean(dim="epoch") # ch_dist.mean(dim="time")  # shape (chans)
 
         # find the median and 30 and 70 percentiles
         # of the mean of the channel distributions
