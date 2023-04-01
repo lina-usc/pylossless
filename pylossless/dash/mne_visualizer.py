@@ -20,6 +20,12 @@ def _add_watermark_annot():
     from .css_defaults import WATERMARK_ANNOT
     return WATERMARK_ANNOT
 
+def _annot_in_timerange(annot, tmin, tmax):
+    annot_range = np.arange(annot["shape"]['x0'], annot["shape"]['x1'] + 1)
+    return any([tmin <= this_sec <= tmax
+                for this_sec
+                in annot_range])
+
 
 class MNEVisualizer:
 
@@ -209,7 +215,7 @@ class MNEVisualizer:
 
         annots = tuple(zip(*[(annot["shape"], annot["description"]) for annot
                              in self.mne_annots.data.values()
-                             if tmin < annot["shape"]['x0'] < tmax]))
+                             if _annot_in_timerange(annot, tmin, tmax)]))
         if len(annots):
             self.layout.shapes, self.layout.annotations = annots
         else:
