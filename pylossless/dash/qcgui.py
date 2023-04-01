@@ -1,8 +1,6 @@
 from pathlib import Path
 
 # file selection
-import tkinter
-from tkinter import filedialog
 import numpy as np
 
 import dash
@@ -13,6 +11,7 @@ import dash_bootstrap_components as dbc
 # loading raw object
 from mne_bids import get_bids_path_from_fname
 import mne
+from mne.utils import logger
 
 from .topo_viz import TopoVizICA
 from .mne_visualizer import MNEVisualizer, ICVisualizer
@@ -77,7 +76,7 @@ class QCGUI:
             annot_created_callback=self.annot_created_callback,
             cmap=cmap,
             ic_types=self.ic_types,
-            refresh_inputs=refresh_inputs, 
+            refresh_inputs=refresh_inputs,
             set_callbacks=False)
 
         self.eeg_visualizer = MNEVisualizer(
@@ -87,7 +86,7 @@ class QCGUI:
             refresh_inputs=refresh_inputs,
             show_time_slider=True,
             set_callbacks=False)
-        
+
         input_ = Input(self.eeg_visualizer.dash_ids['graph'], "relayoutData")
         self.ica_visualizer.refresh_inputs.append(input_)
         input_ = Input(self.ica_visualizer.dash_ids['graph'], "relayoutData")
@@ -95,9 +94,9 @@ class QCGUI:
         self.eeg_visualizer.set_callback()
         self.ica_visualizer.set_callback()
 
-
         self.ica_visualizer.mne_annots = self.eeg_visualizer.mne_annots
-        self.ica_visualizer.dash_ids['mne-annotations'] = self.eeg_visualizer.dash_ids['mne-annotations']
+        self.ica_visualizer.dash_ids['mne-annotations'] = \
+            self.eeg_visualizer.dash_ids['mne-annotations']
 
         montage = self.raw.get_montage() if self.raw else None
         self.ica_topo = TopoVizICA(self.app, montage, self.ica, self.ic_types,
@@ -266,7 +265,6 @@ class QCGUI:
             prevent_initial_call=True
         )
         def file_selected(value):
-            print('IN THE FILE CALLBACK')
             if value:  # on selection of dropdown item
                 self.load_recording(value)
                 return value
@@ -280,7 +278,7 @@ class QCGUI:
             self.update_bad_ics()
             self.pipeline.save(get_bids_path_from_fname(self.fpath),
                                overwrite=True)
-            print('file saved!')
+            logger.info('file saved!')
             return dash.no_update
 
         @self.app.callback(
@@ -304,21 +302,20 @@ class QCGUI:
                 prevent_initial_call=True)
         def sync_time_sliders(eeg_time_slider, ica_time_slider, selected_file):
             ctx = dash.callback_context
-            print('IN THE TIME CALLBACK')
             if ctx.triggered:
                 trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
                 if trigger_id == self.eeg_visualizer.dash_ids['time-slider']:
                     value = eeg_time_slider
-                    return no_update, value, no_update, no_update, no_update, no_update
+                    return (no_update, value, no_update,
+                            no_update, no_update, no_update)
                 if trigger_id == self.ica_visualizer.dash_ids['time-slider']:
                     value = ica_time_slider
-                    return value, no_update, no_update, no_update, no_update, no_update
+                    return (value, no_update, no_update,
+                            no_update, no_update, no_update)
                 if trigger_id == 'file-dropdown':
-                    print('HITTTT')
                     value = self.ica_visualizer.time_slider.value
                     min_ = self.ica_visualizer.time_slider.min
                     max_ = self.ica_visualizer.time_slider.max
-                    print('#### ', value)
                     return value, value, min_, max_, min_, max_
 
         @self.app.callback(
