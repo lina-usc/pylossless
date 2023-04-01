@@ -70,21 +70,30 @@ class QCGUI:
         # Using the ouptut of the callback being triggered by
         # a selection of a new file, so that the two callbacks
         # are executed sequentially.
-        refresh_input = Input('file-dropdown', 'placeholder')
+        refresh_inputs = [Input('file-dropdown', 'placeholder')]
         self.ica_visualizer = ICVisualizer(
             self.app, self.raw_ica,
             dash_id_suffix='ica',
             annot_created_callback=self.annot_created_callback,
             cmap=cmap,
             ic_types=self.ic_types,
-            refresh_input=refresh_input)
+            refresh_inputs=refresh_inputs, 
+            set_callbacks=False)
 
         self.eeg_visualizer = MNEVisualizer(
             self.app,
             self.raw,
             annot_created_callback=self.annot_created_callback,
-            refresh_input=refresh_input,
-            show_time_slider=True)
+            refresh_inputs=refresh_inputs,
+            show_time_slider=True,
+            set_callbacks=False)
+        
+        input_ = Input(self.eeg_visualizer.dash_ids['graph'], "relayoutData")
+        self.ica_visualizer.refresh_inputs.append(input_)
+        input_ = Input(self.ica_visualizer.dash_ids['graph'], "relayoutData")
+        self.eeg_visualizer.refresh_inputs.append(input_)
+        self.eeg_visualizer.set_callback()
+        self.ica_visualizer.set_callback()
 
 
         self.ica_visualizer.mne_annots = self.eeg_visualizer.mne_annots
@@ -93,7 +102,7 @@ class QCGUI:
         montage = self.raw.get_montage() if self.raw else None
         self.ica_topo = TopoVizICA(self.app, montage, self.ica, self.ic_types,
                                    show_sensors=True,
-                                   refresh_input=refresh_input)
+                                   refresh_inputs=refresh_inputs)
 
         self.ica_visualizer.new_annot_desc = 'bad_manual'
         self.eeg_visualizer.new_annot_desc = 'bad_manual'

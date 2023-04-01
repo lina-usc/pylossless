@@ -27,8 +27,8 @@ class MNEVisualizer:
                  dash_id_suffix='',
                  show_time_slider=True, show_ch_slider=True,
                  scalings='auto', zoom=2, remove_dc=True,
-                 annot_created_callback=None, refresh_input=None,
-                 show_n_channels=20):
+                 annot_created_callback=None, refresh_inputs=None,
+                 show_n_channels=20, set_callbacks=True):
         """ text
             Parameters
             ----------
@@ -52,7 +52,9 @@ class MNEVisualizer:
             -------
             """
 
-        self.refresh_input = refresh_input
+        if not isinstance(refresh_inputs, list):
+            refresh_inputs = [refresh_inputs]
+        self.refresh_inputs = refresh_inputs
         self.app = app
         self.scalings_arg = scalings
         self._inst = None
@@ -98,7 +100,8 @@ class MNEVisualizer:
         self.init_annot_store()
         self.set_div()
         self.initialize_layout()
-        self.set_callback()
+        if set_callbacks:
+            self.set_callback()
 
     def load_recording(self, raw):
         """ """
@@ -335,15 +338,14 @@ class MNEVisualizer:
     ###############
 
     def set_callback(self):
-        args = [Output(self.dash_ids['graph'], 'figure')]
-        args += [Input(self.dash_ids['ch-slider'], 'value')]
-
-        args += [Input(self.dash_ids['time-slider'], 'value')]
-        args += [Input(self.dash_ids['graph'], "clickData"),
-                 Input(self.dash_ids['graph'], "relayoutData"),
-                 ]
-        if self.refresh_input:
-            args += [self.refresh_input]
+        args = [Output(self.dash_ids['graph'], 'figure'),
+                Input(self.dash_ids['ch-slider'], 'value'),
+                Input(self.dash_ids['time-slider'], 'value'),
+                Input(self.dash_ids['graph'], "clickData"),
+                Input(self.dash_ids['graph'], "relayoutData"),
+                ]
+        if self.refresh_inputs:
+            args += self.refresh_inputs
 
         @self.app.callback(*args, suppress_callback_exceptions=False)
         def callback(ch, time, click_data, relayout_data, *args):
@@ -354,8 +356,8 @@ class MNEVisualizer:
             update_layout_ids = [self.dash_ids['ch-slider'],
                                  self.dash_ids['time-slider'],
                                  ]
-            if self.refresh_input:
-                update_layout_ids.append(self.refresh_input.component_id)
+            if self.refresh_inputs:
+                update_layout_ids.extend([inp.component_id for inp in self.refresh_inputs])
 
             ctx = dash.callback_context
             if len(ctx.triggered[0]['prop_id'].split('.')) == 2:

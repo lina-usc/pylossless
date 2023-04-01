@@ -48,9 +48,11 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
     def __init__(self, app, montage=None, data=None,  # : TopoData,
                  rows=5, cols=4, margin_x=4/5, width=400, height=600,
                  margin_y=2/5, head_contours_color="black", cmap='RdBu_r',
-                 show_sensors=True, show_slider=True, refresh_input=None):
+                 show_sensors=True, show_slider=True, refresh_inputs=None):
         """ """
-        self.refresh_input = refresh_input
+        if not isinstance(refresh_inputs, list):
+            refresh_inputs = [refresh_inputs]
+        self.refresh_inputs = refresh_inputs
         self.montage = montage
         self.data = data
         self.app = app
@@ -243,8 +245,8 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
     def set_callback(self):
         args = [Output('topo-graph', 'figure')]
         args += [Input('topo-slider', 'value')]
-        if self.refresh_input:
-            args += [self.refresh_input]
+        if self.refresh_inputs:
+            args += self.refresh_inputs
 
         @self.app.callback(*args, suppress_callback_exceptions=False)
         def callback(slider_val, *args):
