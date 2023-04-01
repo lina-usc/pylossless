@@ -268,6 +268,11 @@ class MNEVisualizer:
         DEFAULT_LAYOUT['yaxis'].update({"tickvals": tickvals_handler,
                                         'ticktext': [''] * self.n_sel_ch,
                                         'range': [-self.n_sel_ch, 1]})
+        
+        DEFAULT_LAYOUT['xaxis'].update({'range': [self.win_start,
+                                                  self.win_start + self.win_size]})
+        
+        
         self.layout = go.Layout(**DEFAULT_LAYOUT)
 
         trace_kwargs = {'x': [],
@@ -293,6 +298,7 @@ class MNEVisualizer:
             self.win_start = time_slider_val
 
         tmin, tmax = self.win_start, self.win_start + self.win_size
+        self.layout.xaxis.update({'range': [tmin, tmax]})
 
         # Update selected channels
         first_sel_ch = self._ch_slider_val - self.n_sel_ch + 1
