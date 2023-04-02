@@ -1,3 +1,9 @@
+# Authors: Christian O'Reilly <christian.oreilly@sc.edu>
+#          Scott Huberty <seh33@uw.edu>
+# License: MIT
+
+"""class to wrap an mne.raw object in a dash plot."""
+
 import dash
 from dash import dcc, html, no_update
 from dash.dependencies import Input, Output
@@ -28,6 +34,7 @@ def _annot_in_timerange(annot, tmin, tmax):
 
 
 class MNEVisualizer:
+    """Visualize an mne.io.raw object in a dash graph."""
 
     def __init__(self, app, inst, dcc_graph_kwargs=None,
                  dash_id_suffix='',
@@ -35,29 +42,36 @@ class MNEVisualizer:
                  scalings='auto', zoom=2, remove_dc=True,
                  annot_created_callback=None, refresh_inputs=None,
                  show_n_channels=20, set_callbacks=True):
-        """ text
-            Parameters
-            ----------
-            app : instance of Raw
-                A raw object to use the data from.
-            inst : int
-                must be an instance of mne.Raw, mne.Epochs, mne.Evoked
-            start : float
-                text
-            dcc_grpah_kwargs : float | None
-                text
-            dash_id_suffix : float
-                each component id in the users app file needs to be unique.
-                if using more than 1 MNEVisualizer object in a single
-                application.
-            ch_slider : bool
-                text
-            time_slider : float
-                text
-            Returns
-            -------
-            """
+        """Initialize class.
 
+        Parameters
+        ----------
+        app : instance of Dash.app
+            The dash app object to place the plot within.
+        inst : mne.io.Raw
+            An instance of mne.io.Raw
+        dcc_graph_kwargs : str | None
+            keyword arguments to be passed to dcc.graph when
+            creating the MNEVisualizer time-series plot from the
+            mne.io.raw object. Must be a valid keyword argument
+            for dcc.graph.
+        dash_id_suffix : str
+            string to append to the end of the MNEVisualizer.graph 
+            dash component ID. Each component id in the users app file
+            needs to be unique. If using more than 1 MNEVisualizer
+            object in a single, application. You must pass a suffix
+            to at least one of the objects to make their dash-ID
+            unique.
+        show_ch_slider : bool
+            Whether to show the channel slider with the MNEVIsualizer
+            time-series graph. Defaults to True.
+        show_time_slider : bool
+            Whether to show the channel slider with the MNEVIsualizer
+            time-series graph. Defaults to True.
+        Returns
+        -------
+        an instance of MNEVisualizer.
+        """
         if not isinstance(refresh_inputs, list):
             refresh_inputs = [refresh_inputs]
         self.refresh_inputs = refresh_inputs
@@ -113,7 +127,13 @@ class MNEVisualizer:
             self.set_callback()
 
     def load_recording(self, raw):
-        """ """
+        """Load the mne.io.raw object and initialize the graph layout.
+
+        Parameters
+        ----------
+        raw : mne.io.raw
+            An instance of mne.io.Raw
+        """
         self.inst = raw
         self.channel_slider.max = self.nb_channels - 1
         self.channel_slider.value = self.nb_channels - 1
@@ -127,6 +147,7 @@ class MNEVisualizer:
 
     @property
     def inst(self):
+        """Property that returns the mne.io.raw object."""
         return self._inst
 
     @inst.setter
@@ -155,7 +176,7 @@ class MNEVisualizer:
             self.scalings.update(self.scalings_arg)
 
     def _get_norm_factor(self, ch_type):
-        "will divide returned value to data for timeseries"
+        """Divide returned value to data for timeseries."""
         return 2 * self.scalings[ch_type] / self.zoom
 
     ###########################################################
@@ -203,6 +224,7 @@ class MNEVisualizer:
                                     layer=layer))
 
     def initialize_shapes(self):
+        """Make graph.layout.shapes for each mne.io.raw.annotation."""
         if self.inst:
             ids = [str(uuid1()) for _ in range(len(self.inst.annotations))]
 
@@ -264,6 +286,7 @@ class MNEVisualizer:
 
     @property
     def layout(self):
+        """Return MNEVIsualizer.graph.figure.layout."""
         return self.graph.figure['layout']
 
     @layout.setter
@@ -271,7 +294,7 @@ class MNEVisualizer:
         self.graph.figure['layout'] = layout
 
     def initialize_layout(self):
-
+        """Create MNEVisualizer.graph.figure.layout."""
         if not self.inst:
             DEFAULT_LAYOUT['annotations'] = _add_watermark_annot()
 
@@ -298,6 +321,7 @@ class MNEVisualizer:
     def update_layout(self,
                       ch_slider_val=None,
                       time_slider_val=None):
+        """Update MNEVisualizer.graph.figure.layout."""
         if not self.inst:
             return
         if ch_slider_val is not None:
@@ -310,7 +334,7 @@ class MNEVisualizer:
 
         # Update selected channels
         first_sel_ch = self._ch_slider_val - self.n_sel_ch + 1
-        # +1 bc this is used in slicing below, & end is not inclued
+        # +1 bc this is used in slicing below, & end is not included
         last_sel_ch = self._ch_slider_val + 1
 
         # Update times
@@ -352,6 +376,7 @@ class MNEVisualizer:
     ###############
 
     def set_callback(self):
+        """Set the dash callback for the MNE.Visualizer object."""
         args = [Output(self.dash_ids['graph'], 'figure'),
                 Input(self.dash_ids['ch-slider'], 'value'),
                 Input(self.dash_ids['time-slider'], 'value'),
@@ -452,17 +477,25 @@ class MNEVisualizer:
 
     @property
     def nb_channels(self):
+        """Return the number of channel names in the mne.io.Raw object."""
         if self.inst:
             return len(self.inst.ch_names)
         return self.n_sel_ch
 
     @property
     def times(self):
+        """Return the times of the mne.io.Raw object in MNEVisualizer.inst.
+        
+        Returns
+        -------
+        an np.array of the times.
+        """
         if self.inst:
             return self.inst.times
         return [0]
 
     def init_sliders(self):
+        """Initialize the Channel and Time dcc.Slider components."""
         self.channel_slider = dcc.Slider(id=self.dash_ids["ch-slider"],
                                          min=self.n_sel_ch - 1,
                                          max=self.nb_channels - 1,
@@ -497,10 +530,11 @@ class MNEVisualizer:
             self.time_slider_div.style.update({'display': 'none'})
 
     def init_annot_store(self):
+        """Initialize the dcc.Store component of mne annotations."""
         self.mne_annots = dcc.Store(id=self.dash_ids["mne-annotations"])
 
     def set_div(self):
-        """build the final hmtl.Div to be returned to user."""
+        """Build the final html.Div component to be returned."""
         # include both the timeseries graph and the sliders
         # note that the order of components is important
         graph_components = [self.channel_slider_div,
@@ -514,10 +548,48 @@ class MNEVisualizer:
 
 
 class ICVisualizer(MNEVisualizer):
+    """Class to plot an mne.io.Raw object made of IC signals."""
 
     def __init__(self, raw, *args, cmap=None, ic_types=None, **kwargs):
+        """Initialize class.
 
-        """ """
+        Parameters
+        ----------
+        app : instance of Dash.app
+            The dash app object to place the plot within.
+        inst : mne.io.Raw
+            An instance of mne.io.Raw
+        dcc_graph_kwargs : str | None
+            keyword arguments to be passed to dcc.graph when
+            creating the MNEVisualizer time-series plot from the
+            mne.io.raw object. Must be a valid keyword argument
+            for dcc.graph.
+        dash_id_suffix : str
+            string to append to the end of the MNEVisualizer.graph 
+            dash component ID. Each component id in the users app file
+            needs to be unique. If using more than 1 MNEVisualizer
+            object in a single, application. You must pass a suffix
+            to at least one of the objects to make their dash-ID
+            unique.
+        show_ch_slider : bool
+            Whether to show the channel slider with the MNEVIsualizer
+            time-series graph. Defaults to True.
+        show_time_slider : bool
+            Whether to show the channel slider with the MNEVIsualizer
+            time-series graph. Defaults to True.
+        cmap : dict.
+            a mapping where the Keys are the IC name, and the values are a
+            compatible rgba or HEX string, to color the IC traces.
+
+        Returns
+        -------
+        an instance of ICVisualizer.
+
+        Notes
+        ----
+        Any arguments that can be passed to MNEVisualizer can also be passed
+        to ICVisualizer.
+        """
         self.ic_types = ic_types
         if cmap is not None:
             self.cmap = cmap
@@ -526,7 +598,13 @@ class ICVisualizer(MNEVisualizer):
         super(ICVisualizer, self).__init__(raw, *args, **kwargs)
 
     def load_recording(self, raw, cmap=None, ic_types=None):
-        """ """
+        """Load the mne.io.raw object and initialize the graph layout.
+
+        Parameters
+        ----------
+        raw : mne.io.raw
+            An instance of mne.io.Raw
+        """
         self.ic_types = ic_types
         if cmap is not None:
             self.cmap = cmap
@@ -538,7 +616,7 @@ class ICVisualizer(MNEVisualizer):
     def update_layout(self,
                       ch_slider_val=None,
                       time_slider_val=None):
-        """Update raw timeseries layout"""
+        """Update raw timeseries layout."""
         if not self.inst:
             return
         super(ICVisualizer, self).update_layout(ch_slider_val,
@@ -546,7 +624,7 @@ class ICVisualizer(MNEVisualizer):
 
         # Update selected channels
         first_sel_ch = self._ch_slider_val - self.n_sel_ch + 1
-        # +1 bc this is used in slicing below, & end is not inclued
+        # +1 bc this is used in slicing below, & end is not included
         last_sel_ch = self._ch_slider_val + 1
 
         # Update the raw timeseries traces

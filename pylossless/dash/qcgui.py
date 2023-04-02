@@ -73,7 +73,6 @@ class QCGUI:
         self.ica_visualizer = ICVisualizer(
             self.app, self.raw_ica,
             dash_id_suffix='ica',
-            annot_created_callback=self.annot_created_callback,
             cmap=cmap,
             ic_types=self.ic_types,
             refresh_inputs=refresh_inputs,
@@ -82,7 +81,6 @@ class QCGUI:
         self.eeg_visualizer = MNEVisualizer(
             self.app,
             self.raw,
-            annot_created_callback=self.annot_created_callback,
             refresh_inputs=refresh_inputs,
             show_time_slider=True,
             set_callbacks=False)
