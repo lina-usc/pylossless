@@ -76,7 +76,7 @@ class QCGUI:
 
         Notes
         -----
-        This function is not currently used. 
+        This function is not currently used.
         """
         # TODO: Delete this function?
         self.raw.set_annotations(self.raw.annotations + annotation)
@@ -396,17 +396,43 @@ class QCGUI:
                 Output(self.ica_visualizer.dash_ids['ch-slider'],
                        'value'),
                 Output('topo-slider',  'value'),
+                Output(self.ica_visualizer.dash_ids['ch-slider'],
+                       component_property='min'),
+                Output(self.ica_visualizer.dash_ids['ch-slider'],
+                       component_property='max'),
+                Output('topo-slider',
+                       component_property='min'),
+                Output('topo-slider',
+                       component_property='max'),
                 Input(self.ica_visualizer.dash_ids['ch-slider'],
                       'value'),
                 Input('topo-slider', 'value'),
+                Input('file-dropdown', 'placeholder'),
                 prevent_initial_call=True)
-        def sync_ica_sliders(ica_ch_slider, ica_topo_slider):
+        def sync_ica_sliders(ica_ch_slider, ica_topo_slider, selected_file):
+            """Sync ICA-Raw and ICA-topo sliders and refresh upon new file."""
             ctx = dash.callback_context
             if ctx.triggered:
                 trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
                 if trigger_id == self.ica_visualizer.dash_ids['ch-slider']:
+                    # If user dragged the ica-raw ch-slider
                     value = ica_ch_slider
-                    return no_update, value
-                elif trigger_id == 'topo-slider':
+                    # only update the ica-topo slider val.
+                    return (no_update, value,
+                            no_update, no_update,  # min max 4 ica-raw slider.
+                            no_update, no_update)  # min max 4 topo-slider
+                if trigger_id == 'topo-slider':
+                    # If the user dragged the topoplot slider
                     value = ica_topo_slider
-                    return value, no_update
+                    # only update the ica-raw ch-slider val
+                    return (value, no_update,
+                            no_update, no_update,  # min max 4 ica-raw slider
+                            no_update, no_update)  # min max 4 topo-slider
+                if trigger_id == 'file-dropdown':
+                    # If the user selected a new file
+                    value = self.ica_visualizer.channel_slider.value
+                    min_ = self.ica_visualizer.channel_slider.min
+                    max_ = self.ica_visualizer.channel_slider.max
+                    # update the val, min, max component-properties for both
+                    # the ica-raw ch-slider and topoplot slider
+                    return value, value, min_, max_, min_, max_
