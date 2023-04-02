@@ -88,6 +88,22 @@ class QCGUI:
                                                               .win_start)
         self.eeg_visualizer.update_layout()
 
+    def _set_mne_annots_from_shapes(self):
+        """Set mne.io.raw.annotations from plotly shapes after qc session."""
+        onsets = [tpl['shape'].x0
+                  for tpl
+                  in self.eeg_visualizer.mne_annots.data.values()]
+        durs = [tpl['shape'].x1 - tpl['shape'].x0
+                for tpl
+                in self.eeg_visualizer.mne_annots.data.values()]
+        descs = [tpl['description'].text
+                 for tpl
+                 in self.eeg_visualizer.mne_annots.data.values()]
+        annots = mne.Annotations(onset=onsets,
+                                 duration=durs,
+                                 description=descs)
+        self.eeg_visualizer.inst.set_annotations(annots)
+
     def set_visualizers(self):
         """Create EEG/ICA time-series dcc.graphs and topomap dcc.graphs."""
         # Setting time-series and topomap visualizers
@@ -324,6 +340,7 @@ class QCGUI:
         )
         def save_file(n_clicks):
             self.update_bad_ics()
+            self._set_mne_annots_from_shapes()
             self.pipeline.save(get_bids_path_from_fname(self.fpath),
                                overwrite=True)
             logger.info('file saved!')
