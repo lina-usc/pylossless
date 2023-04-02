@@ -113,7 +113,7 @@ class QCGUI:
             self.app,
             self.raw,
             refresh_inputs=refresh_inputs,
-            show_time_slider=True,
+            show_time_slider=False,
             set_callbacks=False)
 
         input_ = Input(self.eeg_visualizer.dash_ids['graph'], "relayoutData")
@@ -436,3 +436,26 @@ class QCGUI:
                     # update the val, min, max component-properties for both
                     # the ica-raw ch-slider and topoplot slider
                     return value, value, min_, max_, min_, max_
+
+        @self.app.callback(
+                Output(self.eeg_visualizer.dash_ids['ch-slider'],
+                       'value'),
+                Output(self.eeg_visualizer.dash_ids['ch-slider'],
+                       component_property='min'),
+                Output(self.eeg_visualizer.dash_ids['ch-slider'],
+                       component_property='max'),
+                Input('file-dropdown', 'placeholder'),
+                prevent_initial_call=True)
+        def refresh_eeg_ch_slider(selected_file):
+            """Refresh eeg graph ch-slider upon new file selection."""
+            ctx = dash.callback_context
+            if ctx.triggered:
+                trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
+                if trigger_id == 'file-dropdown':
+                    # If the user selected a new file
+                    value = self.eeg_visualizer.channel_slider.value
+                    min_ = self.eeg_visualizer.channel_slider.min
+                    max_ = self.eeg_visualizer.channel_slider.max
+                    # update the val, min, max component-properties for
+                    # the  eeg ch-slider
+                    return value, min_, max_
