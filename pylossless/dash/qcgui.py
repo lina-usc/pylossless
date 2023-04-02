@@ -1,3 +1,9 @@
+# Authors: Christian O'Reilly <christian.oreilly@sc.edu>
+#          Scott Huberty <seh33@uw.edu>
+# License: MIT
+
+"""Python file to instantiate the graphs for the qcr app."""
+
 from pathlib import Path
 
 # file selection
@@ -23,9 +29,26 @@ from .css_defaults import CSS, STYLE
 
 
 class QCGUI:
+    """Class that stores the visualizer-plots that are used in the qcr app."""
 
     def __init__(self, app, fpath=None, project_root=None, verbose=False):
+        """Initialize class.
 
+        Parameters
+        ----------
+        app : dash.app
+            The dash.app object that will host the graphs. This is usually
+            defined in a python file named app.py
+        fpath : mne_bids.BIDSPath | pathlib.Path | None
+            The EEG file to read. Should be the file in one of the subject
+            folders in a derivatives/pylossless directory that was created
+            by the output of the pylossless pipeline. If a pathlib.Path, will
+            try to convert to mne_bids.BIDSPath using get_bids_path_from_fname.
+        project_root : pathlib.Path | None
+            Should be the path to a derivatives/pylossless directory.
+        verbose : None
+            The verbosity level to set for MNE/mne_bids/pylossless functions.
+        """
         # TODO: Fix this pathing indexing, can likely cause errors.
         if project_root is None:
             project_root = Path(__file__).parent.parent.parent
@@ -49,6 +72,13 @@ class QCGUI:
         self.set_callbacks()
 
     def annot_created_callback(self, annotation):
+        """Create custom callback to pass to MNEVisualizer.
+
+        Notes
+        -----
+        This function is not currently used. 
+        """
+        # TODO: Delete this function?
         self.raw.set_annotations(self.raw.annotations + annotation)
         self.raw_ica.set_annotations(self.raw_ica.annotations + annotation)
         self.ica_visualizer.update_layout(ch_slider_val=self.ica_visualizer
@@ -59,6 +89,7 @@ class QCGUI:
         self.eeg_visualizer.update_layout()
 
     def set_visualizers(self):
+        """Create EEG/ICA time-series dcc.graphs and topomap dcc.graphs."""
         # Setting time-series and topomap visualizers
         if self.ic_types:
             cmap = {ic: ic_label_cmap[ic_type]
@@ -66,7 +97,7 @@ class QCGUI:
         else:
             cmap = None
 
-        # Using the ouptut of the callback being triggered by
+        # Using the output of the callback being triggered by
         # a selection of a new file, so that the two callbacks
         # are executed sequentially.
         refresh_inputs = [Input('file-dropdown', 'placeholder')]
@@ -107,6 +138,7 @@ class QCGUI:
         self.ica_visualizer.update_layout()
 
     def update_bad_ics(self):
+        """Add IC name to raw.info['bads'] after selection by user in app."""
         df = self.pipeline.flagged_ics.data_frame
         ic_names = self.raw_ica.ch_names
         df['ic_names'] = ic_names
@@ -127,6 +159,14 @@ class QCGUI:
         df["component"] = np.arange(df.shape[0])
 
     def set_layout(self):
+        """Create the app.layout for the app object.
+
+        Notes
+        -----
+        This specifies the layout for all the dash components in the
+        qcr dashboard. I.e. it specifies the navbar at the top, the placement
+        of the timeseries graphs and topoplot graphs, etc.
+        """
         # app.layout must not be None for some of the operations of the
         # visualizers.
         self.app.layout = html.Div([])
@@ -188,7 +228,15 @@ class QCGUI:
         self.app.layout.children.append(qc_app_layout)
 
     def load_recording(self, fpath, verbose=False):
-        """  """
+        """Load the EEG/ICA raw recording from file.
+
+        Parameters
+        ----------
+        fpath : mne_bids.BIDSPath | pathlib.Path
+            Should contain a path to a subject folder in the
+            derivatives/pylossless directory that was created by the
+            pylossless pipeline.
+        """
         self.fpath = Path(fpath)
         # iclabel_fpath = self.fpath.parent /
         #   self.fpath.name.replace("_eeg.edf", "_iclabels.tsv")
@@ -231,6 +279,8 @@ class QCGUI:
                                      self.ica, self.ic_types)
 
     def set_callbacks(self):
+        """Define additional callbacks that will be used by the qcr app."""
+        # TODO: delete this folder selection callback
         """@self.app.callback(
             Output('file-dropdown', 'options'),
             Input('folder-selector', 'n_clicks'),
