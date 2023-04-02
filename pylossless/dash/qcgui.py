@@ -283,43 +283,35 @@ class QCGUI:
             print('file saved!')
             return dash.no_update
 
-        @self.app.callback(
-                Output(self.eeg_visualizer.dash_ids['time-slider'],
-                       'value'),
-                Output(self.ica_visualizer.dash_ids['time-slider'],
-                       'value'),
-                Output(self.eeg_visualizer.dash_ids['time-slider'],
-                       component_property='min'),
-                Output(self.eeg_visualizer.dash_ids['time-slider'],
-                       component_property='max'),
-                Output(self.ica_visualizer.dash_ids['time-slider'],
-                       component_property='min'),
-                Output(self.ica_visualizer.dash_ids['time-slider'],
-                       component_property='max'),
-                Input(self.eeg_visualizer.dash_ids['time-slider'],
-                      'value'),
-                Input(self.ica_visualizer.dash_ids['time-slider'],
-                      'value'),
-                Input('file-dropdown', 'placeholder'),
-                prevent_initial_call=True)
-        def sync_time_sliders(eeg_time_slider, ica_time_slider, selected_file):
+
+        properties = ["value", "min", "max", "marks"]
+        slider_ids = [self.eeg_visualizer.dash_ids['time-slider'],
+                   self.ica_visualizer.dash_ids['time-slider']]
+        sliders = [self.ica_visualizer.time_slider,
+                   self.eeg_visualizer.time_slider]
+        decorator_args = []
+        for slider_id in slider_ids:
+            decorator_args += [Output(slider_id, property)
+                               for property in properties]
+        for slider_id in slider_ids:
+            decorator_args += [Input(slider_id, 'value')]
+        decorator_args += [Input('file-dropdown', 'placeholder')]
+        @self.app.callback(*decorator_args, prevent_initial_call=True)
+        def sync_time_sliders(*args):
             ctx = dash.callback_context
-            print('IN THE TIME CALLBACK')
             if ctx.triggered:
                 trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-                if trigger_id == self.eeg_visualizer.dash_ids['time-slider']:
-                    value = eeg_time_slider
-                    return no_update, value, no_update, no_update, no_update, no_update
-                if trigger_id == self.ica_visualizer.dash_ids['time-slider']:
-                    value = ica_time_slider
-                    return value, no_update, no_update, no_update, no_update, no_update
+                if trigger_id == slider_ids[0]:
+                    return ([no_update]*len(properties) + [args[0]] +
+                            [no_update]*(len(properties)-1))
+                if trigger_id == slider_ids[1]:
+                    return [args[1]] + [no_update]*(len(properties)*2-1)
                 if trigger_id == 'file-dropdown':
-                    print('HITTTT')
-                    value = self.ica_visualizer.time_slider.value
-                    min_ = self.ica_visualizer.time_slider.min
-                    max_ = self.ica_visualizer.time_slider.max
-                    print('#### ', value)
-                    return value, value, min_, max_, min_, max_
+                    args = []
+                    for slider in sliders[::-1]:
+                        args += [getattr(slider, property)
+                                 for property in properties]
+                    return args
 
         @self.app.callback(
                 Output(self.ica_visualizer.dash_ids['ch-slider'],
