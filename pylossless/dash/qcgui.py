@@ -90,15 +90,11 @@ class QCGUI:
 
     def _set_mne_annots_from_shapes(self):
         """Set mne.io.raw.annotations from plotly shapes after qc session."""
-        onsets = [tpl['shape'].x0
-                  for tpl
-                  in self.eeg_visualizer.mne_annots.data.values()]
-        durs = [tpl['shape'].x1 - tpl['shape'].x0
-                for tpl
-                in self.eeg_visualizer.mne_annots.data.values()]
-        descs = [tpl['description'].text
-                 for tpl
-                 in self.eeg_visualizer.mne_annots.data.values()]
+        data_values = self.eeg_visualizer.mne_annots.data.values()
+        onsets, durs, descs = zip(*[(tpl['shape'].x0,
+                                     tpl['shape'].x1 - tpl['shape'].x0,
+                                     tpl['description'].text)
+                                    for tpl in data_values])
         annots = mne.Annotations(onset=onsets,
                                  duration=durs,
                                  description=descs)
