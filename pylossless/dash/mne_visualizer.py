@@ -27,10 +27,13 @@ def _add_watermark_annot():
 
 
 def _annot_in_timerange(annot, tmin, tmax):
-    annot_range = np.arange(annot["shape"]['x0'], annot["shape"]['x1'] + 1)
-    return any([tmin <= this_sec <= tmax
-                for this_sec
-                in annot_range])
+    """Test whether a shape in mne_annots.data is in viewable time-range."""
+    annot_tmin = annot["shape"]['x0']
+    annot_tmax = annot["shape"]['x1']
+    return ((tmin <= annot_tmin < tmax) or
+            (tmin < annot_tmax <= tmax) or
+            ((annot_tmin < tmin) and (annot_tmax > tmax))
+            )
 
 
 class MNEVisualizer:
@@ -56,7 +59,7 @@ class MNEVisualizer:
             mne.io.raw object. Must be a valid keyword argument
             for dcc.graph.
         dash_id_suffix : str
-            string to append to the end of the MNEVisualizer.graph 
+            string to append to the end of the MNEVisualizer.graph
             dash component ID. Each component id in the users app file
             needs to be unique. If using more than 1 MNEVisualizer
             object in a single, application. You must pass a suffix
@@ -485,7 +488,7 @@ class MNEVisualizer:
     @property
     def times(self):
         """Return the times of the mne.io.Raw object in MNEVisualizer.inst.
-        
+
         Returns
         -------
         an np.array of the times.
@@ -565,7 +568,7 @@ class ICVisualizer(MNEVisualizer):
             mne.io.raw object. Must be a valid keyword argument
             for dcc.graph.
         dash_id_suffix : str
-            string to append to the end of the MNEVisualizer.graph 
+            string to append to the end of the MNEVisualizer.graph
             dash component ID. Each component id in the users app file
             needs to be unique. If using more than 1 MNEVisualizer
             object in a single, application. You must pass a suffix
