@@ -1,11 +1,13 @@
 
 ![logo](./docs/source/_static/logo_big.png)
 
-# PyLossless EEG Processing Pipeline
 - 🦾 Fully automated EEG processing pipeline built on MNE-Python.
 - :recycle: Keeps your EEG recordings in their continuou state.
 - 📝 Artifacts are annotated in your raw data.
 - 👩‍💻 Use our dashboard to review the pipelines decisions on your files.
+
+![QCR Dashboard](./docs/source/_images/qc_screenshot.png)
+
 
 # **Note: This software is pre-alpha and not yet ready for outside use!**
 ## **Alpha release is planned for May 1st 2023**
