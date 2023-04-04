@@ -26,3 +26,43 @@ for a static version.
 
 Please find the documentation at
 [**pylossless.readthedocs.io**](https://pylossless.readthedocs.io/en/latest/index.html).
+
+
+## :black_right_pointing_triangle_with_double_vertical_bar: Running the pyLossless Pipeline
+Below is a minimal example that runs the pipeline one of MNE's sample files.  
+```
+import pylossless as ll 
+import mne
+fname = mne.datasets.sample.data_path() / 'MEG' / 'sample' /  'sample_audvis_raw.fif'
+raw = mne.io.read_raw_fif(fname, preload=True).pick_types(eeg=True)  # pick EEG chans.
+
+config = ll.config.Config()
+config.load_default()
+config.save("my_project_ll_config.yaml")
+
+pipeline = ll.LosslessPipeline('my_project_ll_config.yaml')
+pipeline.run_with_raw(raw)
+```
+
+Once it is completed, You can see what channels and times were flagged:
+```
+print(pipeline.flagged_chs)
+print(pipeline.flagged_epochs)
+```
+
+Once you are ready, you can save your file:
+```
+pipeline.save(pipeline.get_derivative_path(bids_path), overwrite=True)
+```
+
+## :female-technologist: Dashboard Review
+![QCR Dashboard](./docs/source/_images/qc_screenshot.png)
+
+After running the Lossless pipeline, you can launch the Quality Control
+Review (QC) dashboard to review the pipeline's decisions on each file!
+You can flag additional channels, times and components, and edit flags
+made by the pipeline.
+
+```bash
+$ python pylossless/dash/app.py
+```
