@@ -1,5 +1,5 @@
 
-![logo](./docs/source/_static/logo_big.png)
+![logo](./docs/source/_static/logo_white.png)
 
 - 🦾 Fully automated EEG processing pipeline built on MNE-Python.
 - :recycle: Keeps your EEG recordings in their continuou state.
