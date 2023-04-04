@@ -21,10 +21,10 @@ variability_across_epochs
 
 .. autofunction:: variability_across_epochs
 
-marks_array2flags
------------------
+_detect_outliers
+----------------
 
-.. autofunction:: marks_array2flags
+.. autofunction:: _detect_outliers
 
 add_pylossless_annotations
 --------------------------
