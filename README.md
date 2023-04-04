@@ -1,5 +1,5 @@
 
-![logo](./pylossless/source/_static/logo_big.png)
+![logo](./docs/source/_static/logo_big.png)
 
 # PyLossless EEG Processing Pipeline
 - 🦾 Fully automated EEG processing pipeline built on MNE-Python.
