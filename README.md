@@ -1,8 +1,8 @@
 # PyLossless EEG Processing Pipeline
-🦾 Fully automated EEG processing pipeline built on MNE-Python.
-:recycle: Keeps your EEG recordings in their continuou state.
-📝 Artifacts are annotated in your raw data.
-👩‍💻 Use our dashboard to review the pipelines decisions on your files.
+- 🦾 Fully automated EEG processing pipeline built on MNE-Python.
+- :recycle: Keeps your EEG recordings in their continuou state.
+- 📝 Artifacts are annotated in your raw data.
+- 👩‍💻 Use our dashboard to review the pipelines decisions on your files.
 
 **Note: This software is pre-alpha and not yet ready for outside use!**
 **Alpha release is planned for May 1st 2023**
@@ -25,7 +25,7 @@ Please find the full documentation at
 [**pylossless.readthedocs.io**](https://pylossless.readthedocs.io/en/latest/index.html).
 
 
-## :black_right_pointing_triangle_with_double_vertical_bar: Running the pyLossless Pipeline
+## ▶️ Running the pyLossless Pipeline
 Below is a minimal example that runs the pipeline one of MNE's sample files.  
 ```
 import pylossless as ll 
@@ -52,7 +52,7 @@ Once you are ready, you can save your file:
 pipeline.save(pipeline.get_derivative_path(bids_path), overwrite=True)
 ```
 
-## :female-technologist: Dashboard Review
+## 👩‍💻 Dashboard Review
 ![QCR Dashboard](./docs/source/_images/qc_screenshot.png)
 
 After running the Lossless pipeline, you can launch the Quality Control
