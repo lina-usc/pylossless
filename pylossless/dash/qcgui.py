@@ -1,8 +1,10 @@
 from pathlib import Path
 
 # file selection
-import tkinter
+import tkinter as tk
 from tkinter import filedialog
+import multiprocessing
+
 import numpy as np
 
 import dash
@@ -21,6 +23,15 @@ from . import ic_label_cmap
 from ..pipeline import LosslessPipeline
 
 from .css_defaults import CSS, STYLE
+
+
+def open_folder_dialog():
+    """Provide user with a finder window to select a directory."""
+    root = tk.Tk()
+    root.withdraw()
+    file_path = filedialog.askdirectory()
+    root.destroy()
+    return file_path
 
 
 class QCGUI:
@@ -229,24 +240,14 @@ class QCGUI:
         )
         def folder_button_clicked(n_clicks):
             if n_clicks:
-                root = tkinter.Tk()
-                # root.focus_force()
-                # Make folder picker dialog appear on top of other windows
-                root.wm_attributes('-topmost', 1)
-                # Cause the root window to disappear milliseconds
-                # after calling the filedialog.
-                root.after(100, root.withdraw)
-                directory = Path(filedialog.askdirectory())
-                print('selected directory: ', directory)
-                # self.eeg_visualizer.change_dir(directory)
-                '''files_list = [dbc.DropdownMenuItem(str(f.name), id=str(f))
-                    for f in sorted(self.project_root.rglob("*.edf"))]'''
+                with multiprocessing.Pool(processes=1) as pool:
+                    folder_path = pool.apply(open_folder_dialog)
+                    self.project_root = Path(folder_path)
+
                 files_list = [{'label': str(file.name), 'value': str(file)}
                               for file
                               in sorted(self.project_root.rglob("*.edf"))]
-                root.destroy()
-                print('***', files_list)
-                return files_list  # directory
+                return files_list
             return dash.no_update
 
         @self.app.callback(
