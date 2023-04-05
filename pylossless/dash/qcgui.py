@@ -71,35 +71,6 @@ class QCGUI:
         self.set_layout()
         self.set_callbacks()
 
-    def annot_created_callback(self, annotation):
-        """Create custom callback to pass to MNEVisualizer.
-
-        Notes
-        -----
-        This function is not currently used.
-        """
-        # TODO: Delete this function?
-        self.raw.set_annotations(self.raw.annotations + annotation)
-        self.raw_ica.set_annotations(self.raw_ica.annotations + annotation)
-        self.ica_visualizer.update_layout(ch_slider_val=self.ica_visualizer
-                                                            .channel_slider
-                                                            .max,
-                                          time_slider_val=self.ica_visualizer
-                                                              .win_start)
-        self.eeg_visualizer.update_layout()
-
-    def _set_mne_annots_from_shapes(self):
-        """Set mne.io.raw.annotations from plotly shapes after qc session."""
-        data_values = self.eeg_visualizer.mne_annots.data.values()
-        onsets, durs, descs = zip(*[(tpl['shape'].x0,
-                                     tpl['shape'].x1 - tpl['shape'].x0,
-                                     tpl['description'].text)
-                                    for tpl in data_values])
-        annots = mne.Annotations(onset=onsets,
-                                 duration=durs,
-                                 description=descs)
-        self.eeg_visualizer.inst.set_annotations(annots)
-
     def set_visualizers(self):
         """Create EEG/ICA time-series dcc.graphs and topomap dcc.graphs."""
         # Setting time-series and topomap visualizers
@@ -336,7 +307,7 @@ class QCGUI:
         )
         def save_file(n_clicks):
             self.update_bad_ics()
-            self._set_mne_annots_from_shapes()
+            self.eeg_visualizer.update_inst_annnotations()
             self.pipeline.save(get_bids_path_from_fname(self.fpath),
                                overwrite=True)
             logger.info('file saved!')
