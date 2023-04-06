@@ -20,6 +20,7 @@ from mne.utils import _validate_type, logger
 from .css_defaults import DEFAULT_LAYOUT, CSS, STYLE
 from .qcannotations import EEGAnnotationList, EEGAnnotation
 
+
 def _add_watermark_annot():
     from .css_defaults import WATERMARK_ANNOT
     return WATERMARK_ANNOT
@@ -327,6 +328,7 @@ class MNEVisualizer:
 
                     if dash_event == 'clickData':
                         # Working on traces
+                        logger.debug('** Trace selected')
                         c_index = click_data["points"][0]["curveNumber"]
                         ch_name = self.traces[c_index].name
                         if ch_name in self.inst.info['bads']:
@@ -337,8 +339,10 @@ class MNEVisualizer:
 
                     elif dash_event == 'relayoutData':
                         # Working on annotations
+                        logger.debug(f'** relayoutData: {relayout_data}')
                         if "selections" in relayout_data:
                             # shape creation
+                            logger.debug('** shape created')
                             onset = relayout_data["selections"][0]['x0']
                             offset = relayout_data["selections"][0]['x1']
                             description = self.new_annot_desc
@@ -348,6 +352,7 @@ class MNEVisualizer:
 
                         elif "shapes" in relayout_data:
                             # shape was deleted
+                            logger.debug('** shape deleted')
                             updated_shapes = relayout_data['shapes']
                             if len(updated_shapes) < len(self.layout.shapes):
                                 # Shape (i.e. annotation) was deleted
@@ -361,14 +366,17 @@ class MNEVisualizer:
                         elif any([key.endswith('x0')
                                   for key in relayout_data.keys()]):
                             # shape was modified
-                            shape_str = list(relayout_data.keys())[0].split(".")[0]
+                            logger.debug('** shape modified')
+                            shape_str = (list(relayout_data.keys())[0]
+                                         .split(".")[0]
+                                         )
                             x0 = relayout_data[f"{shape_str}.x0"]
                             x1 = relayout_data[f"{shape_str}.x1"]
                             shape_i = int(shape_str.split('[', 1)[1][:-1])
                             name = self.layout.shapes[shape_i]['name']
                             if name in self.mne_annots.data:
                                 annot = self.mne_annots.data[name]
-                                annot.onset =  x0
+                                annot.onset = x0
                                 annot.duration = x1 - x0
 
                         else:
