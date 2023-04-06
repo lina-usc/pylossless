@@ -1,5 +1,8 @@
 """Helper functions and Classes for topographic maps during Lossless QC."""
 
+# Authors: Christian O'Reilly <christian.oreilly@sc.edu>
+#          Scott Huberty <seh33@uw.edu>
+# License: MIT
 from itertools import product
 from copy import copy
 import warnings
@@ -29,6 +32,7 @@ yaxis.update({"scaleanchor": "x", "scaleratio": 1})
 
 class TopoData:  # TODO: Fix/finish doc comments for this class.
     """Handler class for passing Topo Data."""
+
     def __init__(self, topo_values=()):
         """topo_values: list of dict."""
         self.topo_values = pd.DataFrame(topo_values)
@@ -44,13 +48,65 @@ class TopoData:  # TODO: Fix/finish doc comments for this class.
 
 
 class TopoViz:  # TODO: Fix/finish doc comments for this class.
-    """Represenation of a classic EEG topographic map."""
+    """Representation of a classic EEG topographic map."""
+
     def __init__(self, app, montage=None, data=None,  # : TopoData,
-                 rows=5, cols=4, margin_x=4/5, width=400, height=600,
-                 margin_y=2/5, head_contours_color="black", cmap='RdBu_r',
-                 show_sensors=True, show_slider=True, refresh_input=None):
-        """ """
-        self.refresh_input = refresh_input
+                 rows=5, cols=4, width=400, height=600,
+                 margin_x=4/5, margin_y=2/5, head_contours_color="black",
+                 cmap='RdBu_r', show_sensors=True, show_slider=True,
+                 refresh_inputs=None):
+        """Initialize instance.
+
+        Parameters
+        ----------
+        app : instance of Dash.app
+            The dash app object to place the plot within.
+        montage : mne.channels.DigMontage
+            Montage for digitized electrode and headshape position data.
+            See mne.channels.make_standard_montage(), and
+            mne.channels.get_builtin_montages() for more information
+            on making montage objects in MNE.
+        data : mne.preprocessing.ICA
+            The data to use for the topoplots. Can be an instance of
+            mne.preprocessing.ICA.
+        rows : int
+            The number of rows to use for the topoplots. For example, using
+            the default values, will show 5 rows of 4 topoplots each. A
+            dash dcc.Slider is available to scroll if there are more topoplots
+            than can be fit into one row x col view.
+        cols : int
+            The number of cols to use for the topoplots.
+        width : int
+            The width of the dcc.graph object holding the topoplots
+        height : int
+            The height of the dcc.graph object holding the topoplots
+        margin_x : float
+            Can be a float or for example 4/5.
+        margin_y : float
+            Can be a float or for example 4/5.
+        head_contours_color : str
+            The color to use for the topoplot head outline. Must be a string
+            of a rgba or hex code that is compatible with plotly's graphing
+            library.
+        cmap : str
+            The color to use for the topoplot heatmap. Must be a string of
+            a rgba or hex code that is compatible with plotly's graphing
+            library.
+        show_sensors : bool
+            Whether to show the sensors (as dots) on the topoplot. Defaults
+            to True.
+        show_slider : bool
+            Whether to show the dcc.Slider component that controls which
+            topoplots are in view. Defaults to True.
+        refresh_inputs : str | iterable
+            The id of one or more dash components, that should trigger a
+            refresh of the topoplots. For example this can be useful if
+            one would like a dcc.dropdown component containing a list of
+            file names to refresh the data when selected.
+        """
+        if not isinstance(refresh_inputs, list):
+            refresh_inputs = [refresh_inputs]
+        self.refresh_inputs = refresh_inputs
         self.montage = montage
         self.data = data
         self.app = app
@@ -136,6 +192,26 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
 
     def get_heatmap_data(self, i, j, ch_type="eeg", res=64,
                          extrapolate='auto'):
+        """Get the data to use for the topo plots.
+
+        Parameters
+        ----------
+        i : int
+            The row number
+        j : int
+            The col number
+        ch_type : str
+            The data type. defaults to 'eeg'
+        res : int
+            The dpi resolution for the topoplots. Defaults to 64
+        extrapolate : str
+            Method to extrapoloate data
+
+        Returns
+        -------
+        a dict of the data, with keys 'x', 'y', 'z'.
+        """
+        # TODO : clarify ch_type and res parameters in Docstrong
         # Get the heatmap
         no = i*self.cols + j
         if no + self.offset >= self.data.nb_topo:  # out of range
@@ -161,7 +237,7 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
 
     def initialize_layout(self, slider_val=None, subplot_titles=None,
                           show_sensors=True):
-        """ """
+        """Initialize the layout for the topoplot dcc.graph component."""
         if not self.data:
             return
         if slider_val is not None:
@@ -213,11 +289,13 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
 
     @property
     def nb_topo(self):
+        """The number of topoplots."""
         if self.data:
             return self.data.nb_topo
         return self.rows * self.cols
 
     def init_slider(self):
+        """Initialize the dcc.Slider component for the topoplots."""
         self.topo_slider = dcc.Slider(id='topo-slider',
                                       min=self.rows * self.cols - 1,
                                       max=self.nb_topo - 1,
@@ -235,16 +313,18 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
             self.topo_slider_div.style.update({'display': 'none'})
 
     def set_div(self):
+        """Set the html.Div component for the topoplots."""
         # outer_div includes slider obj
         graph_components = [self.topo_slider_div, self.graph_div]
         self.container_plot = html.Div(children=graph_components,
                                        className=CSS['topo-container'])
 
     def set_callback(self):
+        """Create the callback for the dcc.graph component of the topoplots."""
         args = [Output('topo-graph', 'figure')]
         args += [Input('topo-slider', 'value')]
-        if self.refresh_input:
-            args += [self.refresh_input]
+        if self.refresh_inputs:
+            args += self.refresh_inputs
 
         @self.app.callback(*args, suppress_callback_exceptions=False)
         def callback(slider_val, *args):
@@ -255,12 +335,69 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
 
 
 class TopoVizICA(TopoViz):
+    """Representation of a classic ICA topographic map."""
+
     def __init__(self, app, montage, ica, ic_labels=None, **kwargs):
-        """ """
+        """Initialize instance.
+
+        Parameters
+        ----------
+        app : instance of Dash.app
+            The dash app object to place the plot within.
+        montage : mne.channels.DigMontage
+            Montage for digitized electrode and headshape position data.
+            See mne.channels.make_standard_montage(), and
+            mne.channels.get_builtin_montages() for more information
+            on making montage objects in MNE.
+        data : mne.preprocessing.ICA
+            The data to use for the topoplots. Can be an instance of
+            mne.preprocessing.ICA.
+        ica : mne.preprocessing.ICA
+            The data to use for the topoplots. Can be an instance of
+            mne.preprocessing.ICA.
+        ic_labels : mapping
+            A mapping between the ICA names and their IClabels, which
+            can be identified with mne-icalabel soon.
+        rows : int
+            The number of rows to use for the topoplots. For example, using
+            the default values, will show 5 rows of 4 topoplots each. A
+            dash dcc.Slider is available to scroll if there are more topoplots
+            than can be fit into one row x col view.
+        cols : int
+            The number of cols to use for the topoplots.
+        width : int
+            The width of the dcc.graph object holding the topoplots
+        height : int
+            The height of the dcc.graph object holding the topoplots
+        margin_x : float
+            Can be a float or for example 4/5.
+        margin_y : float
+            Can be a float or for example 4/5.
+        head_contours_color : str
+            The color to use for the topoplot head outline. Must be a string
+            of a rgba or hex code that is compatible with plotly's graphing
+            library.
+        cmap : str
+            The color to use for the topoplot heatmap. Must be a string of
+            a rgba or hex code that is compatible with plotly's graphing
+            library.
+        show_sensors : bool
+            Whether to show the sensors (as dots) on the topoplot. Defaults
+            to True.
+        show_slider : bool
+            Whether to show the dcc.Slider component that controls which
+            topoplots are in view. Defaults to True.
+        refresh_inputs : str | iterable
+            The id of one or more dash components, that should trigger a
+            refresh of the topoplots. For example this can be useful if
+            one would like a dcc.dropdown component containing a list of
+            file names to refresh the data when selected.
+        """
         data = self.init_vars(montage, ica, ic_labels)
         super(TopoVizICA, self).__init__(app, montage, data, **kwargs)
 
     def init_vars(self, montage, ica, ic_labels):
+        """Initialize the montage, ica, and ic_labels data."""
         if not montage or not ica or not ic_labels:
             return None
         if ic_labels:
@@ -273,5 +410,6 @@ class TopoVizICA(TopoViz):
         return data
 
     def load_recording(self, montage, ica, ic_labels):
+        """Load the object to be plotted."""
         data = self.init_vars(montage, ica, ic_labels)
         super(TopoVizICA, self).load_recording(montage, data)
