@@ -12,7 +12,7 @@ def get_app(fpath=None, kind="dash"):
     """Return QCR Dash.app object for Dash or JupyterDash."""
     if kind == "jupyter":
         from jupyter_dash import JupyterDash
-        app = JupyterDash(__name__)
+        app = JupyterDash(__name__, external_stylesheets=[dbc.themes.SLATE])
     else:
         app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SLATE])
 

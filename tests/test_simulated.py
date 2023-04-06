@@ -61,6 +61,12 @@ stc = simulate_sparse_stc(src, n_dipoles=n_dipoles, times=times,
 raw_sim = simulate_raw(raw.info, [stc] * 10, forward=fwd, verbose=True)
 raw_sim.pick_types(eeg=True)
 
+# Save Info and Montage for later re-use
+montage = raw_sim.get_montage()
+info = mne.create_info(ch_names=raw_sim.ch_names,
+                       sfreq=raw_sim.info['sfreq'],
+                       ch_types=raw_sim.get_channel_types())
+
 # MAKE A VERY NOISY TIME PERIOD
 raw_selection1 = raw_sim.copy().crop(tmin=0, tmax=2, include_tmax=False)
 raw_selection2 = raw_sim.copy().crop(tmin=2, tmax=3, include_tmax=False)
@@ -132,6 +138,22 @@ def test_simulated_raw(pipeline):
     assert np.array_equal(pipeline.flagged_chs['manual'],
                           ['EEG 001', 'EEG 005', 'EEG 009',
                            'EEG 015', 'EEG 016'])
+
+    # MAKE BRIDGED CHANNELS
+    data = pipeline.raw.get_data() # ch x times
+    data[28, :] = data[27, :] # duplicate the signal
+
+    # Make new raw out of data
+    raw_sim = mne.io.RawArray(data, info)
+    # Re-set the montage
+    raw_sim.set_montage(montage)
+    pipeline.raw = raw_sim
+
+    # RUN FLAG_CH_BRIDGE
+    data_r_ch = pipeline.flag_ch_low_r()
+    pipeline.flag_ch_bridge(data_r_ch)
+    assert 'EEG 028' in pipeline.flagged_chs['bridge']
+    assert 'EEG 029' in pipeline.flagged_chs['bridge']
 
     # Delete temp config file
     tmp_config_fname = Path(pipeline.config_fname).absolute()
