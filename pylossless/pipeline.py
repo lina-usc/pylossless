@@ -499,6 +499,43 @@ def _detect_outliers(array, flag_dim='epoch', outlier_method='quantile',
     return np.where(prop_outliers > flag_crit)[0]
 
 
+def _threshold_volt_std(epochs, flag_dim, threshold=5e-5):
+    """Detect epochs or channels whos voltage std is above threshold.
+
+    Parameters
+    ----------
+    flag_dim : str
+        The dimension to flag outlier in. 'ch' for channels, 'epoch'
+        for epochs.
+    threshold : int | float | tuple | list
+        The threshold in volts. If the standard deviation of a channel's
+        voltage variance at a specific epoch is above the threshold, then
+        that channel x epoch will be flagged as an "outlier". If threshold
+        is a single int or float, then it is treated as the upper threshold
+            and the lower threshold is set to 0. Default is 5e-5, i.e.
+            50 microvolts.
+    """
+    if isinstance(threshold, (tuple, list)):
+        l_out, u_out = threshold
+    elif isinstance(threshold, (int, float)):
+        l_out, u_out = (0, threshold)
+    else:
+        raise ValueError('threshold must be an int, float, or a list/tuple'
+                         f' of 2 int or float values. got {threshold}')
+
+    epochs_xr = epochs_to_xr(epochs, kind="ch")
+    data_sd = epochs_xr.std("time")
+    # Flag channels or epochs if their std is above
+    # a fixed threshold.
+    outlier_kwargs = dict(lower=l_out, upper=u_out)
+    volt_outliers = _detect_outliers(data_sd,
+                                     flag_dim=flag_dim,
+                                     outlier_method='fixed',
+                                     init_dir='pos',
+                                     outlier_kwargs=outlier_kwargs)
+    return epochs_xr, volt_outliers
+
+
 def add_pylossless_annotations(raw, inds, event_type, epochs):
     """Add annotations for flagged epochs.
 
@@ -800,6 +837,24 @@ class LosslessPipeline():
             return
         breaks = annotate_break(self.raw, **self.config['find_breaks'])
         self.raw.set_annotations(breaks + self.raw.annotations)
+
+    def _flag_chs_volt_std(self, threshold=5e-5):
+        epochs_xr, volt_outliers = _threshold_volt_std(self.get_epochs(),
+                                                       flag_dim='ch',
+                                                       threshold=threshold)
+        bad_ch_names = epochs_xr.ch[volt_outliers]
+        self.flagged_chs.add_flag_cat(kind='volt_std',
+                                      bad_ch_names=bad_ch_names)
+
+    def _flag_epochs_volt_std(self, threshold=5e-5):
+        epochs = self.get_epochs()
+        epochs_xr, volt_outliers = _threshold_volt_std(epochs,
+                                                       flag_dim='epoch',
+                                                       threshold=threshold)
+        self.flagged_epochs.add_flag_cat('volt_std',
+                                         volt_outliers,
+                                         self.raw,
+                                         epochs)
 
     def flag_outlier_chs(self):
         """Flag outlier Channels."""
