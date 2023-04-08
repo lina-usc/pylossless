@@ -45,13 +45,14 @@ class FlaggedChs(dict):
         method. Applicable only for EEG data.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, ll, *args, **kwargs):
         """Initialize class."""
         super().__init__(*args, **kwargs)
         if 'manual' not in self:
             self['manual'] = []
+        self.ll = ll
 
-    def add_flag_cat(self, kind, bad_ch_names):
+    def add_flag_cat(self, kind, bad_ch_names, *args):
         """Append a list of channel names to the 'manual' dict key.
 
         Parameters:
@@ -78,6 +79,9 @@ class FlaggedChs(dict):
             `dict` of valid keyword arguments for the
             `mne.Raw.set_eeg_reference` method.
         """
+        bad_chs = self.ll.find_outlier_chs()
+        print(bad_chs)
+        inst = inst.pick(picks=None, exclude=bad_chs)
         inst.set_eeg_reference(ref_channels=[ch for ch in inst.ch_names
                                              if ch not in self['manual']],
                                **kwargs)
@@ -112,11 +116,13 @@ class FlaggedEpochs(dict):
         mne.Epochs) to the 'manual' `dict` key.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, ll, *args, **kwargs):
         """Initialize class.
 
         Parameters
         ----------
+        ll : LosslessPipeline
+            Instance of the lossless pipeline.
         args : list | tuple
             positional arguments accepted by `dict` class
         kwargs : dict
@@ -126,7 +132,9 @@ class FlaggedEpochs(dict):
         if 'manual' not in self:
             self['manual'] = []
 
-    def add_flag_cat(self, kind, bad_epoch_inds, raw, epochs):
+        self.ll = ll
+
+    def add_flag_cat(self, kind, bad_epoch_inds, epochs):
         """Append a list of channel names to the 'manual' dict key.
 
         Parameters:
@@ -143,7 +151,7 @@ class FlaggedEpochs(dict):
         """
         self[kind] = bad_epoch_inds
         self['manual'] = np.unique(np.concatenate(list(self.values())))
-        add_pylossless_annotations(raw, bad_epoch_inds, kind, epochs)
+        self.ll.add_pylossless_annotations(bad_epoch_inds, kind, epochs)
 
     # TODO: Add parameters and return.
     def load_from_raw(self, raw):
@@ -255,20 +263,18 @@ def epochs_to_xr(epochs, kind="ch", ica=None):
     """
     if kind == "ch":
         data = epochs.get_data()  # n_epochs, n_channels, n_times
-        data = xr.DataArray(epochs.get_data(),
-                            coords={'epoch': np.arange(data.shape[0]),
-                                    "ch": epochs.ch_names,
-                                    "time": epochs.times})
+        names = epochs.ch_names
     elif kind == "ic":
         data = ica.get_sources(epochs).get_data()
-        data = xr.DataArray(epochs.get_data(),
-                            coords={'epoch': np.arange(data.shape[0]),
-                                    "ic": epochs.ch_names,
-                                    "time": epochs.times})
+        names = ica._ica_names
+
     else:
         raise ValueError("The argument kind must be equal to 'ch' or 'ic'.")
 
-    return data
+    return xr.DataArray(data,
+                        coords={'epoch': np.arange(data.shape[0]),
+                                kind: names,
+                                "time": epochs.times})
 
 
 def _icalabel_to_data_frame(ica):
@@ -325,63 +331,6 @@ def get_operate_dim(array, flag_dim):
     assert len(dims) == 2
     dims.remove(flag_dim)
     return dims[0]
-
-
-def variability_across_epochs(epochs_xr, var_measure='sd',
-                              epochs_inds=None, ch_names=None,
-                              ic_inds=None, spect_range=()):
-    """Compute variability across epochs.
-
-    Parameters
-    ----------
-    epochs_xr : `Xarray.DataArray`
-        An instance of `Xarray.DataArray` that was constructed from an
-        `mne.Epochs` object, using `pylossless.pipeline.epochs_to_xr`.
-    var_measure : str (default 'sd')
-        The measure to assess variability. Must be one of 'sd' or 'absmean'.
-    epochs_inds : list | tuple (default `None`)
-        Indices of the epochs that should be included in the variability
-        assessment. Indices must correspond existing values in
-        `epochs_xr['epoch']`. If `None`, The Epoch is ignored.
-    ch_names : list | tuple (default `None`)
-        Names of the channels that should be included in the variability
-        assessment. Names must correspond to existing values in
-        `epochs_xr['ch']`. If `None`, channel name dimension is ignored.
-    ic_inds : list | tuple (default `None`)
-        Indices of the independent components in epochs_xr['ic'] to be
-        included in the variability assessment. Indices must correspond to
-        existing values in `epochs_xr['ic']`. Only Valid if 'ic' was
-        passed into the `kind` argument of `pylossless.pipeline.epochs_to_xr`.
-        If `None`, IC dimension is ignored.
-    spect_range : tuple (default empty tuple)
-        Not currently implemented.
-
-    Returns
-    -------
-    Xarray DataArray : Xarray.DataArray
-        An instance of Xarray.DataArray, with shape n_channels, by n_times.
-    """
-    if ch_names is not None:
-        epochs_xr = epochs_xr.sel(ch=ch_names)
-    if epochs_inds is not None:
-        epochs_xr = epochs_xr.sel(epoch=epochs_inds)
-    if ic_inds is not None:
-        epochs_xr = epochs_xr.sel(ic=ic_inds)
-
-    if var_measure == 'sd':
-        return epochs_xr.std(dim="epoch")  # returns n_chans, n_times array
-    if var_measure == 'absmean':
-        return np.abs(epochs_xr).mean(dim="epoch")
-
-    if var_measure == 'spect':
-
-        #        p=abs(fft(bsxfun(@times,data,hanning(EEG.pnts)'),[],2));
-        #        fstep=EEG.srate/EEG.pnts;
-        #        f=[fstep:fstep:EEG.srate]-fstep;
-        #        [val,ind(1)]=min(abs(f-(g.spectrange(1))));
-        #        [val,ind(2)]=min(abs(f-(g.spectrange(2))));
-        #        data_sd=squeeze(mean(p(:,ind(1):ind(2),:),2));
-        raise NotImplementedError
 
 
 def _get_outliers_quantile(array, dim, lower=0.25, upper=0.75, mid=0.5, k=3):
@@ -495,19 +444,22 @@ def _detect_outliers(array, flag_dim='epoch', outlier_method='quantile',
         outlier_mask = outlier_mask | (array < l_out)
 
     # average column of outlier_mask
-    prop_outliers = outlier_mask.mean(operate_dim)
-    return np.where(prop_outliers > flag_crit)[0]
+    # drop quantile coord because it is no longer needed
+    prop_outliers = outlier_mask.astype(float).mean(operate_dim)
+    if "quantile" in list(prop_outliers.coords.keys()):
+        prop_outliers = prop_outliers.drop_vars('quantile')
+    return prop_outliers[prop_outliers > flag_crit].coords.to_index().values
 
 
 def _threshold_volt_std(epochs, flag_dim, threshold=5e-5):
-    """Detect epochs or channels whos voltage std is above threshold.
+    """Detect epochs or channels whose voltage std is above threshold.
 
     Parameters
     ----------
     flag_dim : str
         The dimension to flag outlier in. 'ch' for channels, 'epoch'
         for epochs.
-    threshold : int | float | tuple | list
+    threshold : float | tuple | list
         The threshold in volts. If the standard deviation of a channel's
         voltage variance at a specific epoch is above the threshold, then
         that channel x epoch will be flagged as an "outlier". If threshold
@@ -516,9 +468,12 @@ def _threshold_volt_std(epochs, flag_dim, threshold=5e-5):
             50 microvolts.
     """
     if isinstance(threshold, (tuple, list)):
+        assert len(threshold) == 2
         l_out, u_out = threshold
-    elif isinstance(threshold, (int, float)):
+        init_dir = 'both'
+    elif isinstance(threshold, float):
         l_out, u_out = (0, threshold)
+        init_dir = 'pos'
     else:
         raise ValueError('threshold must be an int, float, or a list/tuple'
                          f' of 2 int or float values. got {threshold}')
@@ -527,42 +482,14 @@ def _threshold_volt_std(epochs, flag_dim, threshold=5e-5):
     data_sd = epochs_xr.std("time")
     # Flag channels or epochs if their std is above
     # a fixed threshold.
-    outlier_kwargs = dict(lower=l_out, upper=u_out)
-    volt_outliers = _detect_outliers(data_sd,
-                                     flag_dim=flag_dim,
-                                     outlier_method='fixed',
-                                     init_dir='pos',
-                                     outlier_kwargs=outlier_kwargs)
-    return epochs_xr, volt_outliers
-
-
-def add_pylossless_annotations(raw, inds, event_type, epochs):
-    """Add annotations for flagged epochs.
-
-    Parameters
-    ----------
-    raw : mne.Raw
-        an instance of mne.Raw
-    inds : list | tuple
-        indices corresponding to artefactual epochs
-    event_type : str
-        One of 'ch_sd', 'low_r', 'ic_sd1'
-    epochs : mne.Epochs
-        an instance of mne.Epochs
-
-    Returns
-    -------
-    Raw : mne.Raw
-        an instance of mne.Raw
-    """
-    # Concatenate epoched data back to continuous data
-    t_onset = epochs.events[inds, 0] / epochs.info['sfreq']
-    duration = np.ones_like(t_onset) / epochs.info['sfreq'] * len(epochs.times)
-    description = [f'bad_pylossless_{event_type}'] * len(t_onset)
-    annotations = mne.Annotations(t_onset, duration, description,
-                                  orig_time=raw.annotations.orig_time)
-    raw.set_annotations(raw.annotations + annotations)
-    return raw
+    outliers_kwargs = dict(lower=l_out, upper=u_out)
+    volt_outlier_inds = _detect_outliers(data_sd,
+                                         flag_dim=flag_dim,
+                                         outlier_method='fixed',
+                                         init_dir=init_dir,
+                                         outliers_kwargs=outliers_kwargs)
+    logger.info(volt_outlier_inds)
+    return volt_outlier_inds
 
 
 def chan_neighbour_r(epochs, nneigbr, method):
@@ -745,9 +672,9 @@ class LosslessPipeline():
             path to config file specifying the parameters to be used
             in the pipeline.
         """
-        self.flagged_chs = FlaggedChs()
-        self.flagged_epochs = FlaggedEpochs()
-        self.flagged_ics = FlaggedICs()
+        self.flags = {"ch": FlaggedChs(self),
+                      "epoch": FlaggedEpochs(self),
+                      "ic": FlaggedICs()}
         self.config_fname = config_fname
         if config_fname:
             self.load_config()
@@ -782,7 +709,38 @@ class LosslessPipeline():
                              ' mne.channels.get_builtin_montages().')
             # montage = read_custom_montage(chan_locs)
 
-    def get_epochs(self, detrend=None, preload=True):
+    def add_pylossless_annotations(self, inds, event_type, epochs):
+        """Add annotations for flagged epochs.
+
+        Parameters
+        ----------
+        inds : list | tuple
+            indices corresponding to artefactual epochs
+        event_type : str
+            One of 'ch_sd', 'low_r', 'ic_sd1'
+        epochs : mne.Epochs
+            an instance of mne.Epochs
+        """
+        # Concatenate epoched data back to continuous data
+        t_onset = epochs.events[inds, 0] / epochs.info['sfreq']
+        duration = (np.ones_like(t_onset) /
+                    epochs.info['sfreq'] * len(epochs.times)
+                    )
+        description = [f'bad_pylossless_{event_type}'] * len(t_onset)
+        annotations = mne.Annotations(t_onset, duration, description,
+                                      orig_time=self.raw.annotations.orig_time)
+        self.raw.set_annotations(self.raw.annotations + annotations)
+
+    def get_events(self):
+        """Make an MNE events array of fixed length events."""
+        tmin = self.config['epoching']['epochs_args']['tmin']
+        tmax = self.config['epoching']['epochs_args']['tmax']
+        overlap = self.config['epoching']['overlap']
+        return mne.make_fixed_length_events(self.raw, duration=tmax-tmin,
+                                            overlap=overlap)
+
+    def get_epochs(self, detrend=None, preload=True, rereference=True,
+                   picks='eeg'):
         """Create mne.Epochs according to user arguments.
 
         Parameters
@@ -805,21 +763,18 @@ class LosslessPipeline():
             an instance of mne.Epochs
         """
         # TODO: automatically load detrend/preload description from MNE.
-        tmin = self.config['epoching']['epochs_args']['tmin']
-        tmax = self.config['epoching']['epochs_args']['tmax']
-        overlap = self.config['epoching']['overlap']
-        events = mne.make_fixed_length_events(self.raw, duration=tmax-tmin,
-                                              overlap=overlap)
 
+        events = self.get_events()
         epoching_kwargs = self.config['epoching']['epochs_args']
         if detrend is not None:
             epoching_kwargs['detrend'] = detrend
         epochs = mne.Epochs(self.raw, events=events,
                             preload=preload, **epoching_kwargs)
-        epochs = (epochs.pick(picks=None, exclude='bads')
-                        .pick(picks=None,
-                              exclude=list(self.flagged_chs['manual'])))
-        self.flagged_chs.rereference(epochs)
+        epochs = epochs.pick(picks=picks, exclude='bads')
+        #  .pick(picks=None,
+        #       exclude=list(self.flags["ch"]['manual'])))
+        if rereference:
+            self.flags["ch"].rereference(epochs)
 
         return epochs
 
@@ -838,58 +793,125 @@ class LosslessPipeline():
         breaks = annotate_break(self.raw, **self.config['find_breaks'])
         self.raw.set_annotations(breaks + self.raw.annotations)
 
-    def _flag_chs_volt_std(self, threshold=5e-5):
-        epochs_xr, volt_outliers = _threshold_volt_std(self.get_epochs(),
-                                                       flag_dim='ch',
-                                                       threshold=threshold)
-        bad_ch_names = epochs_xr.ch[volt_outliers]
-        self.flagged_chs.add_flag_cat(kind='volt_std',
-                                      bad_ch_names=bad_ch_names)
+    def _flag_volt_std(self, flag_dim, threshold=5e-5):
+        """Determine if voltage standard deviation is above threshold.
 
-    def _flag_epochs_volt_std(self, threshold=5e-5):
+        Parameters
+        ----------
+        flag_dim : str
+            Whether to flag epochs or channels. 'ch' for channels, 'epoch'
+            for epochs.
+        threshold : float
+            threshold, in volts. If the standard deviation across time in
+            any channel x epoch indice is above this threshold, then the
+            channel x epoch indices will considered an outlier. Defaults
+            to 5e-5, or 50 microvolts. Note that here, 'time' refers to
+            the samples in an epoch.
+        Notes
+        -----
+        This method takes an array of shape n_channels x n_epochs x n_times
+        and calculates the standard deviation across the time dimension (i.e.
+        across the samples in each epoch, for each channel) - which returns
+        an array of shape n_channels x n_epochs, where each element of the
+        array is the std value of that channel x epoch indice. For each
+        channel, if its std value is above the given threshold for more than
+        20% of the epochs, it is flagged. For each epoch, if the std value of
+        more than 20% of channels (in that epoch) is above the threshold, it
+        is flagged. A cutoff threshold other than 20% can be provided, if set
+        in the config.
+
+        WARNING: the default threshold of 50 microvolts may not be appropriate
+        for a particular dataset or data file, as the baseline voltage variance
+        is affected by the impedance of the system that the data was recording
+        on. You may need to assess a more appropriate value for your own data.
+        """
         epochs = self.get_epochs()
-        epochs_xr, volt_outliers = _threshold_volt_std(epochs,
-                                                       flag_dim='epoch',
-                                                       threshold=threshold)
-        self.flagged_epochs.add_flag_cat('volt_std',
-                                         volt_outliers,
-                                         self.raw,
-                                         epochs)
+        above_threshold = _threshold_volt_std(epochs,
+                                              flag_dim=flag_dim,
+                                              threshold=threshold)
+        self.flags[flag_dim].add_flag_cat('volt_std', above_threshold, epochs)
 
-    def flag_outlier_chs(self):
-        """Flag outlier Channels."""
+    def find_outlier_chs(self):
+        """Detect outlier Channels to leave out of rereference."""
         # TODO: Re-use _detect_outliers here.
-        # Window the continuous data
-        # logging_log('INFO', 'Windowing the continuous data...');
-        epochs_xr = epochs_to_xr(self.get_epochs(), kind="ch")
+        epochs_xr = epochs_to_xr(self.get_epochs(rereference=False), kind="ch")
 
         # Determines comically bad channels,
         # and leaves them out of average rereference
-        trim_ch_sd = variability_across_epochs(epochs_xr)
-        # std across epochs for each chan; shape (chans, time)
-
+        trim_ch_sd = epochs_xr.std('time')
         # Measure how diff the std of 1 channel is with respect
         # to other channels (nonparametric z-score)
         ch_dist = trim_ch_sd - trim_ch_sd.median(dim="ch")
         perc_30 = trim_ch_sd.quantile(0.3, dim="ch")
         perc_70 = trim_ch_sd.quantile(0.7, dim="ch")
-        ch_dist /= perc_70 - perc_30  # shape (chans, time)
+        ch_dist /= perc_70 - perc_30  # shape (chans, epoch)
 
-        mean_ch_dist = ch_dist.mean(dim="time")  # shape (chans)
+        mean_ch_dist = ch_dist.mean(dim="epoch")  # shape (chans)
 
         # find the median and 30 and 70 percentiles
         # of the mean of the channel distributions
         mdn = np.median(mean_ch_dist)
         deviation = np.diff(np.quantile(mean_ch_dist, [0.3, 0.7]))
 
-        bad_ch_names = mean_ch_dist.ch[mean_ch_dist > mdn+6*deviation]
-        self.flagged_chs.add_flag_cat(kind='outliers',
-                                      bad_ch_names=bad_ch_names)
+        return mean_ch_dist.ch[mean_ch_dist > mdn+6*deviation].values.tolist()
 
-        # TODO: Verify: It is unclear this is necessary.
-        # get_epochs() is systematically rereferencing and
-        # all steps (?) uses the get_epochs() function
-        self.flagged_chs.rereference(self.raw)
+    def flag_channels_fixed_threshold(self, threshold=5e-5):
+        """Flag channels based on the stdev value across the time dimension.
+
+        Parameters
+        ----------
+        threshold : float
+            threshold, in volts. If the standard deviation across time in
+            any channel x epoch indice is above this threshold, then the
+            channel x epoch indices will considered an outlier. Defaults
+            to 5e-5, or 50 microvolts. Note that here, 'time' refers to
+            the samples in an epoch. For each channel, if its std value is
+            above the given threshold in more than 20% of the epochs, it
+            is flagged.
+
+        Notes
+        -----
+        WARNING: the default threshold of 50 microvolts may not be appropriate
+        for a particular dataset or data file, as the baseline voltage variance
+        is affected by the impedance of the system that the data was recording
+        on. You may need to assess a more appropriate value for your own data.
+        """
+        if 'flag_channels_fixed_threshold' not in self.config:
+            return
+        if 'threshold' in self.config['flag_channels_fixed_threshold']:
+            threshold = (self.config['flag_channels_fixed_threshold']
+                                    ['threshold']
+                         )
+        self._flag_volt_std(flag_dim='ch', threshold=threshold)
+
+    def flag_epochs_fixed_threshold(self, threshold=5e-5):
+        """Flag epochs based on the stdev value across the time dimension.
+
+        Parameters
+        ----------
+        threshold : float
+            threshold, in volts. If the standard deviation across time in
+            any channel x epoch indice is above this threshold, then the
+            channel x epoch indices will considered an outlier. Defaults
+            to 5e-5, or 50 microvolts. Note that here, 'time' refers to
+            the samples in an epoch. For each epoch, if the std value of
+            more than 20% of channels (in that epoch) are above the given
+            threshold, the epoch is flagged.
+
+        Notes
+        -----
+        WARNING: the default threshold of 50 microvolts may not be appropriate
+        for a particular dataset or data file, as the baseline voltage variance
+        is affected by the impedance of the system that the data was recording
+        on. You may need to assess a more appropriate value for your own data.
+        """
+        if 'flag_epochs_fixed_threshold' not in self.config:
+            return
+        if 'threshold' in self.config['flag_epochs_fixed_threshold']:
+            threshold = (self.config['flag_epochs_fixed_threshold']
+                                    ['threshold']
+                         )
+        self._flag_volt_std(flag_dim='epoch', threshold=threshold)
 
     def flag_ch_sd_ch(self):
         """Flag channels with outlying standard deviation."""
@@ -899,18 +921,17 @@ class LosslessPipeline():
         data_sd = epochs_xr.std("time")
 
         # flag channels for ch_sd
-        flag_sd_ch_inds = _detect_outliers(data_sd, flag_dim='ch',
-                                           init_dir='pos',
-                                           **self.config['ch_ch_sd'])
+        bad_ch_names = _detect_outliers(data_sd, flag_dim='ch',
+                                        init_dir='pos',
+                                        **self.config['ch_ch_sd'])
 
-        bad_ch_names = epochs_xr.ch[flag_sd_ch_inds]
-        self.flagged_chs.add_flag_cat(kind='ch_sd',
+        self.flags["ch"].add_flag_cat(kind='ch_sd',
                                       bad_ch_names=bad_ch_names)
 
         # TODO: Verify: It is unclear this is necessary.
         # get_epochs() is systematically rereferencing and
         # all steps (?) uses the get_epochs() function
-        self.flagged_chs.rereference(self.raw)
+        self.flags["ch"].rereference(self.raw)
 
     def flag_ch_sd_epoch(self):
         """Flag epochs with outlying standard deviation."""
@@ -928,13 +949,12 @@ class LosslessPipeline():
                     del config_epoch['outlier_method']
                 elif config_epoch['outlier_method'] not in outlier_methods:
                     raise NotImplementedError
-        flag_sd_t_inds = _detect_outliers(data_sd,
+        bad_epoch_inds = _detect_outliers(data_sd,
                                           flag_dim='epoch',
                                           init_dir='pos',
                                           **config_epoch)
-        self.flagged_epochs.add_flag_cat('ch_sd',
-                                         flag_sd_t_inds,
-                                         self.raw,
+        self.flags["epoch"].add_flag_cat('ch_sd',
+                                         bad_epoch_inds,
                                          epochs)
 
     def get_n_nbr(self):
@@ -958,14 +978,12 @@ class LosslessPipeline():
         data_r_ch = self.get_n_nbr()[0]
 
         # Create the window criteria vector for flagging low_r chan_info...
-        flag_r_ch_inds = _detect_outliers(data_r_ch, flag_dim='ch',
-                                          init_dir='neg',
-                                          **self.config['ch_low_r'])
+        bad_ch_names = _detect_outliers(data_r_ch, flag_dim='ch',
+                                        init_dir='neg',
+                                        **self.config['ch_low_r'])
 
         # Edit the channel flag info structure
-        bad_ch_names = data_r_ch.ch[flag_r_ch_inds].values.tolist()
-        self.flagged_chs.add_flag_cat(kind='low_r', bad_ch_names=bad_ch_names)
-
+        self.flags["ch"].add_flag_cat(kind='low_r', bad_ch_names=bad_ch_names)
         return data_r_ch
 
     def flag_ch_bridge(self, data_r_ch):
@@ -998,7 +1016,7 @@ class LosslessPipeline():
                 )
 
         bad_ch_names = data_r_ch.ch.values[mask]
-        self.flagged_chs.add_flag_cat(kind='bridge',
+        self.flags["ch"].add_flag_cat(kind='bridge',
                                       bad_ch_names=bad_ch_names)
 
     def flag_ch_rank(self, data_r_ch):
@@ -1012,16 +1030,16 @@ class LosslessPipeline():
         data_r_ch : `numpy.array`.
             an instance of `numpy.array`.
         """
-        if len(self.flagged_chs['manual']):
+        if len(self.flags["ch"]['manual']):
             ch_sel = [ch for ch in data_r_ch.ch.values
-                      if ch not in self.flagged_chs['manual']]
+                      if ch not in self.flags["ch"]['manual']]
             data_r_ch = data_r_ch.sel(ch=ch_sel)
 
         bad_ch_names = [str(data_r_ch.median("epoch")
                                      .idxmax(dim="ch")
                                      .to_numpy()
                             )]
-        self.flagged_chs.add_flag_cat(kind='rank',
+        self.flags["ch"].add_flag_cat(kind='rank',
                                       bad_ch_names=bad_ch_names)
 
     def flag_epoch_low_r(self):
@@ -1037,13 +1055,13 @@ class LosslessPipeline():
         # non-'manual' flagged channels and epochs...
         data_r_ch, epochs = self.get_n_nbr()
 
-        flag_r_t_inds = _detect_outliers(data_r_ch, flag_dim='epoch',
-                                         init_dir='neg',
-                                         **self.config['epoch_low_r'])
+        bad_epoch_inds = _detect_outliers(data_r_ch, flag_dim='epoch',
+                                          init_dir='neg',
+                                          **self.config['epoch_low_r'])
 
-        self.flagged_epochs.add_flag_cat('low_r',
-                                         flag_r_t_inds,
-                                         self.raw, epochs)
+        self.flags["epoch"].add_flag_cat('low_r',
+                                         bad_epoch_inds,
+                                         epochs)
 
     def flag_epoch_gap(self):
         """Flag small time periods between pylossless annotations."""
@@ -1075,7 +1093,7 @@ class LosslessPipeline():
         elif run == 'run2':
             self.ica2 = ICA(**ica_kwargs)
             self.ica2.fit(epochs)
-            self.flagged_ics.label_components(epochs, self.ica2)
+            self.flags["ic"].label_components(epochs, self.ica2)
         else:
             raise ValueError("The `run` argument must be 'run1' or 'run2'")
 
@@ -1091,11 +1109,11 @@ class LosslessPipeline():
 
         # Create the windowing sd criteria
         kwargs = self.config['ica']['ic_ic_sd']
-        flag_epoch_ic_inds = _detect_outliers(data_sd,
-                                              flag_dim='epoch', **kwargs)
+        bad_epoch_inds = _detect_outliers(data_sd,
+                                          flag_dim='epoch', **kwargs)
 
-        self.flagged_epochs.add_flag_cat('ic_sd1', flag_epoch_ic_inds,
-                                         self.raw, epochs)
+        self.flags["epoch"].add_flag_cat('ic_sd1', bad_epoch_inds,
+                                         epochs)
 
         # icsd_epoch_flags=padflags(raw, icsd_epoch_flags,1,'value',.5);
 
@@ -1131,7 +1149,7 @@ class LosslessPipeline():
         iclabels_bidspath = bpath.update(extension='.tsv',
                                          suffix='iclabels',
                                          check=False)
-        self.flagged_ics.save_tsv(iclabels_bidspath)
+        self.flags["ic"].save_tsv(iclabels_bidspath)
         # TODO: epoch marks and ica marks are not currently saved into annots
         # raw.save(derivatives_path, overwrite=True, split_naming='bids')
         config_bidspath = bpath.update(extension='.yaml',
@@ -1139,11 +1157,11 @@ class LosslessPipeline():
                                        check=False)
         self.config.save(config_bidspath)
 
-        # Save flagged_chs
+        # Save flag["ch"]
         flagged_chs_fpath = bpath.update(extension='.tsv',
                                          suffix='ll_FlaggedChs',
                                          check=False)
-        self.flagged_chs.save_tsv(flagged_chs_fpath.fpath)
+        self.flags["ch"].save_tsv(flagged_chs_fpath.fpath)
 
     def filter(self):
         """Run filter procedure based on structured config args."""
@@ -1206,9 +1224,9 @@ class LosslessPipeline():
         # find breaks
         self.find_breaks()
 
-        # 2. Determine comically bad channels,
-        # and leave them out of average reference
-        self.flag_outlier_chs()
+        # OPTIONAL: Flag chs/epochs based off fixed std threshold of time axis
+        self.flag_epochs_fixed_threshold()
+        self.flag_channels_fixed_threshold()
 
         # 3.flag channels based on large Stdev. across time
         self.flag_ch_sd_ch()
@@ -1231,7 +1249,7 @@ class LosslessPipeline():
         # TODO: Verify: It is unclear this is necessary.
         # get_epochs() is systematically rereferencing and
         # all steps (?) uses the get_epochs() function
-        self.flagged_chs.rereference(self.raw)
+        self.flags["ch"].rereference(self.raw)
 
         # 9. Calculate nearest neighbour R values for epochs
         self.flag_epoch_low_r()
@@ -1245,7 +1263,7 @@ class LosslessPipeline():
         # 12. Calculate IC SD
         self.flag_epoch_ic_sd1()
 
-        # 13. TODO: integrate labels from IClabels to self.flagged_ics
+        # 13. TODO: integrate labels from IClabels to self.flags["ic"]
         self.run_ica('run2')
 
         # 14. Flag very small time periods between flagged time
@@ -1281,7 +1299,7 @@ class LosslessPipeline():
         # Load IC labels
         iclabels_bidspath = bpath.update(extension='.tsv', suffix='iclabels',
                                          check=False)
-        self.flagged_ics.load_tsv(iclabels_bidspath.fpath)
+        self.flags["ic"].load_tsv(iclabels_bidspath.fpath)
 
         self.config_fname = bpath.update(extension='.yaml', suffix='ll_config',
                                          check=False)
@@ -1291,10 +1309,10 @@ class LosslessPipeline():
         flagged_chs_fpath = bpath.update(extension='.tsv',
                                          suffix='ll_FlaggedChs',
                                          check=False)
-        self.flagged_chs.load_tsv(flagged_chs_fpath.fpath)
+        self.flags["ch"].load_tsv(flagged_chs_fpath.fpath)
 
         # Load Flagged Epochs
-        self.flagged_epochs.load_from_raw(self.raw)
+        self.flags["epoch"].load_from_raw(self.raw)
 
         return self
 
