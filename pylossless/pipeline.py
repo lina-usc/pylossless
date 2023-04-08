@@ -80,8 +80,7 @@ class FlaggedChs(dict):
             `mne.Raw.set_eeg_reference` method.
         """
         bad_chs = self.ll.find_outlier_chs()
-        print(bad_chs)
-        inst = inst.pick(picks=None, exclude=bad_chs)
+        inst = inst.copy().pick(picks=None, exclude=bad_chs)
         inst.set_eeg_reference(ref_channels=[ch for ch in inst.ch_names
                                              if ch not in self['manual']],
                                **kwargs)
