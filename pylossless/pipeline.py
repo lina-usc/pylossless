@@ -79,10 +79,14 @@ class FlaggedChs(dict):
             `dict` of valid keyword arguments for the
             `mne.Raw.set_eeg_reference` method.
         """
+        # TODO - when re-reffing EPOCHS, the line below re-epochs?
         bad_chs = self.ll.find_outlier_chs()
-        inst = inst.copy().pick(picks=None, exclude=bad_chs)
-        inst.set_eeg_reference(ref_channels=[ch for ch in inst.ch_names
-                                             if ch not in self['manual']],
+        bad_chs.extend(self['manual'])
+        bad_chs.extend(inst.info['bads'])
+        bad_chs = list(set(bad_chs))  # In case there are duplicates
+        ref_chans = [ch for ch in inst.copy().pick_types(eeg=True).ch_names
+                     if ch not in bad_chs]
+        inst.set_eeg_reference(ref_channels=ref_chans,
                                **kwargs)
 
     # TODO: Add parameters and return.
@@ -362,8 +366,9 @@ def _get_outliers_quantile(array, dim, lower=0.25, upper=0.75, mid=0.5, k=3):
     """
     lower_val, mid_val, upper_val = array.quantile([lower, mid, upper],
                                                    dim=dim)
-    inter_q = upper_val - lower_val
-    return mid_val - inter_q*k, mid_val + inter_q*k
+    lower_dist = mid_val - lower_val
+    upper_dist = upper_val - mid_val
+    return mid_val - lower_dist*k, mid_val + upper_dist*k
 
 
 def _get_outliers_trimmed(array, dim, trim=0.2, k=3):
@@ -487,7 +492,6 @@ def _threshold_volt_std(epochs, flag_dim, threshold=5e-5):
                                          outlier_method='fixed',
                                          init_dir=init_dir,
                                          outliers_kwargs=outliers_kwargs)
-    logger.info(volt_outlier_inds)
     return volt_outlier_inds
 
 
@@ -528,11 +532,19 @@ def chan_neighbour_r(epochs, nneigbr, method):
         this_ch_xr = xr.DataArray([this_ch * np.ones_like(nearest_chs)],
                                   dims=['ref_chan', 'epoch',
                                         'channel', 'time'],
-                                  coords={'ref_chan': [name]})
+                                  coords={'ref_chan': [name],
+                                          'epoch': np.arange(len(epochs)),
+                                          'channel': row.values.tolist(),
+                                          'time': epochs.times
+                                          }
+                                  )
         nearest_chs_xr = xr.DataArray([nearest_chs],
                                       dims=['ref_chan', 'epoch',
                                             'channel', 'time'],
-                                      coords={'ref_chan': [name]})
+                                      coords={'ref_chan': [name],
+                                              'epoch': np.arange(len(epochs)),
+                                              'channel': row.values.tolist(),
+                                              'time': epochs.times})
         r_list.append(xr.corr(this_ch_xr, nearest_chs_xr, dim=['time']))
 
     c_neigbr_r = xr.concat(r_list, dim='ref_chan')
@@ -762,16 +774,18 @@ class LosslessPipeline():
             an instance of mne.Epochs
         """
         # TODO: automatically load detrend/preload description from MNE.
-
+        logger.info("🧹 Epoching..")
         events = self.get_events()
         epoching_kwargs = self.config['epoching']['epochs_args']
         if detrend is not None:
             epoching_kwargs['detrend'] = detrend
         epochs = mne.Epochs(self.raw, events=events,
                             preload=preload, **epoching_kwargs)
-        epochs = epochs.pick(picks=picks, exclude='bads')
-        #  .pick(picks=None,
-        #       exclude=list(self.flags["ch"]['manual'])))
+        epochs = (epochs.pick(picks=picks, exclude='bads')
+                        .pick(picks=None,
+                              exclude=list(self.flags["ch"]['manual'])
+                              )
+                  )
         if rereference:
             self.flags["ch"].rereference(epochs)
 
@@ -789,8 +803,10 @@ class LosslessPipeline():
         """Find breaks using `mne.preprocessing.annotate_break`."""
         if 'find_breaks' not in self.config or not self.config['find_breaks']:
             return
+        logger.info('🏃🏃🏃 Finding breaks!')
         breaks = annotate_break(self.raw, **self.config['find_breaks'])
         self.raw.set_annotations(breaks + self.raw.annotations)
+        logger.info('☑️☑️☑️ Done Finding Breaks!!')
 
     def _flag_volt_std(self, flag_dim, threshold=5e-5):
         """Determine if voltage standard deviation is above threshold.
@@ -828,11 +844,15 @@ class LosslessPipeline():
         above_threshold = _threshold_volt_std(epochs,
                                               flag_dim=flag_dim,
                                               threshold=threshold)
+        dim = {'ch': "channels", 'epoch': "epochs"}
+        print(f'🧑‍🔧 flag_{dim[flag_dim]}_fixed_threshold report!!!',
+              above_threshold)
         self.flags[flag_dim].add_flag_cat('volt_std', above_threshold, epochs)
 
     def find_outlier_chs(self):
         """Detect outlier Channels to leave out of rereference."""
         # TODO: Re-use _detect_outliers here.
+        logger.info("🔍 Detecting channels to leave out of reference..")
         epochs_xr = epochs_to_xr(self.get_epochs(rereference=False), kind="ch")
 
         # Determines comically bad channels,
@@ -877,11 +897,13 @@ class LosslessPipeline():
         """
         if 'flag_channels_fixed_threshold' not in self.config:
             return
+        logger.info('🏃🏃🏃 Starting flag_channels_fixed_threshold !')
         if 'threshold' in self.config['flag_channels_fixed_threshold']:
             threshold = (self.config['flag_channels_fixed_threshold']
                                     ['threshold']
                          )
         self._flag_volt_std(flag_dim='ch', threshold=threshold)
+        logger.info('☑️☑️☑️ Done with flag_channels_fixed_threshold!!')
 
     def flag_epochs_fixed_threshold(self, threshold=5e-5):
         """Flag epochs based on the stdev value across the time dimension.
@@ -906,16 +928,19 @@ class LosslessPipeline():
         """
         if 'flag_epochs_fixed_threshold' not in self.config:
             return
+        logger.info('🏃🏃🏃 Starting flag_epochs_fixed_threshold !')
         if 'threshold' in self.config['flag_epochs_fixed_threshold']:
             threshold = (self.config['flag_epochs_fixed_threshold']
                                     ['threshold']
                          )
         self._flag_volt_std(flag_dim='epoch', threshold=threshold)
+        logger.info('☑️☑️☑️ Done with flag_epochs_fixed_threshold!!')
 
     def flag_ch_sd_ch(self):
         """Flag channels with outlying standard deviation."""
         # TODO: flag "ch_sd" should be renamed "time_sd"
         # TODO: doc for step 3 and 4 need to be updated
+        logger.info('🏃🏃🏃 Starting flag_ch_sd_ch !')
         epochs_xr = epochs_to_xr(self.get_epochs(), kind="ch")
         data_sd = epochs_xr.std("time")
 
@@ -923,6 +948,7 @@ class LosslessPipeline():
         bad_ch_names = _detect_outliers(data_sd, flag_dim='ch',
                                         init_dir='pos',
                                         **self.config['ch_ch_sd'])
+        print('🧑‍🔧 flag_ch_sd_ch report!!!', bad_ch_names)
 
         self.flags["ch"].add_flag_cat(kind='ch_sd',
                                       bad_ch_names=bad_ch_names)
@@ -930,11 +956,14 @@ class LosslessPipeline():
         # TODO: Verify: It is unclear this is necessary.
         # get_epochs() is systematically rereferencing and
         # all steps (?) uses the get_epochs() function
+        logger.info("🧹 Re-referencing RAW and excluding flagged channels..")
         self.flags["ch"].rereference(self.raw)
+        logger.info('☑️☑️☑️ Done with flag_ch_sd_ch!!')
 
     def flag_ch_sd_epoch(self):
         """Flag epochs with outlying standard deviation."""
         # TODO: flag "ch_sd" should be renamed "time_sd"
+        logger.info('🏃🏃🏃 Starting flag_ch_sd_epoch !')
         outlier_methods = ('quantile', 'trimmed', 'fixed')
         epochs = self.get_epochs()
         epochs_xr = epochs_to_xr(epochs, kind="ch")
@@ -952,14 +981,17 @@ class LosslessPipeline():
                                           flag_dim='epoch',
                                           init_dir='pos',
                                           **config_epoch)
+        print('🧑‍🔧 Flag_ch_sd_epoch Report!!!', bad_epoch_inds)
         self.flags["epoch"].add_flag_cat('ch_sd',
                                          bad_epoch_inds,
                                          epochs)
+        logger.info('☑️☑️☑️ Done with flag_ch_sd_epoch!!')
 
     def get_n_nbr(self):
         """Calculate nearest neighbour correlation for channels."""
         # Calculate nearest neighbour correlation on
         # non-'manual' flagged channels and epochs...
+        logger.info('🏃 Finding Nearest Neighbours...')
         epochs = self.get_epochs()
         n_nbr_ch = self.config['nearest_neighbors']['n_nbr_ch']
         return chan_neighbour_r(epochs, n_nbr_ch, 'max'), epochs
@@ -974,15 +1006,20 @@ class LosslessPipeline():
         """
         # Calculate nearest neighbour correlation on
         # non-'manual' flagged channels and epochs...
+        logger.info('🏃🏃🏃 Starting flag_ch_low_r !')
         data_r_ch = self.get_n_nbr()[0]
 
         # Create the window criteria vector for flagging low_r chan_info...
         bad_ch_names = _detect_outliers(data_r_ch, flag_dim='ch',
                                         init_dir='neg',
                                         **self.config['ch_low_r'])
-
+        print('🧑‍🔧 flag_ch_low_r report!!!', bad_ch_names)
         # Edit the channel flag info structure
         self.flags["ch"].add_flag_cat(kind='low_r', bad_ch_names=bad_ch_names)
+        # TODO: CONFIRM THAT WE SHOULD BE RE-REFFING HERE (Scott)
+        logger.info("🧹 Re-referencing raw excluding flagged channels..")
+        self.flags["ch"].rereference(self.raw)
+        logger.info('☑️☑️☑️ Done with flag_ch_low_r!!')
         return data_r_ch
 
     def flag_ch_bridge(self, data_r_ch):
@@ -993,6 +1030,7 @@ class LosslessPipeline():
         data_r_ch : `numpy.array`
             an instance of `numpy.array`
         """
+        logger.info('🏃🏃🏃 Starting flag_ch_bridge !')
         # Uses the correlation of neighbours
         # calculated to flag bridged channels.
 
@@ -1015,8 +1053,13 @@ class LosslessPipeline():
                 )
 
         bad_ch_names = data_r_ch.ch.values[mask]
+        print('🧑‍🔧 flag_ch_bridge report!!!', bad_ch_names)
         self.flags["ch"].add_flag_cat(kind='bridge',
                                       bad_ch_names=bad_ch_names)
+        # TODO: CONFIRM THAT WE SHOULD BE RE-REFFING HERE (Scott)
+        logger.info("🧹 Re-referencing RAW excluding flagged channels..")
+        self.flags["ch"].rereference(self.raw)
+        logger.info('☑️☑️☑️ Done with flag_ch_bridge!!')
 
     def flag_ch_rank(self, data_r_ch):
         """Flag the channel that is the least unique.
@@ -1029,6 +1072,7 @@ class LosslessPipeline():
         data_r_ch : `numpy.array`.
             an instance of `numpy.array`.
         """
+        logger.info('🏃🏃🏃 Starting flag_ch_rank !')
         if len(self.flags["ch"]['manual']):
             ch_sel = [ch for ch in data_r_ch.ch.values
                       if ch not in self.flags["ch"]['manual']]
@@ -1038,8 +1082,13 @@ class LosslessPipeline():
                                      .idxmax(dim="ch")
                                      .to_numpy()
                             )]
+        print('🧑‍🔧 flag_ch_rank Report!!!', bad_ch_names)
         self.flags["ch"].add_flag_cat(kind='rank',
                                       bad_ch_names=bad_ch_names)
+        # TODO: CONFIRM THAT WE SHOULD BE RE-REFFING HERE (Scott)
+        logger.info("🧹 Re-referencing RAW excluding flagged channels..")
+        self.flags["ch"].rereference(self.raw)
+        logger.info('☑️☑️☑️ Done with flag_ch_rank!!')
 
     def flag_epoch_low_r(self):
         """Flag epochs where too many channels are bridged.
@@ -1050,6 +1099,7 @@ class LosslessPipeline():
         section looks at the correlation, but between all channels and for
         epochs of time. Time segments are flagged for removal.
         """
+        logger.info('🏃🏃🏃 Starting flag_epoch_low_r !')
         # Calculate nearest neighbour correlation on
         # non-'manual' flagged channels and epochs...
         data_r_ch, epochs = self.get_n_nbr()
@@ -1057,10 +1107,11 @@ class LosslessPipeline():
         bad_epoch_inds = _detect_outliers(data_r_ch, flag_dim='epoch',
                                           init_dir='neg',
                                           **self.config['epoch_low_r'])
-
+        print('🧑‍🔧 Flag_epoch_low_r report!!!', bad_epoch_inds)
         self.flags["epoch"].add_flag_cat('low_r',
                                          bad_epoch_inds,
                                          epochs)
+        logger.info('☑️☑️☑️ Done with flag_epoch_low_r!!')
 
     def flag_epoch_gap(self):
         """Flag small time periods between pylossless annotations."""
@@ -1165,14 +1216,16 @@ class LosslessPipeline():
     def filter(self):
         """Run filter procedure based on structured config args."""
         # 5.a. Filter lowpass/highpass
+        logger.info('🏃🏃🏃 Filtering !')
         self.raw.filter(**self.config['filtering']['filter_args'])
 
         if 'notch_filter_args' in self.config['filtering']:
             notch_args = self.config['filtering']['notch_filter_args']
             # in raw.notch_filter, freqs=None is ok if method=spectrum_fit
             if not notch_args['freqs'] and 'method' not in notch_args:
-                logger.debug('No notch filter arguments provided. Skipping')
+                logger.info('No notch filter arguments provided. Skipping')
             else:
+                logger.info('🏃🏃🏃 Notch Filtering !')
                 self.raw.notch_filter(**notch_args)
 
         # 5.b. Filter notch
@@ -1184,6 +1237,7 @@ class LosslessPipeline():
             self.raw.notch_filter(**notch_args)
         else:
             logger.info('No notch filter arguments provided. Skipping')
+        logger.info('☑️☑️☑️ Done Filtering!!')
 
     def run(self, bids_path, save=True, overwrite=False):
         """Run the pylossless pipeline.
@@ -1248,7 +1302,8 @@ class LosslessPipeline():
         # TODO: Verify: It is unclear this is necessary.
         # get_epochs() is systematically rereferencing and
         # all steps (?) uses the get_epochs() function
-        self.flags["ch"].rereference(self.raw)
+        # logger.info("🧹 Re-referencing and excluding RANK channel..")
+        # self.flags["ch"].rereference(self.raw)
 
         # 9. Calculate nearest neighbour R values for epochs
         self.flag_epoch_low_r()
