@@ -5,8 +5,10 @@ orbs:
 
 jobs:
   build_and_test: # this can be any name you choose
-    docker:
-      - image: circleci/python:3.9
+    macos:
+      xcode: 12.5
+    environment:
+      PYTHON_VERSION: 3.9.5
     steps:
       - checkout
       - python/install-packages:
