@@ -116,14 +116,16 @@ data = raw_sim.get_data()  # ch x times
 data[52, :] = data[53, :]  # duplicate ch 53 and 54
 
 # Make the last channel random. save for later use
-min_val = data[22, :].min()
-max_val = data[22, :].min() + .000007
+min_val = data[23, :].min()
+max_val = data[23, :].min() + .000006
 low_correlated_ch = np.random.uniform(low=min_val,
                                       high=max_val,
-                                      size=len(data[22, :]))
+                                      size=len(data[23, :]))
 
 # MAKE AN UNCORRELATED CH
 data[23] = low_correlated_ch
+# Shuffle it Again.
+np.random.shuffle(data[23])
 
 # Make new raw out of data
 raw_sim = mne.io.RawArray(data, info)
@@ -152,7 +154,7 @@ config['epoch_ch_sd']['outliers_kwargs']['lower'] = .15
 config['epoch_ch_sd']['outliers_kwargs']['upper'] = .85
 
 config['ch_low_r']['outliers_kwargs']['k'] = 2
-config['ch_low_r']['outliers_kwargs']['lower'] = .25
+config['ch_low_r']['outliers_kwargs']['lower'] = .2
 config['ch_low_r']['outliers_kwargs']['upper'] = .85
 config['ch_low_r']['flag_crit'] = .25
 
