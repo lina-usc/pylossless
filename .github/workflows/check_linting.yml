@@ -1,0 +1,22 @@
+name: Flake8, Codespell, and Docstyle
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - name: Install dependencies
+      run: pip install -r requirements_testing.txt
+    - name: Run flake8
+      run: flake8 ./pylossless/config.py ./pylossless/pipeline.py
+    - name: Run Codespell
+      run: codespell ./pylossless/config.py ./pylossless/pipeline.py
+    - name: Check Numpy Format Docstring
+      run: pydocstyle ./pylossless/config.py ./pylossless/pipeline.py
+
