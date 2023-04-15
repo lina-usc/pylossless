@@ -117,7 +117,7 @@ data[52, :] = data[53, :]  # duplicate ch 53 and 54
 
 # Make the last channel random. save for later use
 min_val = data[23, :].min()
-max_val = data[23, :].min() + .000006
+max_val = data[23, :].min() + .0000065
 low_correlated_ch = np.random.uniform(low=min_val,
                                       high=max_val,
                                       size=len(data[23, :]))
