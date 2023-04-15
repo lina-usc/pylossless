@@ -5,7 +5,8 @@ orbs:
 
 jobs:
   build_and_test: # this can be any name you choose
-    executor: python/default
+    docker:
+      - image: circleci/python:3.9
     steps:
       - checkout
       - python/install-packages:
