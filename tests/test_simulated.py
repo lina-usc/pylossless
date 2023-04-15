@@ -154,7 +154,7 @@ config['epoch_ch_sd']['outliers_kwargs']['lower'] = .15
 config['epoch_ch_sd']['outliers_kwargs']['upper'] = .85
 
 config['ch_low_r']['outliers_kwargs']['k'] = 2
-config['ch_low_r']['outliers_kwargs']['lower'] = .2
+config['ch_low_r']['outliers_kwargs']['lower'] = .23
 config['ch_low_r']['outliers_kwargs']['upper'] = .85
 config['ch_low_r']['flag_crit'] = .25
 
