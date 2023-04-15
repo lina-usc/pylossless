@@ -13,5 +13,7 @@ jobs:
         python-version: 3.9
     - name: Install dependencies
       run: pip install -r requirements.txt
+    - name: Install testing dependencies
+      run: pip install -r requirements_testing.txt
     - name: Run simulation tests
       run: pytest tests/test_simulated.py
