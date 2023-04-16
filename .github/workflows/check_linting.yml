@@ -1,4 +1,4 @@
-name: Flake8, Codespell, and Docstyle
+name: PEP8 Compliance, Spellcheck, & Docstring
 
 on: [push, pull_request]
 
