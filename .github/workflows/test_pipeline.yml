@@ -1,4 +1,4 @@
-name: Test pipeline
+name: Test pipeline (Simulated EEG)
 
 on: [push, pull_request]
 
@@ -17,3 +17,7 @@ jobs:
       run: pip install -r requirements_testing.txt
     - name: Run simulation tests
       run: pytest tests/test_simulated.py
+    - name: Upload coverage to codecov
+      uses: codecov/codecov-action@v3
+      with:
+          token: ${{secrets.CODECOV_TOKEN}}
