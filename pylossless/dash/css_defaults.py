@@ -7,11 +7,11 @@
 
 drawn_shapes_format = {"drawdirection": "vertical",
                        "layer": "below",
-                            "fillcolor": "red",
-                            "opacity": 0.51,
-                            "line": {"width": 0}}
+                       "fillcolor": "red",
+                       "opacity": 0.51,
+                       "line": {"width": 0}}
 
-drawn_selections_format = {'line':dict(color='crimson',width=2)}
+drawn_selections_format = {'line': dict(color='crimson', width=2)}
 
 
 DEFAULT_LAYOUT_XAXIS = {'zeroline': False,
@@ -49,7 +49,7 @@ DEFAULT_LAYOUT = dict(  # height=400,
                       dragmode='select',
                       newshape=drawn_shapes_format,
                       newselection=drawn_selections_format,
-                      activeshape=dict(fillcolor='crimson',opacity=.75),
+                      activeshape=dict(fillcolor='crimson', opacity=.75),
                       hovermode='closest')
 
 WATERMARK_ANNOT = (dict(text='NO FILE SELECTED',
@@ -105,7 +105,7 @@ CSS['topo-dcc'] = "bg-secondary bg-opacity-50 border rounded"  # border-info
 CSS['topo-dcc-div'] = 'bg-secondary bg-opacity-50 d-inline-block align-top'
 STYLE['topo-dcc-div'] = {'width': '90%'}  # so that slider can fit to the left
 
-# boostrap for final container: self.container_plot
+# bootstrap for final container: self.container_plot
 CSS['topo-container'] = 'topo-div shadow-lg'  # border border-success
 
 #####################
@@ -137,7 +137,7 @@ CSS['dropdown'] = "d-md-inline-block w-100"
 # Logo
 CSS['logo'] = 'ms-5 mh-100'
 
-# Timeseries & Topo boostrap Row
+# Timeseries & Topo bootstrap Row
 CSS['plots-row'] = 'h-80'
 STYLE['plots-row'] = {}  # {'border': '2px dashed pink'}
 

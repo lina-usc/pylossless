@@ -115,12 +115,12 @@ Step 9: Identifying nearest neighbor channels
 .. todo::
     TODO: explain this step
 
-Step 10: Identifying small time periods betweeen flagged epochs
+Step 10: Identifying small time periods between flagged epochs
 ---------------------------------------------------------------
 
 .. figure:: _images/pipeline_step_10.png
 
-    *Figure 1i)*: Step 10: Identifying small time periods betweeen flagged epochs
+    *Figure 1i)*: Step 10: Identifying small time periods between flagged epochs
 
 .. todo::
     TODO: explain this step
@@ -128,8 +128,8 @@ Step 10: Identifying small time periods betweeen flagged epochs
 Step 11: Run initial ICA
 ------------------------
 
-The pyLossless pipeline will run an inital ICA that will only be used for step 11
-(identifying epochs wih large standard deviations across ICs).
+The pyLossless pipeline will run an initial ICA that will only be used for step 11
+(identifying epochs with large standard deviations across ICs).
 
 By default, the fastICA algorithm is used for efficiency.
 
@@ -155,7 +155,7 @@ or a category of artifact.
 
 By default, Extended infomax is used for the final ICA.
 
-Step 14: Identifying small time periods betweeen flagged epochs
+Step 14: Identifying small time periods between flagged epochs
 ---------------------------------------------------------------
 
 Again, the pipeline will identify small periods between any new epochs that
@@ -163,22 +163,22 @@ have been flagged as artefactual in step 11.
 
 .. figure:: _images/pipeline_step_10.png
 
-    *Figure 1i)*: Step 14: Identifying small time periods betweeen flagged epochs
+    *Figure 1i)*: Step 14: Identifying small time periods between flagged epochs
 
 Step 15: Save data
 ------------------
 The pipeline will save the data in a folder named ``derivatives/pyLossless``
 in the bids root directory.
 
-- By default, the pipelien will save EEG data in the European Data Format (``EDF``). 
+- By default, the pipeline will save EEG data in the European Data Format (``EDF``). 
 - The pipeline will save each ICA decomposition in  the ``.fif`` format.
 - Finally, the pipeline will save the IC labels in a ``.tsv`` file.
 
 Step 16: Expert Quality Control (QCR)
 -------------------------------------
 
-The last step of the pipelin is for the user to review the pipelines decisions
-for each file. For this, the pyLossless pipelien will provide a dashboard to
+The last step of the pipeline is for the user to review the pipelines decisions
+for each file. For this, the pyLossless pipeline will provide a dashboard to
 the user. 
 
 .. todo::
