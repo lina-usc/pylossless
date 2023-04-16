@@ -222,7 +222,7 @@ class EEGAnnotationList:
             The end of the time-window to return EEGAnnotation object's from.
             If an EEGAnnotation object ends (onset + duration) on or before
             tmax, it will be returned so long as it's onset occurs on or after
-            tmin. Defaults to np.inf, meaning that any annotations occur    ring
+            tmin. Defaults to np.inf, meaning that any annotations occurring
             after tmin will be returned.
         """
         annot_tmin = self.onsets

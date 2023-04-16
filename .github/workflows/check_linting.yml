@@ -14,9 +14,9 @@ jobs:
     - name: Install dependencies
       run: pip install -r requirements_testing.txt
     - name: Run flake8
-      run: flake8 ./pylossless/config.py ./pylossless/pipeline.py
+      run: flake8 pylossless docs --exclude pylossless/__init__.py
     - name: Run Codespell
-      run: codespell ./pylossless/config.py ./pylossless/pipeline.py
+      run: codespell pylossless docs --skip docs/source/generated
     - name: Check Numpy Format Docstring
-      run: pydocstyle ./pylossless/config.py ./pylossless/pipeline.py
+      run: pydocstyle pylossless
 
