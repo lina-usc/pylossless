@@ -366,6 +366,9 @@ def _get_outliers_quantile(array, dim, lower=0.25, upper=0.75, mid=0.5, k=3):
     """
     lower_val, mid_val, upper_val = array.quantile([lower, mid, upper],
                                                    dim=dim)
+
+    # Code below deviates from Tukeys method (Q2 +/- k(Q3-Q1))
+    # because we need to account for distribution skewness.
     lower_dist = mid_val - lower_val
     upper_dist = upper_val - mid_val
     return mid_val - lower_dist*k, mid_val + upper_dist*k
@@ -877,6 +880,9 @@ class LosslessPipeline():
     def flag_channels_fixed_threshold(self, threshold=5e-5):
         """Flag channels based on the stdev value across the time dimension.
 
+        Flags channels if the voltage-variance standard deviation is above
+        the given threshold in n_percent of epochs (default: 20%).
+
         Parameters
         ----------
         threshold : float
@@ -892,8 +898,9 @@ class LosslessPipeline():
         -----
         WARNING: the default threshold of 50 microvolts may not be appropriate
         for a particular dataset or data file, as the baseline voltage variance
-        is affected by the impedance of the system that the data was recording
-        on. You may need to assess a more appropriate value for your own data.
+        is affected by the impedance of the system that the data was recorded
+        with. You may need to assess a more appropriate value for your own
+        data.
         """
         if 'flag_channels_fixed_threshold' not in self.config:
             return
@@ -907,6 +914,9 @@ class LosslessPipeline():
 
     def flag_epochs_fixed_threshold(self, threshold=5e-5):
         """Flag epochs based on the stdev value across the time dimension.
+
+        Flags an epoch if the voltage-variance standard deviation is above
+        the given threshold in n_percent of channels (default: 20%).
 
         Parameters
         ----------
@@ -923,8 +933,9 @@ class LosslessPipeline():
         -----
         WARNING: the default threshold of 50 microvolts may not be appropriate
         for a particular dataset or data file, as the baseline voltage variance
-        is affected by the impedance of the system that the data was recording
-        on. You may need to assess a more appropriate value for your own data.
+        is affected by the impedance of the system that the data was recorded
+        with. You may need to assess a more appropriate value for your own
+        data.
         """
         if 'flag_epochs_fixed_threshold' not in self.config:
             return
@@ -937,7 +948,17 @@ class LosslessPipeline():
         logger.info('☑️☑️☑️ Done with flag_epochs_fixed_threshold!!')
 
     def flag_ch_sd_ch(self):
-        """Flag channels with outlying standard deviation."""
+        """Flag channels with outlying standard deviation.
+
+        Calculates the standard deviation of the voltage-variance for
+        each channel at each epoch (default: 1-second epochs). Then, for each
+        epoch, creates a distribution of the stdev values of all channels.
+        Then, for each epoch, estimates a stdev outlier threshold, where
+        any channel that has an stdev value higher than the threshold (in the
+        current epoch) is flagged. If a channel is flagged as an outlier in
+        more than n_percent of epochs (default: 20%), the channel is flagged
+        for removal.
+        """
         # TODO: flag "ch_sd" should be renamed "time_sd"
         # TODO: doc for step 3 and 4 need to be updated
         logger.info('🏃🏃🏃 Starting flag_ch_sd_ch !')
