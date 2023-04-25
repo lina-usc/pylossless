@@ -24,9 +24,13 @@ flag_ch_rank
 ------------
 .. automethod:: LosslessPipeline.flag_ch_rank
 
-flag_ch_sd
-----------
-.. automethod:: LosslessPipeline.flag_ch_sd
+flag_ch_sd_ch
+-------------
+.. automethod:: LosslessPipeline.flag_ch_sd_ch
+
+flag_ch_sd_epoch
+----------------
+.. automethod:: LosslessPipeline.flag_ch_sd_epoch
 
 flag_epoch_gap
 --------------
