@@ -135,7 +135,7 @@ class QCGUI:
 
     def update_bad_ics(self):
         """Add IC name to raw.info['bads'] after selection by user in app."""
-        df = self.pipeline.flagged_ics.data_frame
+        df = self.pipeline.flags['ic'].data_frame
         ic_names = self.raw_ica.ch_names
         df['ic_names'] = ic_names
         df.set_index('ic_names', inplace=True)
@@ -248,7 +248,7 @@ class QCGUI:
             self.raw_ica = mne.io.RawArray(sources, info, verbose=verbose)
             self.raw_ica.set_meas_date(self.raw.info['meas_date'])
             self.raw_ica.set_annotations(self.raw.annotations)
-            df = self.pipeline.flagged_ics.data_frame
+            df = self.pipeline.flags['ic'].data_frame
             ic_names = self.raw_ica.ch_names
             df['ic_names'] = ic_names
 
@@ -261,7 +261,7 @@ class QCGUI:
             self.raw_ica = None
 
         # pd.read_csv(iclabel_fpath, sep='\t')
-        self.ic_types = self.pipeline.flagged_ics.data_frame
+        self.ic_types = self.pipeline.flags['ic'].data_frame
         self.ic_types['component'] = [f'ICA{ic:03}'
                                       for ic in self.ic_types.component]
         self.ic_types = self.ic_types.set_index('component')['ic_type']

@@ -13,7 +13,7 @@ design template for our page. We also use the `Napolean
 <https://sphinxcontrib-napoleon.readthedocs.io/en/latest/index.html>`__
 and
 `autodoc <https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html>`__
-sphinx extentions to build API documentation directly from the pyLossless
+sphinx extensions to build API documentation directly from the pyLossless
 docstrings. Finally, we use the `sphinx-gallery 
 <https://sphinx-gallery.github.io/stable/index.html>`__ extension to build
 documentation tutorials directly from python files.
@@ -104,7 +104,7 @@ tool. make sure you are in the ``pylossless/docs`` directory.
 
 ``make clean`` clears out any generated documentation in ``docs/build``, and
 it is generally good practice to clear this between runs of ``make html`` If
-you are working on documentation, to avoid erros when building the docs.
+you are working on documentation, to avoid errors when building the docs.
 
 ``make html`` will build the documentation.
 
