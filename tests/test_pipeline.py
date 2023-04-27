@@ -1,4 +1,5 @@
 from pathlib import Path
+import shutil
 from time import sleep
 import pytest
 
@@ -42,19 +43,20 @@ def load_openneuro_bids():
                                   suffix=suffix, datatype=datatype,
                                   root=bids_root)
 
+
     while not bids_path.fpath.with_suffix('.bdf').exists():
         print(list(bids_path.fpath.glob('*')))
         sleep(1)
     raw = mne_bids.read_raw_bids(bids_path)
-    return raw, config
+    return raw, config, bids_root
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 @pytest.mark.parametrize('dataset', ['openneuro'])
 def test_pipeline_run(dataset):
     """test running the pipeline."""
     if dataset == 'openneuro':
-        raw, config = load_openneuro_bids()
+        raw, config, bids_root = load_openneuro_bids()
 
     config.save("test_config.yaml")
     pipeline = ll.LosslessPipeline('test_config.yaml')
@@ -63,4 +65,5 @@ def test_pipeline_run(dataset):
     pipeline.raw = raw.pick('eeg',
                             exclude=not_in_1020).load_data()
     pipeline.run_with_raw(pipeline.raw)
-    Path('my_project_ll_config.yaml').unlink()  # delete config file
+    Path('test_config.yaml').unlink()  # delete config file
+    shutil.rmtree(bids_root)
