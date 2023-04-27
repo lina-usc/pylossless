@@ -79,12 +79,11 @@ class FlaggedChs(dict):
             `dict` of valid keyword arguments for the
             `mne.Raw.set_eeg_reference` method.
         """
-        # TODO - when re-reffing EPOCHS, the line below re-epochs?
-        bad_chs = self.ll.find_outlier_chs()
-        bad_chs.extend(self['manual'])
-        bad_chs.extend(inst.info['bads'])
-        bad_chs = list(set(bad_chs))  # In case there are duplicates
-        ref_chans = [ch for ch in inst.copy().pick_types(eeg=True).ch_names
+        # Concatenate and remove duplicates
+        bad_chs = list(set(self.ll.find_outlier_chs(inst) +
+                           self['manual'] +
+                           inst.info['bads']))
+        ref_chans = [ch for ch in inst.copy().pick("eeg").ch_names
                      if ch not in bad_chs]
         inst.set_eeg_reference(ref_channels=ref_chans,
                                **kwargs)
@@ -852,11 +851,18 @@ class LosslessPipeline():
                     above_threshold)
         self.flags[flag_dim].add_flag_cat('volt_std', above_threshold, epochs)
 
-    def find_outlier_chs(self):
+    def find_outlier_chs(self, inst):
         """Detect outlier Channels to leave out of rereference."""
         # TODO: Re-use _detect_outliers here.
-        logger.info("🔍 Detecting channels to leave out of reference..")
-        epochs_xr = epochs_to_xr(self.get_epochs(rereference=False), kind="ch")
+        logger.info("🔍 Detecting channels to leave out of reference.")
+        if isinstance(inst, mne.Epochs):
+            epochs = inst
+        elif isinstance(inst, mne.Raw):
+            epochs = self.get_epochs(rereference=False)
+        else:
+            raise TypeError('inst must be an MNE Raw or Epochs object,'
+                            f' but got {type(inst)}.')
+        epochs_xr = epochs_to_xr(epochs, kind="ch")
 
         # Determines comically bad channels,
         # and leaves them out of average rereference
@@ -974,11 +980,6 @@ class LosslessPipeline():
         self.flags["ch"].add_flag_cat(kind='ch_sd',
                                       bad_ch_names=bad_ch_names)
 
-        # TODO: Verify: It is unclear this is necessary.
-        # get_epochs() is systematically rereferencing and
-        # all steps (?) uses the get_epochs() function
-        logger.info("🧹 Re-referencing RAW and excluding flagged channels..")
-        self.flags["ch"].rereference(self.raw)
         logger.info('🏁 Done!')
 
     def flag_ch_sd_epoch(self):
@@ -1037,9 +1038,6 @@ class LosslessPipeline():
         logger.info('📋 flag_ch_low_r report: ', bad_ch_names)
         # Edit the channel flag info structure
         self.flags["ch"].add_flag_cat(kind='low_r', bad_ch_names=bad_ch_names)
-        # TODO: CONFIRM THAT WE SHOULD BE RE-REFFING HERE (Scott)
-        logger.info("🧹 Re-referencing raw excluding flagged channels..")
-        self.flags["ch"].rereference(self.raw)
         logger.info('🏁 Done!!')
         return data_r_ch
 
@@ -1077,9 +1075,6 @@ class LosslessPipeline():
         logger.info('📋 flag_ch_bridge report: ', bad_ch_names)
         self.flags["ch"].add_flag_cat(kind='bridge',
                                       bad_ch_names=bad_ch_names)
-        # TODO: CONFIRM THAT WE SHOULD BE RE-REFFING HERE (Scott)
-        logger.info("🧹 Re-referencing RAW excluding flagged channels..")
-        self.flags["ch"].rereference(self.raw)
         logger.info('🏁 Done!!')
 
     def flag_ch_rank(self, data_r_ch):
@@ -1106,9 +1101,6 @@ class LosslessPipeline():
         logger.info('📋 Rank channel report: ', bad_ch_names)
         self.flags["ch"].add_flag_cat(kind='rank',
                                       bad_ch_names=bad_ch_names)
-        # TODO: CONFIRM THAT WE SHOULD BE RE-REFFING HERE (Scott)
-        logger.info("🧹 Re-referencing RAW excluding flagged channels..")
-        self.flags["ch"].rereference(self.raw)
         logger.info('🏁 Done!')
 
     def flag_epoch_low_r(self):
@@ -1316,15 +1308,9 @@ class LosslessPipeline():
 
         # 7. Identify bridged channels
         self.flag_ch_bridge(data_r_ch)
-        # TODO: Check why we don not rerefence after this step.
 
         # 8. Flag rank channels
         self.flag_ch_rank(data_r_ch)
-        # TODO: Verify: It is unclear this is necessary.
-        # get_epochs() is systematically rereferencing and
-        # all steps (?) uses the get_epochs() function
-        # logger.info("🧹 Re-referencing and excluding RANK channel..")
-        # self.flags["ch"].rereference(self.raw)
 
         # 9. Calculate nearest neighbour R values for epochs
         self.flag_epoch_low_r()
