@@ -26,7 +26,7 @@ def load_openneuro_bids():
     subject = 'pd6'
 
     # Download one subject's data from each dataset
-    bids_root = sample.data_path() / dataset
+    bids_root = Path('.') / dataset
     # TODO: Delete this directory after test otherwise MNE will think the
     # sample directory is outdated, and will re-download it the next time
     # data_path() is called, which is annoying for users.
@@ -50,7 +50,7 @@ def load_openneuro_bids():
     return raw, config, bids_root
 
 
-@pytest.mark.xfail
+# @pytest.mark.xfail
 @pytest.mark.parametrize('dataset', ['openneuro'])
 def test_pipeline_run(dataset):
     """test running the pipeline."""
