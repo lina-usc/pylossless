@@ -18,7 +18,7 @@ jobs:
     - name: Test simulated EEG
       run: pytest tests/test_simulated.py
     - name: Test sample file
-      run: pytest tests/test_simulated.py
+      run: pytest tests/test_pipeline.py
     - name: Upload coverage to codecov
       uses: codecov/codecov-action@v3
       with:
