@@ -15,9 +15,13 @@ def launch_dash_app(directory=None, filepath=None):
     app.run_server(debug=True)
 
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument('--directory', help='path to the project folder')
     parser.add_argument('--filepath', help='path to the EDF file to load')
     args = parser.parse_args()
     launch_dash_app(args.directory, args.filepath)
+
+
+if __name__ == '__main__':
+    main()
