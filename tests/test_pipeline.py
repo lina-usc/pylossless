@@ -5,7 +5,6 @@ import pytest
 
 import pylossless as ll
 
-from mne.datasets import sample
 import mne_bids
 
 import openneuro
