@@ -43,7 +43,6 @@ def load_openneuro_bids():
                                   suffix=suffix, datatype=datatype,
                                   root=bids_root)
 
-
     while not bids_path.fpath.with_suffix('.bdf').exists():
         print(list(bids_path.fpath.glob('*')))
         sleep(1)
