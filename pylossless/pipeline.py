@@ -66,7 +66,9 @@ class FlaggedChs(dict):
         if isinstance(bad_ch_names, xr.DataArray):
             bad_ch_names = bad_ch_names.values
         self[kind] = bad_ch_names
-        self['manual'] = np.unique(np.concatenate(list(self.values())))
+        flagged_chs = list(self.values())
+        flagged_chs = np.unique(np.concatenate(flagged_chs))  # drop duplicates
+        self['manual'] = flagged_chs.tolist()
 
     def rereference(self, inst, **kwargs):
         """Re-reference instance of mne.Raw.
