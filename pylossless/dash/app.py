@@ -23,4 +23,4 @@ def get_app(fpath=None, project_root=None, kind="dash"):
 
 
 if __name__ == '__main__':
-    get_app().run_server(debug=True, use_reloader=False)
+    get_app().run_server(debug=False, use_reloader=False)

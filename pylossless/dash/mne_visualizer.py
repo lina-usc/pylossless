@@ -30,7 +30,7 @@ class MNEVisualizer:
     """Visualize an mne.io.raw object in a dash graph."""
 
     def __init__(self, app, inst, dcc_graph_kwargs=None,
-                 dash_id_suffix='',
+                 dash_id_suffix=None,
                  show_time_slider=True, show_ch_slider=True,
                  scalings='auto', zoom=2, remove_dc=True,
                  annot_created_callback=None, refresh_inputs=None,
@@ -91,8 +91,8 @@ class MNEVisualizer:
         default_ids = ['graph', 'ch-slider', 'time-slider',
                        'container-plot', 'output', 'mne-annotations']
         self.dash_ids = {id_: (id_ + f'_{dash_id_suffix}')
-                         for id_
-                         in default_ids}
+                         if dash_id_suffix else id_
+                         for id_ in default_ids}
         modebar_buttons = {'modeBarButtonsToAdd': ["eraseshape"],
                            'modeBarButtonsToRemove': ['zoom', 'pan']}
         self.dcc_graph_kwargs = dict(id=self.dash_ids['graph'],
@@ -308,7 +308,8 @@ class MNEVisualizer:
         if self.refresh_inputs:
             args += self.refresh_inputs
 
-        @self.app.callback(*args, suppress_callback_exceptions=False)
+        @self.app.callback(*args, suppress_callback_exceptions=False,
+                           prevent_initial_call=False)
         def callback(ch, time, click_data, relayout_data, *args):
             if not self.inst:
                 return dash.no_update
@@ -321,11 +322,14 @@ class MNEVisualizer:
                                           for inp
                                           in self.refresh_inputs])
 
+            update_layout = False
             ctx = dash.callback_context
-            if len(ctx.triggered[0]['prop_id'].split('.')) == 2:
-                object_, dash_event = ctx.triggered[0]["prop_id"].split('.')
-                if object_ == self.dash_ids['graph']:
 
+            events = [event['prop_id'].split('.') for event in ctx.triggered
+                      if len(event['prop_id'].split('.')) == 2]
+            for object_, dash_event in events:
+
+                if object_ == self.dash_ids['graph']:
                     if dash_event == 'clickData':
                         # Working on traces
                         logger.debug('** Trace selected')
@@ -335,7 +339,7 @@ class MNEVisualizer:
                             self.inst.info['bads'].pop()
                         else:
                             self.inst.info['bads'].append(ch_name)
-                        self.update_layout()
+                        update_layout = True
 
                     elif dash_event == 'relayoutData':
                         # Working on annotations
@@ -378,15 +382,18 @@ class MNEVisualizer:
                                 annot = self.mne_annots.data[name]
                                 annot.onset = x0
                                 annot.duration = x1 - x0
-
                         else:
-                            return no_update
-                        self.refresh_shapes()
+                            continue
+                        update_layout = True
 
                 elif object_ in update_layout_ids:
-                    self.update_layout(ch_slider_val=ch, time_slider_val=time)
+                    update_layout = True
 
-            return self.graph.figure
+            if update_layout:
+                self.update_layout(ch_slider_val=ch, time_slider_val=time)
+                return self.graph.figure
+
+            return no_update
 
     @property
     def nb_channels(self):
