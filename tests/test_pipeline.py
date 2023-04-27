@@ -50,7 +50,6 @@ def load_openneuro_bids():
     return raw, config, bids_root
 
 
-# @pytest.mark.xfail
 @pytest.mark.parametrize('dataset', ['openneuro'])
 def test_pipeline_run(dataset):
     """test running the pipeline."""

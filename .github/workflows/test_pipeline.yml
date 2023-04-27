@@ -1,4 +1,4 @@
-name: Test pipeline (Simulated EEG)
+name: Test pipeline
 
 on: [push, pull_request]
 
