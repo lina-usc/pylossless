@@ -15,7 +15,9 @@ jobs:
       run: pip install -e .
     - name: Install testing dependencies
       run: pip install -r requirements_testing.txt
-    - name: Run simulation tests
+    - name: Test simulated EEG
+      run: pytest tests/test_simulated.py
+    - name: Test sample file
       run: pytest tests/test_simulated.py
     - name: Upload coverage to codecov
       uses: codecov/codecov-action@v3
