@@ -24,7 +24,7 @@ for extra, req_file in extras.items():
         requirements_extra = file.read().splitlines()
     extras_require[extra] = requirements_extra
 
-qc_entry_point = ["pylossless_qc=pylossless.dash.app:main"]
+qc_entry_point = ["pylossless_qc=pylossless.dash.app:get_app"]
 setup(
     name='pylossless',
     version='0.0.1',

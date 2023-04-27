@@ -1,7 +1,12 @@
+# Authors: Christian O'Reilly <christian.oreilly@sc.edu>
+#          Scott Huberty <seh33@uw.edu>
+# License: MIT
+
+"""class to wrap an mne.raw object in a dash plot."""
+
 import dash
 from dash import dcc, html, no_update
 from dash.dependencies import Input, Output
-from dash_extensions import EventListener
 
 # time series plot
 import plotly.graph_objects as go
@@ -10,10 +15,10 @@ import numpy as np
 
 from mne.io import BaseRaw
 from mne import BaseEpochs, Evoked
-import mne
-from mne.utils import _validate_type
+from mne.utils import _validate_type, logger
 
 from .css_defaults import DEFAULT_LAYOUT, CSS, STYLE
+from .qcannotations import EEGAnnotationList, EEGAnnotation
 
 
 def _add_watermark_annot():
@@ -22,37 +27,47 @@ def _add_watermark_annot():
 
 
 class MNEVisualizer:
+    """Visualize an mne.io.raw object in a dash graph."""
 
     def __init__(self, app, inst, dcc_graph_kwargs=None,
                  dash_id_suffix='',
                  show_time_slider=True, show_ch_slider=True,
                  scalings='auto', zoom=2, remove_dc=True,
-                 annot_created_callback=None, refresh_input=None,
-                 show_n_channels=20):
-        """ text
-            Parameters
-            ----------
-            app : instance of Raw
-                A raw object to use the data from.
-            inst : int
-                must be an instance of mne.Raw, mne.Epochs, mne.Evoked
-            start : float
-                text
-            dcc_grpah_kwargs : float | None
-                text
-            dash_id_suffix : float
-                each component id in the users app file needs to be unique.
-                if using more than 1 MNEVisualizer object in a single
-                application.
-            ch_slider : bool
-                text
-            time_slider : float
-                text
-            Returns
-            -------
-            """
+                 annot_created_callback=None, refresh_inputs=None,
+                 show_n_channels=20, set_callbacks=True):
+        """Initialize class.
 
-        self.refresh_input = refresh_input
+        Parameters
+        ----------
+        app : instance of Dash.app
+            The dash app object to place the plot within.
+        inst : mne.io.Raw
+            An instance of mne.io.Raw
+        dcc_graph_kwargs : str | None
+            keyword arguments to be passed to dcc.graph when
+            creating the MNEVisualizer time-series plot from the
+            mne.io.raw object. Must be a valid keyword argument
+            for dcc.graph.
+        dash_id_suffix : str
+            string to append to the end of the MNEVisualizer.graph
+            dash component ID. Each component id in the users app file
+            needs to be unique. If using more than 1 MNEVisualizer
+            object in a single, application. You must pass a suffix
+            to at least one of the objects to make their dash-ID
+            unique.
+        show_ch_slider : bool
+            Whether to show the channel slider with the MNEVIsualizer
+            time-series graph. Defaults to True.
+        show_time_slider : bool
+            Whether to show the channel slider with the MNEVIsualizer
+            time-series graph. Defaults to True.
+        Returns
+        -------
+        an instance of MNEVisualizer.
+        """
+        if not isinstance(refresh_inputs, list):
+            refresh_inputs = [refresh_inputs]
+        self.refresh_inputs = refresh_inputs
         self.app = app
         self.scalings_arg = scalings
         self._inst = None
@@ -70,18 +85,22 @@ class MNEVisualizer:
         self.annotation_inprogress = None
         self.annot_created_callback = annot_created_callback
         self.new_annot_desc = 'selected_time'
+        self.mne_annots = None
 
         # setting component ids based on dash_id_suffix
         default_ids = ['graph', 'ch-slider', 'time-slider',
-                       'container-plot', 'keyboard', 'output']
-        self.dash_ids = {id_: (id_ + dash_id_suffix) for id_ in default_ids}
-
+                       'container-plot', 'output', 'mne-annotations']
+        self.dash_ids = {id_: (id_ + f'_{dash_id_suffix}')
+                         for id_
+                         in default_ids}
+        modebar_buttons = {'modeBarButtonsToAdd': ["eraseshape"],
+                           'modeBarButtonsToRemove': ['zoom', 'pan']}
         self.dcc_graph_kwargs = dict(id=self.dash_ids['graph'],
                                      className=CSS['timeseries'],
                                      style=STYLE['timeseries'],
                                      figure={'data': None,
                                              'layout': None},
-                                     )
+                                     config=modebar_buttons)
         if dcc_graph_kwargs is not None:
             self.dcc_graph_kwargs.update(dcc_graph_kwargs)
         self.graph = dcc.Graph(**self.dcc_graph_kwargs)
@@ -90,18 +109,24 @@ class MNEVisualizer:
                                   className=CSS['timeseries-div'])
         self.show_time_slider = show_time_slider
         self.show_ch_slider = show_ch_slider
-        self.shift_down = False
         self.inst = inst
 
         # initialization subroutines
         self.init_sliders()
+        self.init_annot_store()
         self.set_div()
         self.initialize_layout()
-        self.set_callback()
-        self.initialize_keyboard()
+        if set_callbacks:
+            self.set_callback()
 
     def load_recording(self, raw):
-        """ """
+        """Load the mne.io.raw object and initialize the graph layout.
+
+        Parameters
+        ----------
+        raw : mne.io.raw
+            An instance of mne.io.Raw
+        """
         self.inst = raw
         self.channel_slider.max = self.nb_channels - 1
         self.channel_slider.value = self.nb_channels - 1
@@ -110,10 +135,12 @@ class MNEVisualizer:
         self.time_slider.max = self.times[-1] - self.win_size
         self.time_slider.marks = {int(key): str(int(key))
                                   for key in marks_keys}
+        self.initialize_shapes()
         self.update_layout()
 
     @property
     def inst(self):
+        """Property that returns the mne.io.raw object."""
         return self._inst
 
     @inst.setter
@@ -142,47 +169,38 @@ class MNEVisualizer:
             self.scalings.update(self.scalings_arg)
 
     def _get_norm_factor(self, ch_type):
-        "will divide returned value to data for timeseries"
+        """Divide returned value to data for timeseries."""
         return 2 * self.scalings[ch_type] / self.zoom
 
-    def _get_annot_text(self, annotation):
-        return dict(x=annotation['onset'] + annotation['duration'] / 2,
-                    y=self.layout.yaxis['range'][1],
-                    text=annotation['description'],
-                    showarrow=False,
-                    yshift=10,
-                    font={'color': '#F1F1F1'})
+    ###########################################################
+    # Methods for converting MNE annots to Plotly Shapes/annots
+    ###########################################################
 
-    def _get_annot_shape(self, annotation):
-        return dict(name=annotation['description'],
-                    type="rect",
-                    xref="x",
-                    yref="y",
-                    x0=annotation['onset'],
-                    y0=self.layout.yaxis['range'][0],
-                    x1=annotation['onset'] + annotation['duration'],
-                    y1=self.layout.yaxis['range'][1],
-                    fillcolor='red',
-                    opacity=0.25 if annotation['duration'] else .75,
-                    line_width=1,
-                    line_color='black',
-                    layer="below" if annotation['duration'] else 'above')
+    def initialize_shapes(self):
+        """Make graph.layout.shapes for each mne.io.raw.annotation."""
+        if not self.inst:
+            return
+        self.mne_annots.data = EEGAnnotationList.from_mne_inst(self.inst,
+                                                               self.layout)
 
-    def add_annot_shapes(self, annotations):
-        self.layout.shapes = [self._get_annot_shape(annot)
-                              for annot in annotations]
-        self.layout.annotations = [self._get_annot_text(annot)
-                                   for annot in annotations]
-        if self.annotating:
-            self.layout.shapes += (self.annotation_inprogress,)
-
-    def refresh_annotations(self):
+    def refresh_shapes(self):
+        """Identify shapes that are viewable in the current time-window."""
         if not self.inst:
             return
         tmin, tmax = self.win_start, self.win_start + self.win_size
-        annots = self.inst.annotations.copy().crop(tmin, tmax,
-                                                   use_orig_time=False)
-        self.add_annot_shapes(annots)
+
+        annots = self.mne_annots.data.pick(tmin, tmax).set_editable(True)
+
+        if len(annots):
+            self.layout.shapes = list(annots.dash_shapes.values)
+            self.layout.annotations = list(annots.dash_descriptions.values)
+        else:
+            self.layout.shapes, self.layout.annotations = [], []
+
+    def update_inst_annnotations(self):
+        """Set mne.io.raw.annotations from plotly shapes."""
+        annots = self.mne_annots.data.to_mne_annotation()
+        self.inst.set_annotations(annots)
 
 ############################
 # Create Timeseries Layouts
@@ -190,6 +208,7 @@ class MNEVisualizer:
 
     @property
     def layout(self):
+        """Return MNEVIsualizer.graph.figure.layout."""
         return self.graph.figure['layout']
 
     @layout.setter
@@ -197,7 +216,7 @@ class MNEVisualizer:
         self.graph.figure['layout'] = layout
 
     def initialize_layout(self):
-
+        """Create MNEVisualizer.graph.figure.layout."""
         if not self.inst:
             DEFAULT_LAYOUT['annotations'] = _add_watermark_annot()
 
@@ -205,6 +224,9 @@ class MNEVisualizer:
         DEFAULT_LAYOUT['yaxis'].update({"tickvals": tickvals_handler,
                                         'ticktext': [''] * self.n_sel_ch,
                                         'range': [-self.n_sel_ch, 1]})
+        tmin = self.win_start
+        tmax = self.win_start + self.win_size
+        DEFAULT_LAYOUT['xaxis'].update({'range': [tmin, tmax]})
         self.layout = go.Layout(**DEFAULT_LAYOUT)
 
         trace_kwargs = {'x': [],
@@ -215,13 +237,13 @@ class MNEVisualizer:
         # create objects for layout and traces
         self.traces = [go.Scatter(name=ii, **trace_kwargs)
                        for ii in range(self.n_sel_ch)]
-
         self.update_layout(ch_slider_val=self.channel_slider.max,
                            time_slider_val=0)
 
     def update_layout(self,
                       ch_slider_val=None,
                       time_slider_val=None):
+        """Update MNEVisualizer.graph.figure.layout."""
         if not self.inst:
             return
         if ch_slider_val is not None:
@@ -230,10 +252,11 @@ class MNEVisualizer:
             self.win_start = time_slider_val
 
         tmin, tmax = self.win_start, self.win_start + self.win_size
+        self.layout.xaxis.update({'range': [tmin, tmax]})
 
         # Update selected channels
         first_sel_ch = self._ch_slider_val - self.n_sel_ch + 1
-        # +1 bc this is used in slicing below, & end is not inclued
+        # +1 bc this is used in slicing below, & end is not included
         last_sel_ch = self._ch_slider_val + 1
 
         # Update times
@@ -268,118 +291,98 @@ class MNEVisualizer:
 
         self.graph.figure['data'] = self.traces
 
-        self.refresh_annotations()
-
-    def initialize_keyboard(self):
-        events = [{"event": "keydown", "props": ["key", "shiftKey"]},
-                  {"event": "keyup", "props": ["key", "shiftKey"]}]
-        event_listener = EventListener(id=self.dash_ids['keyboard'],
-                                       events=events)
-        self.app.layout.children.extend([event_listener,
-                                         html.Div(id=self.dash_ids["output"])])
-
-        @self.app.callback(Output(self.dash_ids['output'], "children"),
-                           [Input(self.dash_ids['keyboard'], "event")])
-        def event_callback(event):
-            if event is None:
-                return ''
-            if event['key'] == 'Shift':
-                self.shift_down = event['shiftKey']
-            return ''
+        self.refresh_shapes()
 
     ###############
     # CALLBACKS
     ###############
 
     def set_callback(self):
-        args = [Output(self.dash_ids['graph'], 'figure')]
-        args += [Input(self.dash_ids['ch-slider'], 'value')]
-
-        args += [Input(self.dash_ids['time-slider'], 'value')]
-        args += [Input(self.dash_ids['graph'], "clickData"),
-                 Input(self.dash_ids['graph'], "hoverData")]
-        if self.refresh_input:
-            args += [self.refresh_input]
+        """Set the dash callback for the MNE.Visualizer object."""
+        args = [Output(self.dash_ids['graph'], 'figure'),
+                Input(self.dash_ids['ch-slider'], 'value'),
+                Input(self.dash_ids['time-slider'], 'value'),
+                Input(self.dash_ids['graph'], "clickData"),
+                Input(self.dash_ids['graph'], "relayoutData"),
+                ]
+        if self.refresh_inputs:
+            args += self.refresh_inputs
 
         @self.app.callback(*args, suppress_callback_exceptions=False)
-        def callback(ch, time, click_data, hover_data, *args):
+        def callback(ch, time, click_data, relayout_data, *args):
             if not self.inst:
                 return dash.no_update
 
             update_layout_ids = [self.dash_ids['ch-slider'],
                                  self.dash_ids['time-slider'],
                                  ]
-            if self.refresh_input:
-                update_layout_ids.append(self.refresh_input.component_id)
+            if self.refresh_inputs:
+                update_layout_ids.extend([inp.component_id
+                                          for inp
+                                          in self.refresh_inputs])
 
             ctx = dash.callback_context
-            assert len(ctx.triggered) == 1
             if len(ctx.triggered[0]['prop_id'].split('.')) == 2:
                 object_, dash_event = ctx.triggered[0]["prop_id"].split('.')
                 if object_ == self.dash_ids['graph']:
+
                     if dash_event == 'clickData':
-                        if self.shift_down:
-                            if self.annotating:
-                                # finishing an annotation
-                                self.layout.xaxis['spikedash'] = 'dash'
-                                self.layout.xaxis['spikecolor'] = 'black'
-                                cd = click_data['points'][0]
-                                new_annot = mne.Annotations(
-                                    onset=[self.annotating_start],
-                                    duration=[cd['x'] - self.annotating_start],
-                                    description=self.new_annot_desc,
-                                    orig_time=self.inst.annotations.orig_time)
-                                self.annotating = not self.annotating
-                                if self.annot_created_callback is not None:
-                                    self.annot_created_callback(new_annot)
-                                else:
-                                    self.inst.set_annotations(
-                                        self.inst.annotations + new_annot
-                                    )
-                                    self.update_layout()
-                            else:
-                                # starting an annotation
-                                c_click = click_data['points'][0]
-                                self.annotating_start = c_click['x']
-                                self.layout.xaxis['spikedash'] = 'solid'
-                                self.layout.xaxis['spikecolor'] = 'red'
-                                shape = dict(type="rect",
-                                             xref="x",
-                                             yref="y",
-                                             x0=click_data['points'][0]['x'],
-                                             y0=self.layout.yaxis['range'][0],
-                                             x1=click_data['points'][0]['x'],
-                                             y1=self.layout.yaxis['range'][1],
-                                             fillcolor="red",
-                                             opacity=0.45,
-                                             line_width=0,
-                                             layer="below")
-                                self.annotation_inprogress = shape
-                                self.annotating = not self.annotating
-                                self.update_layout()
-                                # self.refresh_annotations()
+                        # Working on traces
+                        logger.debug('** Trace selected')
+                        c_index = click_data["points"][0]["curveNumber"]
+                        ch_name = self.traces[c_index].name
+                        if ch_name in self.inst.info['bads']:
+                            self.inst.info['bads'].pop()
+                        else:
+                            self.inst.info['bads'].append(ch_name)
+                        self.update_layout()
 
-                        else:  # not shift_down
-                            c_index = click_data["points"][0]["curveNumber"]
-                            ch_name = self.traces[c_index].name
-                            if ch_name in self.inst.info['bads']:
-                                self.inst.info['bads'].pop()
-                            else:
-                                self.inst.info['bads'].append(ch_name)
-                            self.update_layout()
+                    elif dash_event == 'relayoutData':
+                        # Working on annotations
+                        logger.debug(f'** relayoutData: {relayout_data}')
+                        if "selections" in relayout_data:
+                            # shape creation
+                            logger.debug('** shape created')
+                            onset = relayout_data["selections"][0]['x0']
+                            offset = relayout_data["selections"][0]['x1']
+                            description = self.new_annot_desc
+                            annot = EEGAnnotation(onset, offset-onset,
+                                                  description, self.layout)
+                            self.mne_annots.data.append(annot)
 
-                    elif dash_event == 'hoverData':
-                        if self.annotating:
-                            # self.annotating_current =
-                            #   hover_data['points'][0]['x']
-                            current = hover_data['points'][0]['x']
-                            self.annotation_inprogress['x1'] = current
-                            self.update_layout()
+                        elif "shapes" in relayout_data:
+                            # shape was deleted
+                            logger.debug('** shape deleted')
+                            updated_shapes = relayout_data['shapes']
+                            if len(updated_shapes) < len(self.layout.shapes):
+                                # Shape (i.e. annotation) was deleted
+                                previous_names = [shape['name'] for
+                                                  shape in self.layout.shapes]
+                                new_names = [shape['name'] for
+                                             shape in updated_shapes]
+                                deleted = set(previous_names) - set(new_names)
+                                self.mne_annots.data.remove(deleted.pop())
+
+                        elif any([key.endswith('x0')
+                                  for key in relayout_data.keys()]):
+                            # shape was modified
+                            logger.debug('** shape modified')
+                            shape_str = (list(relayout_data.keys())[0]
+                                         .split(".")[0]
+                                         )
+                            x0 = relayout_data[f"{shape_str}.x0"]
+                            x1 = relayout_data[f"{shape_str}.x1"]
+                            shape_i = int(shape_str.split('[', 1)[1][:-1])
+                            name = self.layout.shapes[shape_i]['name']
+                            if name in self.mne_annots.data:
+                                annot = self.mne_annots.data[name]
+                                annot.onset = x0
+                                annot.duration = x1 - x0
+
                         else:
                             return no_update
-                    else:
-                        # self.select_trace()
-                        pass  # for selecting traces
+                        self.refresh_shapes()
+
                 elif object_ in update_layout_ids:
                     self.update_layout(ch_slider_val=ch, time_slider_val=time)
 
@@ -387,17 +390,25 @@ class MNEVisualizer:
 
     @property
     def nb_channels(self):
+        """Return the number of channel names in the mne.io.Raw object."""
         if self.inst:
             return len(self.inst.ch_names)
         return self.n_sel_ch
 
     @property
     def times(self):
+        """Return the times of the mne.io.Raw object in MNEVisualizer.inst.
+
+        Returns
+        -------
+        an np.array of the times.
+        """
         if self.inst:
             return self.inst.times
         return [0]
 
     def init_sliders(self):
+        """Initialize the Channel and Time dcc.Slider components."""
         self.channel_slider = dcc.Slider(id=self.dash_ids["ch-slider"],
                                          min=self.n_sel_ch - 1,
                                          max=self.nb_channels - 1,
@@ -416,9 +427,10 @@ class MNEVisualizer:
 
         marks_keys = np.round(np.linspace(self.times[0], self.times[-1], 10))
         marks_dict = {int(key): str(int(key)) for key in marks_keys}
+        max_ = self.times[-1] - self.win_size
         self.time_slider = dcc.Slider(id=self.dash_ids['time-slider'],
                                       min=self.times[0],
-                                      max=self.times[-1] - self.win_size,
+                                      max=max_ if max_ > 0 else 0,
                                       marks=marks_dict,
                                       value=self.win_start,
                                       vertical=False,
@@ -430,13 +442,18 @@ class MNEVisualizer:
         if not self.show_time_slider:
             self.time_slider_div.style.update({'display': 'none'})
 
+    def init_annot_store(self):
+        """Initialize the dcc.Store component of mne annotations."""
+        self.mne_annots = dcc.Store(id=self.dash_ids["mne-annotations"])
+
     def set_div(self):
-        """build the final hmtl.Div to be returned to user."""
+        """Build the final html.Div component to be returned."""
         # include both the timeseries graph and the sliders
         # note that the order of components is important
         graph_components = [self.channel_slider_div,
                             self.graph_div,
-                            self.time_slider_div]
+                            self.time_slider_div,
+                            self.mne_annots]
         # pass the list of components into an html.Div
         self.container_plot = html.Div(id=self.dash_ids['container-plot'],
                                        className=CSS['timeseries-container'],
@@ -444,10 +461,48 @@ class MNEVisualizer:
 
 
 class ICVisualizer(MNEVisualizer):
+    """Class to plot an mne.io.Raw object made of IC signals."""
 
     def __init__(self, raw, *args, cmap=None, ic_types=None, **kwargs):
+        """Initialize class.
 
-        """ """
+        Parameters
+        ----------
+        app : instance of Dash.app
+            The dash app object to place the plot within.
+        inst : mne.io.Raw
+            An instance of mne.io.Raw
+        dcc_graph_kwargs : str | None
+            keyword arguments to be passed to dcc.graph when
+            creating the MNEVisualizer time-series plot from the
+            mne.io.raw object. Must be a valid keyword argument
+            for dcc.graph.
+        dash_id_suffix : str
+            string to append to the end of the MNEVisualizer.graph
+            dash component ID. Each component id in the users app file
+            needs to be unique. If using more than 1 MNEVisualizer
+            object in a single, application. You must pass a suffix
+            to at least one of the objects to make their dash-ID
+            unique.
+        show_ch_slider : bool
+            Whether to show the channel slider with the MNEVIsualizer
+            time-series graph. Defaults to True.
+        show_time_slider : bool
+            Whether to show the channel slider with the MNEVIsualizer
+            time-series graph. Defaults to True.
+        cmap : dict.
+            a mapping where the Keys are the IC name, and the values are a
+            compatible rgba or HEX string, to color the IC traces.
+
+        Returns
+        -------
+        an instance of ICVisualizer.
+
+        Notes
+        ----
+        Any arguments that can be passed to MNEVisualizer can also be passed
+        to ICVisualizer.
+        """
         self.ic_types = ic_types
         if cmap is not None:
             self.cmap = cmap
@@ -456,7 +511,13 @@ class ICVisualizer(MNEVisualizer):
         super(ICVisualizer, self).__init__(raw, *args, **kwargs)
 
     def load_recording(self, raw, cmap=None, ic_types=None):
-        """ """
+        """Load the mne.io.raw object and initialize the graph layout.
+
+        Parameters
+        ----------
+        raw : mne.io.raw
+            An instance of mne.io.Raw
+        """
         self.ic_types = ic_types
         if cmap is not None:
             self.cmap = cmap
@@ -468,7 +529,7 @@ class ICVisualizer(MNEVisualizer):
     def update_layout(self,
                       ch_slider_val=None,
                       time_slider_val=None):
-        """Update raw timeseries layout"""
+        """Update raw timeseries layout."""
         if not self.inst:
             return
         super(ICVisualizer, self).update_layout(ch_slider_val,
@@ -476,7 +537,7 @@ class ICVisualizer(MNEVisualizer):
 
         # Update selected channels
         first_sel_ch = self._ch_slider_val - self.n_sel_ch + 1
-        # +1 bc this is used in slicing below, & end is not inclued
+        # +1 bc this is used in slicing below, & end is not included
         last_sel_ch = self._ch_slider_val + 1
 
         # Update the raw timeseries traces

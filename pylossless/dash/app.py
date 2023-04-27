@@ -1,5 +1,8 @@
-"""Launching point for Lossless QC Dash app."""
+# Authors: Christian O'Reilly <christian.oreilly@sc.edu>
+#          Scott Huberty <seh33@uw.edu>
+# License: MIT
 
+"""Launching point for Lossless QC Dash app."""
 import dash
 import dash_bootstrap_components as dbc
 from pylossless.dash.qcgui import QCGUI

@@ -1,0 +1,27 @@
+name: Test pipeline
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+    - name: Install Pylossless & Deps
+      run: pip install -e .
+    - name: Install testing dependencies
+      run: pip install -r requirements_testing.txt
+    - name: install openneuro
+      run: pip install openneuro-py
+    - name: Test Pipeline
+      run: | 
+        pytest tests/test_simulated.py &
+        pytest tests/test_pipeline.py
+    - name: Upload coverage to codecov
+      uses: codecov/codecov-action@v3
+      with:
+          token: ${{secrets.CODECOV_TOKEN}}
