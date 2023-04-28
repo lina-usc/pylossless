@@ -426,10 +426,23 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
         self.init_slider()
         self.set_data(montage, data, head_contours_color)
         self.set_div()
+        self.figure = None
+
         self.set_callback()
 
         if "standalone" in self.mode:
             self.app.layout.children.append(self.container_plot)
+
+    @property
+    def figure(self):
+        return self.graph.figure
+
+    @figure.setter
+    def figure(self, fig):
+        if fig:
+            self.graph.figure = fig
+        else:
+            self.graph.figure = {}
 
     def set_data(self, montage=None, data=None, head_contours_color="black"):
         if data is None:
@@ -437,10 +450,11 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
         self.data = data
         if montage is not None:
             self.montage = montage
-        if not isinstance(head_contours_color, dict):
+        if isinstance(head_contours_color, str):
             head_contours_color = {title: head_contours_color
                                    for title in self.data.topo_values.index}
-        self.head_contours_color = head_contours_color
+        if head_contours_color:
+            self.head_contours_color = head_contours_color
 
         self.topo_slider.max = self.nb_topo - 1
         self.topo_slider.value = self.nb_topo - 1
@@ -449,8 +463,9 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
     def initialize_layout(self, slider_val=None, show_sensors=True):
         """Initialize the layout for the topoplot dcc.graph component."""
         if self.data is None:
-            self.graph.figure = None
+            self.figure = None
             return
+
         if slider_val is not None:
             self.offset = self.topo_slider.max-slider_val
 
@@ -467,25 +482,23 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
             plot_data = np.concatenate((plot_data,
                                         [None]*(nb_subplots-len(plot_data))))
 
-        self.graph.figure = GridTopoPlot(rows=self.rows, cols=self.cols,
-                                         montage=self.montage, data=plot_data,
-                                         color=colors,
-                                         res=self.res,
-                                         height=self.height,
-                                         width=self.width,
-                                         show_sensors=show_sensors,
-                                         subplots_kwargs=dict(
-                                                horizontal_spacing=0.03,
-                                                vertical_spacing=0.03,
-                                                subplot_titles=titles,
-                                          )
-                                         ).figure
+        self.figure = GridTopoPlot(rows=self.rows, cols=self.cols,
+                                   montage=self.montage, data=plot_data,
+                                   color=colors,
+                                   res=self.res,
+                                   height=self.height,
+                                   width=self.width,
+                                   show_sensors=show_sensors,
+                                   subplots_kwargs=dict(
+                                        horizontal_spacing=0.03,
+                                        vertical_spacing=0.03,
+                                        subplot_titles=titles,
+                                        )
+                                   ).figure
 
     @property
     def nb_topo(self):
         """The number of topoplots."""
-        if self.data:
-            return self.data.nb_topo
         return self.rows * self.cols
 
     def init_slider(self):
@@ -506,12 +519,18 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
         if not self.show_slider:
             self.topo_slider_div.style.update({'display': 'none'})
 
+    @property
+    def is_visible(self):
+        return self.container_plot.style["display"] != "none"
+
     def set_div(self):
         """Set the html.Div component for the topoplots."""
         # outer_div includes slider obj
         graph_components = [self.topo_slider_div, self.graph_div]
         self.container_plot = html.Div(children=graph_components,
-                                       className=CSS['topo-container'])
+                                       id="ica-topo-div",
+                                       className=CSS['topo-container'],
+                                       style={'display': 'none'})
 
     def set_callback(self):
         """Create the callback for the dcc.graph component of the topoplots."""
@@ -524,9 +543,17 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
         def callback(slider_val, *args):
             self.initialize_layout(slider_val=slider_val,
                                    show_sensors=self.show_sensors)
-            if self.graph.figure:
-                return self.graph.figure
+            if self.figure:
+                return self.figure
             return dash.no_update
+
+        @self.app.callback(Output('ica-topo-div', 'style'),
+                           Input('topo-graph', 'figure'),
+                           )
+        def show_figure(figure):
+            if figure:
+                return {'display': 'block'}
+            return {'display': 'none'}
 
 
 class TopoVizICA(TopoViz):
@@ -593,18 +620,19 @@ class TopoVizICA(TopoViz):
 
     def init_vars(self, montage, ica, ic_labels):
         """Initialize the montage, ica, and ic_labels data."""
-        if not montage or not ica or not ic_labels:
+        if not montage or not ica:
             return None
+
+        data = TopoData([dict(zip(montage.ch_names, component))
+                         for component in ica.get_components().T])
         if ic_labels:
             self.head_contours_color = {comp: ic_label_cmap[label]
                                         for comp, label
                                         in ic_labels.items()}
-        data = TopoData([dict(zip(montage.ch_names, component))
-                         for component in ica.get_components().T])
-        data.topo_values.index = list(ic_labels.keys())
+            data.topo_values.index = list(ic_labels.keys())
         return data
 
     def load_recording(self, montage, ica, ic_labels):
         """Load the object to be plotted."""
         data = self.init_vars(montage, ica, ic_labels)
-        super(TopoVizICA, self).load_recording(montage, data)
+        super(TopoVizICA, self).set_data(montage, data, None)
