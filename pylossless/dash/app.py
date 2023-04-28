@@ -8,7 +8,7 @@ import dash_bootstrap_components as dbc
 from pylossless.dash.qcgui import QCGUI
 
 
-def get_app(fpath=None, project_root=None, kind="dash"):
+def get_app(fpath=None, project_root=None, disable_buttons=False, kind="dash"):
     """Call either Dash or Jupyter for Lossless QC procedure."""
     if kind == "jupyter":
         from jupyter_dash import JupyterDash
@@ -16,7 +16,8 @@ def get_app(fpath=None, project_root=None, kind="dash"):
     else:
         app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SLATE])
 
-    QCGUI(app, fpath=fpath, project_root=project_root)
+    QCGUI(app, fpath=fpath, project_root=project_root,
+          disable_buttons=disable_buttons)
     return app
 
 

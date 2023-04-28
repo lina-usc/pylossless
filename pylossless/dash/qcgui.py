@@ -44,7 +44,10 @@ def open_folder_dialog():
 class QCGUI:
     """Class that stores the visualizer-plots that are used in the qcr app."""
 
-    def __init__(self, app, fpath=None, project_root=None, verbose=False):
+    def __init__(self, app,
+                 fpath=None, project_root=None,
+                 disable_buttons=False,
+                 verbose=False):
         """Initialize class.
 
         Parameters
@@ -78,7 +81,7 @@ class QCGUI:
         self.eeg_visualizer = None
         self.ica_topo = None
         self.ic_types = None
-        self.set_layout()
+        self.set_layout(disable_buttons=disable_buttons)
         self.set_callbacks()
         if fpath:
             self.fpath = Path(fpath)
@@ -155,7 +158,7 @@ class QCGUI:
         # TODO understand why original component values are lost to begin with
         df["component"] = np.arange(df.shape[0])
 
-    def set_layout(self):
+    def set_layout(self, disable_buttons=False):
         """Create the app.layout for the app object.
 
         Notes
@@ -182,11 +185,13 @@ class QCGUI:
                                    color='primary',
                                    outline=True,
                                    className=CSS['button'],
-                                   title=dropdown_text)
+                                   title=dropdown_text,
+                                   disabled=disable_buttons)
         save_button = dbc.Button('Save', id='save-button',
                                  color='info',
                                  outline=True,
-                                 className=CSS['button'])
+                                 className=CSS['button'],
+                                 disabled=disable_buttons)
         self.drop_down = dcc.Dropdown(id='file-dropdown',
                                       className=CSS['dropdown'],
                                       placeholder="Select a file",
@@ -306,7 +311,7 @@ class QCGUI:
             # Needed when an initial fpath is set from the CLI
             if self.fpath:
                 self.load_recording(self.fpath)
-                return str(self.fpath)
+                return str(self.fpath.name)
 
         @self.app.callback(
             Output('dropdown-output', 'children'),
