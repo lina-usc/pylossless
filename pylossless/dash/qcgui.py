@@ -44,7 +44,10 @@ def open_folder_dialog():
 class QCGUI:
     """Class that stores the visualizer-plots that are used in the qcr app."""
 
-    def __init__(self, app, fpath=None, project_root=None, verbose=False):
+    def __init__(self, app,
+                 fpath=None, project_root=None,
+                 disable_buttons=False,
+                 verbose=False):
         """Initialize class.
 
         Parameters
@@ -74,15 +77,15 @@ class QCGUI:
         self.ica = None
         self.raw_ica = None
         self.fpath = None
-        if fpath:
-            self.load_recording(fpath)
-
         self.ica_visualizer = None
         self.eeg_visualizer = None
         self.ica_topo = None
         self.ic_types = None
-        self.set_layout()
+        self.set_layout(disable_buttons=disable_buttons)
         self.set_callbacks()
+        if fpath:
+            self.fpath = Path(fpath)
+            # self.load_recording(fpath)
 
     def set_visualizers(self):
         """Create EEG/ICA time-series dcc.graphs and topomap dcc.graphs."""
@@ -108,7 +111,7 @@ class QCGUI:
         self.eeg_visualizer = MNEVisualizer(
             self.app,
             self.raw,
-            refresh_inputs=refresh_inputs,
+            refresh_inputs=refresh_inputs.copy(),
             show_time_slider=False,
             set_callbacks=False)
 
@@ -116,8 +119,9 @@ class QCGUI:
         self.ica_visualizer.refresh_inputs.append(input_)
         input_ = Input(self.ica_visualizer.dash_ids['graph'], "relayoutData")
         self.eeg_visualizer.refresh_inputs.append(input_)
-        self.eeg_visualizer.set_callback()
+
         self.ica_visualizer.set_callback()
+        self.eeg_visualizer.set_callback()
 
         self.ica_visualizer.mne_annots = self.eeg_visualizer.mne_annots
         self.ica_visualizer.dash_ids['mne-annotations'] = \
@@ -154,7 +158,7 @@ class QCGUI:
         # TODO understand why original component values are lost to begin with
         df["component"] = np.arange(df.shape[0])
 
-    def set_layout(self):
+    def set_layout(self, disable_buttons=False):
         """Create the app.layout for the app object.
 
         Notes
@@ -181,11 +185,13 @@ class QCGUI:
                                    color='primary',
                                    outline=True,
                                    className=CSS['button'],
-                                   title=dropdown_text)
+                                   title=dropdown_text,
+                                   disabled=disable_buttons)
         save_button = dbc.Button('Save', id='save-button',
                                  color='info',
                                  outline=True,
-                                 className=CSS['button'])
+                                 className=CSS['button'],
+                                 disabled=disable_buttons)
         self.drop_down = dcc.Dropdown(id='file-dropdown',
                                       className=CSS['dropdown'],
                                       placeholder="Select a file",
@@ -260,7 +266,6 @@ class QCGUI:
         else:
             self.raw_ica = None
 
-        # pd.read_csv(iclabel_fpath, sep='\t')
         self.ic_types = self.pipeline.flags['ic'].data_frame
         self.ic_types['component'] = [f'ICA{ic:03}'
                                       for ic in self.ic_types.component]
@@ -280,6 +285,7 @@ class QCGUI:
         @self.app.callback(
             Output('file-dropdown', 'options'),
             Input('folder-selector', 'n_clicks'),
+            prevent_initial_call=True
         )
         def folder_button_clicked(n_clicks):
             if n_clicks:
@@ -296,12 +302,16 @@ class QCGUI:
         @self.app.callback(
             Output('file-dropdown', 'placeholder'),
             Input('file-dropdown', 'value'),
-            prevent_initial_call=True
+            prevent_initial_call=False
         )
         def file_selected(value):
             if value:  # on selection of dropdown item
                 self.load_recording(value)
                 return value
+            # Needed when an initial fpath is set from the CLI
+            if self.fpath:
+                self.load_recording(self.fpath)
+                return str(self.fpath.name)
 
         @self.app.callback(
             Output('dropdown-output', 'children'),
