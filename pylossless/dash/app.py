@@ -9,9 +9,7 @@ from pylossless.dash.qcgui import QCGUI
 
 
 def get_app(fpath=None, project_root=None, kind="dash"):
-    """Wrapper function for calling either Dash or Jupyter
-    for Lossless QC procedure."""
-
+    """Call either Dash or Jupyter for Lossless QC procedure."""
     if kind == "jupyter":
         from jupyter_dash import JupyterDash
         app = JupyterDash(__name__, external_stylesheets=[dbc.themes.SLATE])
