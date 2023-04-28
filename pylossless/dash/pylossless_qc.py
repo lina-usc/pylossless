@@ -16,6 +16,7 @@ def launch_dash_app(directory=None, filepath=None):
 
 
 def main():
+    """Launch dashboard via CLI."""
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument('--directory', help='path to the project folder')
     parser.add_argument('--filepath', help='path to the EDF file to load')
