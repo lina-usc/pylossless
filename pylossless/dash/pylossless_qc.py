@@ -11,12 +11,13 @@ desc = 'Launch QCR dashboard with optional directory and filename arguments.'
 
 
 def launch_dash_app(directory=None, filepath=None):
+    """Launch dashboard."""
     app = get_app(fpath=filepath, project_root=directory)
     app.run_server(debug=True)
 
 
 def main():
-    """Launch dashboard via CLI."""
+    """Parse arguments for CLI."""
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument('--directory', help='path to the project folder')
     parser.add_argument('--filepath', help='path to the EDF file to load')
