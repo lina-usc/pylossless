@@ -1,11 +1,12 @@
-""" Authors:
+"""PyLossless setup file.
+
+Authors:
 Christian O'Reilly <christian.oreilly@sc.edu>
 Scott Huberty <seh33@uw.edu>
 James Desjardins <jim.a.desjardins@gmail.com>
 Tyler Collins <collins.tyler.k@gmail.com>
 License: MIT
 """
-
 from pathlib import Path
 from setuptools import setup, find_packages
 

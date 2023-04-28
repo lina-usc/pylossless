@@ -33,7 +33,7 @@ yaxis.update({"scaleanchor": "x", "scaleratio": 1})
 
 
 class TopoPlot:  # TODO: Fix/finish doc comments for this class.
-    """Representation of a classic EEG topographic map."""
+    """Representation of a classic EEG topographic map as a plotly figure."""
 
     def __init__(self, montage="standard_1020", data=None, figure=None,
                  color="black", row=None, col=None, res=64, width=None,
@@ -43,35 +43,30 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
 
         Parameters
         ----------
-        app : instance of Dash.app
-            The dash app object to place the plot within.
         montage : mne.channels.DigMontage
             Montage for digitized electrode and headshape position data.
             See mne.channels.make_standard_montage(), and
             mne.channels.get_builtin_montages() for more information
             on making montage objects in MNE.
-        data : mne.preprocessing.ICA
+        data : mne.preprocessing.ICA | None
             The data to use for the topoplots. Can be an instance of
             mne.preprocessing.ICA.
-        rows : int
-            The number of rows to use for the topoplots. For example, using
-            the default values, will show 5 rows of 4 topoplots each. A
-            dash dcc.Slider is available to scroll if there are more topoplots
-            than can be fit into one row x col view.
-        cols : int
-            The number of cols to use for the topoplots.
+        figure : plotly.graph_objects.Figure | None
+            Figure to use (if not None) for plotting.
+        color : str
+            The color to use for the topoplot head outline. Must be a string
+            of a rgba or hex code that is compatible with plotly's graphing
+            library.
+        row : int | None
+            Row number of the topoplot, if embedded in a grid.
+        col : int | None
+            Column number for the topoplot, if embedded in a grid.
+        res : int
+            Resolution (res X res) for the heatmap.
         width : int
             The width of the dcc.graph object holding the topoplots
         height : int
             The height of the dcc.graph object holding the topoplots
-        margin_x : float
-            Can be a float or for example 4/5.
-        margin_y : float
-            Can be a float or for example 4/5.
-        head_contours_color : str
-            The color to use for the topoplot head outline. Must be a string
-            of a rgba or hex code that is compatible with plotly's graphing
-            library.
         cmap : str
             The color to use for the topoplot heatmap. Must be a string of
             a rgba or hex code that is compatible with plotly's graphing
@@ -79,16 +74,9 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
         show_sensors : bool
             Whether to show the sensors (as dots) on the topoplot. Defaults
             to True.
-        show_slider : bool
-            Whether to show the dcc.Slider component that controls which
-            topoplots are in view. Defaults to True.
-        refresh_inputs : str | iterable
-            The id of one or more dash components, that should trigger a
-            refresh of the topoplots. For example this can be useful if
-            one would like a dcc.dropdown component containing a list of
-            file names to refresh the data when selected.
+        colorbar : bool
+            Whether to show the colorbar.
         """
-
         self.heatmap_traces = None
         self.colorbar = colorbar
         self.cmap = cmap
@@ -125,6 +113,14 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
         self.plot_topo()
 
     def set_data(self, data):
+        """Set the data used for plotting.
+
+        Parameters
+        ----------
+        data : dict
+            Dictionary of channel name (key) and corresponding values
+            to be plotted.
+        """
         if data is None:
             return
         self.data = data
@@ -182,7 +178,6 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
         -------
         a dict of the data, with keys 'x', 'y', 'z'.
         """
-
         extrapolate = _check_extrapolate(extrapolate, ch_type)
         # find mask limits and setup interpolation
         _, Xi, Yi, interp = _setup_interp(self.pos, res=self.res,
@@ -200,7 +195,7 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
 
         return {"x": Xi[0], "y": Yi[:, 0], "z": Zi}
 
-    def update_axes(self):
+    def _update_axes(self):
         self.figure.update_xaxes({'showgrid': False, 'visible': False},
                                  row=self.row, col=self.col)
 
@@ -223,6 +218,17 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
                     margin=dict(l=0, r=0, b=0, t=20))
 
     def plot_topo(self, **kwargs):
+        """Plot the topomap.
+
+        Parameters
+        ----------
+        **kwargs
+            Arguments pass to plotly.graph_objects.Heatmap.
+
+        Returns
+        -------
+            A plotly.graph_objects.Figure object.
+        """
         if self.data is None:
             return
 
@@ -234,7 +240,7 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
             self.figure.add_trace(trace, row=self.row, col=self.col)
         self.figure.add_trace(heatmap_trace, row=self.row, col=self.col)
 
-        self.update_axes()
+        self._update_axes()
 
         return self.figure
 
@@ -254,10 +260,41 @@ def __check_shape__(rows, cols, data, fill=None):
 
 
 class GridTopoPlot:
+    """Representation of grid of topomaps as a plotly figure."""
 
     def __init__(self, rows=1, cols=1, montage="standard_1020",
                  data=None, figure=None, color="black",
                  subplots_kwargs=None, **kwargs):
+        """Initialize instance.
+
+        Parameters
+        ----------
+        rows : int
+            The number of rows to use for the topoplots. For example, using
+            the default values, will show 5 rows of 4 topoplots each. A
+            dash dcc.Slider is available to scroll if there are more topoplots
+            than can be fit into one row x col view.
+        cols : int
+            The number of cols to use for the topoplots.
+        montage : mne.channels.DigMontage
+            Montage for digitized electrode and headshape position data.
+            See mne.channels.make_standard_montage(), and
+            mne.channels.get_builtin_montages() for more information
+            on making montage objects in MNE.
+        data : mne.preprocessing.ICA | None
+            The data to use for the topoplots. Can be an instance of
+            mne.preprocessing.ICA.
+        figure : plotly.graph_objects.Figure | None
+            Figure to use (if not None) for plotting.
+        color : str
+            The color to use for the topoplot head outline. Must be a string
+            of a rgba or hex code that is compatible with plotly's graphing
+            library.
+        subplots_kwargs : dict
+            Arguments to be passed to plotly.subplots.make_subplots.
+        **kwargs:
+            Additional arguments to be passed to TopoPlot.
+        """
         montage = __check_shape__(rows, cols, montage)
         color = __check_shape__(rows, cols, color)
 
@@ -293,7 +330,7 @@ class GridTopoPlot:
 
     @property
     def nb_topo(self):
-        """The number of topoplots."""
+        """Return the number of topoplots."""
         return self.rows*self.cols
 
 
@@ -354,6 +391,8 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
             Can be a float or for example 4/5.
         margin_y : float
             Can be a float or for example 4/5.
+        res: int
+            Resolution (res X res) of the heatmaps generated for the topomaps.
         head_contours_color : str
             The color to use for the topoplot head outline. Must be a string
             of a rgba or hex code that is compatible with plotly's graphing
@@ -365,6 +404,10 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
         show_sensors : bool
             Whether to show the sensors (as dots) on the topoplot. Defaults
             to True.
+        mode : str
+            Can take the value "standalone_jupyter" for an app within a
+            Jupyter Notebook, "standalone" for a typical Dash app, or
+            "embedded" for using an pre-existing app object.
         show_slider : bool
             Whether to show the dcc.Slider component that controls which
             topoplots are in view. Defaults to True.
@@ -435,16 +478,40 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
 
     @property
     def figure(self):
+        """Return the go.Graph.figure object."""
         return self.graph.figure
 
     @figure.setter
     def figure(self, fig):
+        """Set the value of the plotly figure object.
+
+        Parameters
+        ----------
+        fig : plotly.graph_objects.Figure | None
+            Figure object to be set or None if no figure should be plotted.
+        """
         if fig:
             self.graph.figure = fig
         else:
             self.graph.figure = {}
 
     def set_data(self, montage=None, data=None, head_contours_color="black"):
+        """Set the data used for plotting.
+
+        Parameters
+        ----------
+        montage : mne.channels.DigMontage
+            Montage for digitized electrode and headshape position data.
+            See mne.channels.make_standard_montage(), and
+            mne.channels.get_builtin_montages() for more information
+            on making montage objects in MNE.
+        data : TopoData
+            Data to be plotted.
+        head_contour_color : str
+            The color to use for the topoplot head outline. Must be a string
+            of a rgba or hex code that is compatible with plotly's graphing
+            library.
+        """
         if data is None:
             return
         self.data = data
@@ -498,7 +565,7 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
 
     @property
     def nb_topo(self):
-        """The number of topoplots."""
+        """Return the number of topoplots."""
         return self.rows * self.cols
 
     def init_slider(self):
@@ -518,10 +585,6 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
                                         style={})
         if not self.show_slider:
             self.topo_slider_div.style.update({'display': 'none'})
-
-    @property
-    def is_visible(self):
-        return self.container_plot.style["display"] != "none"
 
     def set_div(self):
         """Set the html.Div component for the topoplots."""
