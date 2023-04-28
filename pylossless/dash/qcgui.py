@@ -301,17 +301,18 @@ class QCGUI:
 
         @self.app.callback(
             Output('file-dropdown', 'placeholder'),
+            Output(self.eeg_visualizer.dash_ids['loading-output'], "children"),
             Input('file-dropdown', 'value'),
             prevent_initial_call=False
         )
         def file_selected(value):
             if value:  # on selection of dropdown item
                 self.load_recording(value)
-                return value
+                return value, None
             # Needed when an initial fpath is set from the CLI
             if self.fpath:
                 self.load_recording(self.fpath)
-                return str(self.fpath.name)
+                return str(self.fpath.name), None
 
         @self.app.callback(
             Output('dropdown-output', 'children'),

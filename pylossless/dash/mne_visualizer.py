@@ -86,10 +86,12 @@ class MNEVisualizer:
         self.annot_created_callback = annot_created_callback
         self.new_annot_desc = 'selected_time'
         self.mne_annots = None
+        self.loading_div = None
 
         # setting component ids based on dash_id_suffix
         default_ids = ['graph', 'ch-slider', 'time-slider',
-                       'container-plot', 'output', 'mne-annotations']
+                       'container-plot', 'output', 'mne-annotations',
+                       'loading', "loading-output"]
         self.dash_ids = {id_: (id_ + f'_{dash_id_suffix}')
                          if dash_id_suffix else id_
                          for id_ in default_ids}
@@ -112,9 +114,11 @@ class MNEVisualizer:
         self.inst = inst
 
         # initialization subroutines
-        self.init_sliders()
-        self.init_annot_store()
-        self.set_div()
+        self._init_sliders()
+        self._init_annot_store()
+        self._set_loading_icon()
+        self._set_div()
+
         self.initialize_layout()
         if set_callbacks:
             self.set_callback()
@@ -414,7 +418,7 @@ class MNEVisualizer:
             return self.inst.times
         return [0]
 
-    def init_sliders(self):
+    def _init_sliders(self):
         """Initialize the Channel and Time dcc.Slider components."""
         self.channel_slider = dcc.Slider(id=self.dash_ids["ch-slider"],
                                          min=self.n_sel_ch - 1,
@@ -449,11 +453,21 @@ class MNEVisualizer:
         if not self.show_time_slider:
             self.time_slider_div.style.update({'display': 'none'})
 
-    def init_annot_store(self):
+    def _init_annot_store(self):
         """Initialize the dcc.Store component of mne annotations."""
         self.mne_annots = dcc.Store(id=self.dash_ids["mne-annotations"])
 
-    def set_div(self):
+    def _set_loading_icon(self):
+        """Add the loading icon."""
+        loading = dcc.Loading(
+            id=self.dash_ids['loading'],
+            type="circle",
+            children=html.Div(id=self.dash_ids['loading-output'])
+        )
+        self.loading_div = html.Div(loading)
+        self.graph_div.children.append(self.loading_div)
+
+    def _set_div(self):
         """Build the final html.Div component to be returned."""
         # include both the timeseries graph and the sliders
         # note that the order of components is important
