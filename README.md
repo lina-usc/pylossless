@@ -1,6 +1,8 @@
 
 ![logo](./docs/source/_static/logo_white.png)
 
+[![codecov](https://codecov.io/github/lina-usc/pylossless/branch/main/graph/badge.svg?token=SVAD8HTJNG)](https://codecov.io/github/lina-usc/pylossless)
+
 
 ![QCR Dashboard](./docs/source/_images/qc_screenshot.png)
 
