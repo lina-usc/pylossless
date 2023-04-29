@@ -1,5 +1,5 @@
-# .github/workflows/pypi.yml
-name: release
+# release workflow
+name: Release workflow
 on:
   release:
     types:
@@ -7,33 +7,33 @@ on:
 
 jobs:
   pypi-publish:
-    - name: Publish package distributions to PyPI
-      uses: pypa/gh-action-pypi-publish@release/v1  
-    - name: Upload release to PyPI
-      runs-on: ubuntu-latest
-      environment:
-        name: pypi
-        url: https://pypi.org/p/pylossless
-      permissions:
-        id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
-      steps:
-        # retrieve your distributions here
-        - uses: actions/checkout@v3
-        - name: Set up Python
-          uses: actions/setup-python@v4
-          with:
-            python-version: "3.x"
-        - name: Install pypa/build
-          run: >-
-            python -m
-            pip install
-            build
-            --user
-        - name: Build a binary wheel and a source tarball
-          run: >-
-            python -m
-            build
-            --sdist
-            --wheel
-            --outdir dist/
-            .
+    name: Upload release to PyPI
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/pylossless
+    permissions:
+      id-token: write  # IMPORTANT: this permission is mandatory for trusted publishing
+    steps:
+      # retrieve your distributions here
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.x"
+      - name: Install pypa/build
+        run: >-
+          python -m
+          pip install
+          build
+          --user
+      - name: Build a binary wheel and a source tarball
+        run: >-
+          python -m
+          build
+          --sdist
+          --wheel
+          --outdir dist/
+          .
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1              
