@@ -32,7 +32,7 @@ qc_entry_point = ["pylossless_qc=pylossless.dash.pylossless_qc:main"]
 setup(
     name='pylossless',
     version='0.1.0',
-    description='Python port of EEG-IP-L pipeline for preprocessing EEG.',
+    description='Lossless EEG Processing Pipeline Built on MNE and Dash',
     long_description=long_description,
     long_description_content_type='text/markdown',
     author="Scott Huberty",
