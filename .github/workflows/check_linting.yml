@@ -1,6 +1,6 @@
 name: PEP8 Compliance, Spellcheck, & Docstring
 
-on: [push, pull_request]
+on: pull_request
 
 jobs:
   linting:
