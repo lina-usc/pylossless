@@ -1,11 +1,12 @@
-""" Authors:
+"""PyLossless setup file.
+
+Authors:
 Christian O'Reilly <christian.oreilly@sc.edu>
 Scott Huberty <seh33@uw.edu>
 James Desjardins <jim.a.desjardins@gmail.com>
 Tyler Collins <collins.tyler.k@gmail.com>
 License: MIT
 """
-
 from pathlib import Path
 from setuptools import setup, find_packages
 
@@ -24,7 +25,7 @@ for extra, req_file in extras.items():
         requirements_extra = file.read().splitlines()
     extras_require[extra] = requirements_extra
 
-qc_entry_point = ["pylossless_qc=pylossless.dash.app:main"]
+qc_entry_point = ["pylossless_qc=pylossless.dash.pylossless_qc:main"]
 setup(
     name='pylossless',
     version='0.0.1',
