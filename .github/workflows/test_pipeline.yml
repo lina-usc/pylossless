@@ -1,16 +1,16 @@
 name: Test pipeline
 
-on: [push, pull_request]
+on: pull_request
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python 3.9
-      uses: actions/setup-python@v2
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.x
+      uses: actions/setup-python@v4
       with:
-        python-version: 3.9
+        python-version: "3.x"
     - name: Install Pylossless & Deps
       run: pip install -e .
     - name: Install testing dependencies
