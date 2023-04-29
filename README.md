@@ -4,10 +4,7 @@
 
 ![QCR Dashboard](./docs/source/_images/qc_screenshot.png)
 
-# **Note: This software is pre-alpha and not yet ready for outside use!**
-
-## **Alpha release is planned for May 1st 2023**
-
+# **Note: This software has ALPHA status. This means that this package is young and will likely undergo frequent changes and improvements. Please report any problems or bugs via a github issues ticket.**
 
 
 - 🦾 Fully automated EEG processing pipeline built on MNE-Python.
