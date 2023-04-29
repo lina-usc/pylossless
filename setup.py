@@ -25,11 +25,16 @@ for extra, req_file in extras.items():
         requirements_extra = file.read().splitlines()
     extras_require[extra] = requirements_extra
 
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
+
 qc_entry_point = ["pylossless_qc=pylossless.dash.pylossless_qc:main"]
 setup(
     name='pylossless',
-    version='0.0.1',
+    version='0.1.0',
     description='Python port of EEG-IP-L pipeline for preprocessing EEG.',
+    long_description=long_description,
+    long_description_content_type='text/markdown',
     author="Scott Huberty",
     author_email='seh33@uw.edu',
     url='https://github.com/lina-usc/pylossless',
