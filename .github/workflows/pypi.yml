@@ -1,12 +1,10 @@
 # .github/workflows/pypi.yml
+name: release
 on:
   release:
     types:
       - published
 
-name: release
-
-# if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
 jobs:
   pypi-publish:
     name: Upload release to PyPI
