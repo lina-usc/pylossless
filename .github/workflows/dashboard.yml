@@ -1,0 +1,43 @@
+name: Deploy Dash app to Azure App Service
+
+on:
+  pull_request:
+    branches:
+      - main
+
+env:
+  AZURE_WEBAPP_NAME: pylossless
+  AZURE_WEBAPP_PACKAGE_PATH: .
+  AZURE_WEBAPP_DEPLOYMENT_USER: ${{ secrets.AZURE_WEBAPP_DEPLOYMENT_USER }}
+  AZURE_WEBAPP_DEPLOYMENT_PASSWORD: ${{ secrets.AZURE_WEBAPP_DEPLOYMENT_PASSWORD }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v2
+
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+
+    - name: Install Pylossless & Deps
+      run: |
+        python -m venv env
+        source env/bin/activate
+        pip install -e .
+
+    - name: Deploy to Azure App Service
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: .
+        runtime-stack: 'python'
+
+    - name: Open deployed app in browser
+      run: |
+        echo "Deployed app at https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
+        xdg-open "https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net"
