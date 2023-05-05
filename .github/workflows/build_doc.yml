@@ -30,8 +30,3 @@ jobs:
         run: |
           cd docs
           make html
-
-      - name: Check for warnings
-        run: |
-          cd docs/build/html
-          sphinx-build -W -b dummy . _
