@@ -44,9 +44,9 @@ flag_epoch_low_r
 ----------------
 .. automethod:: LosslessPipeline.flag_epoch_low_r
 
-flag_outlier_chs
+find_outlier_chs
 ----------------
-.. automethod:: LosslessPipeline.flag_outlier_chs
+.. automethod:: LosslessPipeline.find_outlier_chs
 
 get_epochs
 ----------
@@ -83,3 +83,7 @@ save
 set_montage
 -----------
 .. automethod:: LosslessPipeline.set_montage
+
+add_pylossless_annotations
+--------------------------
+.. automethod:: LosslessPipeline.add_pylossless_annotations

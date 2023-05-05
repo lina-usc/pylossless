@@ -1,10 +1,9 @@
 Flag Classes
 =============
 
-These are the docstrings for the classes ``FlaggedChs``, ``FlaggedEpochs``,
-and ``FlaggedICS``, which are used by the ``LosslessPipeline`` attributes 
-``flagged_chs``, ``flagged_epochs``, and ``flagged_ics``. The Classes can be
-found in ``pylossless.pipeline.py``
+This page contains the docstrings for the ``FlaggedChs``, ``FlaggedEpochs``,
+and ``FlaggedICS`` classes, which are used by the ``LosslessPipeline.flags``
+attribute.
 
 .. automodule:: pylossless.pipeline
     :members: FlaggedChs, FlaggedEpochs, FlaggedICs

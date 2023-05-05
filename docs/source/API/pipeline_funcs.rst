@@ -16,19 +16,10 @@ get_operate_dim
 
 .. autofunction:: get_operate_dim
 
-variability_across_epochs
--------------------------
-
-.. autofunction:: variability_across_epochs
-
 _detect_outliers
 ----------------
 
 .. autofunction:: _detect_outliers
-
-add_pylossless_annotations
---------------------------
-.. autofunction:: add_pylossless_annotations
 
 chan_neighbour_r
 ----------------
