@@ -256,15 +256,15 @@ def epochs_to_xr(epochs, kind="ch", ica=None):
 
     Parameters
     ----------
-        epochs : mne.Epochs
-            an instance of mne.Epochs
-        kind : str (default 'ch')
-            The name to be passed into the `coords` argument of xr.DataArray
-            corresponding to the channel dimension of the epochs object.
-            Must be 'ch' or 'ic'.
+    epochs : mne.Epochs
+        an instance of mne.Epochs
+    kind : str (default 'ch')
+        The name to be passed into the `coords` argument of xr.DataArray
+        corresponding to the channel dimension of the epochs object.
+        Must be 'ch' or 'ic'.
     Returns
     -------
-        An Xarray DataArray object.
+    An Xarray DataArray object.
     """
     if kind == "ch":
         data = epochs.get_data()  # n_epochs, n_channels, n_times
