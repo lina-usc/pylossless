@@ -168,7 +168,7 @@ class FlaggedEpochs(dict):
     def add_flag_cat(self, kind, bad_epoch_inds, epochs):
         """Add information on time periods flagged by pyLossless.
 
-        Parameters:
+        Parameters
         -----------
         kind : str
             Should be one of ``'ch_sd'``, ``'low_r'``, ``'ic_sd1'``.
