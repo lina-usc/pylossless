@@ -417,7 +417,7 @@ def warp_locs(self, raw):
     """Warp locs.
 
     Parameters
-    -----------
+    ----------
     raw : mne.Raw
         an instance of mne.Raw
 

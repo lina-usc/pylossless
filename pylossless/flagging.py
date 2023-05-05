@@ -169,7 +169,7 @@ class FlaggedEpochs(dict):
         """Add information on time periods flagged by pyLossless.
 
         Parameters
-        -----------
+        ----------
         kind : str
             Should be one of ``'ch_sd'``, ``'low_r'``, ``'ic_sd1'``.
         bad_epochs_inds : list | tuple
