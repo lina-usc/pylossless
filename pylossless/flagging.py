@@ -54,7 +54,7 @@ class FlaggedChs(dict):
         self.ll = ll
 
     def add_flag_cat(self, kind, bad_ch_names, *args):
-        """Append a list of flagged channel names to ``'manual'``.
+        """Store channel names that have been flagged by pipeline.
 
         Parameters
         ----------
@@ -64,6 +64,10 @@ class FlaggedChs(dict):
         bad_ch_names : list | tuple
             Channel names. Will be the values corresponding to the ``kind``
             dictionary key.
+
+        Returns
+        -------
+        None
         """
         logger.debug(f'NEW BAD CHANNELS {bad_ch_names}')
         if isinstance(bad_ch_names, xr.DataArray):

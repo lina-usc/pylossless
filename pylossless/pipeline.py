@@ -261,8 +261,8 @@ def _threshold_volt_std(epochs, flag_dim, threshold=5e-5):
 def chan_neighbour_r(epochs, nneigbr, method):
     """Compute nearest Neighbor R.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     epochs : mne.Epochs
 
     nneigbr : int
@@ -416,10 +416,14 @@ def coregister(raw_edf, fiducials="estimated",  # get fiducials from fsaverage
 def warp_locs(self, raw):
     """Warp locs.
 
-    Parameters:
+    Parameters
     -----------
     raw : mne.Raw
         an instance of mne.Raw
+
+    Returns
+    -------
+    None (operates in place)
     """
     if 'montage_info' in self.config['replace_string']:
         if isinstance(self.config['replace_string']['montage_info'], str):
