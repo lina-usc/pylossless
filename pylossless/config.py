@@ -16,7 +16,7 @@ import yaml
 class Config(dict):
     """Representation of configuration files for a pipeline procedure."""
 
-    DEFAULT_CONFIG_PATH = (Path(__file__).parent.parent /
+    DEFAULT_CONFIG_PATH = (Path(__file__).parent /
                            "assets" / "ll_default_config.yaml")
 
     def read(self, file_name):
