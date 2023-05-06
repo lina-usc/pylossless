@@ -1,4 +1,4 @@
-component	annotater	ic_type	confidence
+component	annotator	ic_type	confidence
 ICA000	ic_label	brain	0.78615147
 ICA001	ic_label	brain	0.90909696
 ICA002	ic_label	other	0.59335375

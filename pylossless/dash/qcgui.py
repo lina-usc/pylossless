@@ -249,20 +249,17 @@ class QCGUI:
             self.raw_ica.set_meas_date(self.raw.info['meas_date'])
             self.raw_ica.set_annotations(self.raw.annotations)
             df = self.pipeline.flags['ic'].data_frame
-            ic_names = self.raw_ica.ch_names
-            df['ic_names'] = ic_names
 
             bads = [ic_name
-                    for ic_name, annot
-                    in df[["ic_names", "annotate_method"]].values
-                    if annot == "manual"]
+                    for ic_name, ic_type
+                    in df[["component", "ic_type"]].values
+                    if ic_type == "manual"]
             self.raw_ica.info["bads"] = bads
         else:
             self.raw_ica = None
 
-        self.ic_types = self.pipeline.flags['ic'].data_frame
-        self.ic_types['component'] = [f'ICA{ic:03}'
-                                      for ic in self.ic_types.component]
+        df = self.pipeline.flags['ic'].data_frame
+        self.ic_types = df[df.annotator == "ic_label"]
         self.ic_types = self.ic_types.set_index('component')['ic_type']
         self.ic_types = self.ic_types.to_dict()
         cmap = {ic: ic_label_cmap[ic_type]

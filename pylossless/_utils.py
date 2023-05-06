@@ -22,7 +22,7 @@ def _icalabel_to_data_frame(ica):
     return pd.DataFrame(
         dict(
             component=ica._ica_names,
-            annotater=["ic_label"] * ica.n_components_,
+            annotator=["ic_label"] * ica.n_components_,
             ic_type=ic_type,
             confidence=ica.labels_scores_.max(1)
         )
