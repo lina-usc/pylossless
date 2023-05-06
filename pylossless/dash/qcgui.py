@@ -67,7 +67,7 @@ class QCGUI:
         """
         # TODO: Fix this pathing indexing, can likely cause errors.
         if project_root is None:
-            project_root = Path(__file__).parent.parent.parent
+            project_root = Path(__file__).parent.parent
             project_root = project_root / 'assets' / 'test_data'
         self.project_root = Path(project_root)
 
@@ -308,11 +308,12 @@ class QCGUI:
         def file_selected(value):
             if value:  # on selection of dropdown item
                 self.load_recording(value)
-                return value, None
+                return value, []
             # Needed when an initial fpath is set from the CLI
             if self.fpath:
                 self.load_recording(self.fpath)
-                return str(self.fpath.name), None
+                return str(self.fpath.name), []
+            return '', []
 
         @self.app.callback(
             Output('dropdown-output', 'children'),

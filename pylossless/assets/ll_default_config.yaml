@@ -91,7 +91,7 @@ slurm_options:
   threads_per_task: []
   time_limit: 2h
 
-########################## Nearest neigbhor ##########################
+########################## Nearest neighbor ##########################
 nearest_neighbors:
   n_nbr_ch: 3
   n_nbr_epoch: 3
