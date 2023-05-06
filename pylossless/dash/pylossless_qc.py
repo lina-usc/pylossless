@@ -11,8 +11,10 @@ desc = 'Launch QCR dashboard with optional directory and filename arguments.'
 
 
 def launch_dash_app(directory=None, filepath=None, disable_buttons=False,
-                    debug=False, host='127.0.0.1', port=8050):
+                    debug=False, host='127.0.0.1', port=None):
     """Launch dashboard."""
+    if not port:
+        port = 8050
     app = get_app(fpath=filepath, project_root=directory,
                   disable_buttons=disable_buttons)
     app.run_server(debug=debug, host=host, port=port)
@@ -22,15 +24,17 @@ def main():
     """Parse arguments for CLI."""
     disable_button_help = ('If included, Folder and Save buttons are'
                            ' deactivated')
+    port_help = ('port used to serve application. If not set, defaults to 8050'
+                 )
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument('--directory', help='path to the project folder')
     parser.add_argument('--filepath', help='path to the EDF file to load')
     parser.add_argument('--disable_buttons', action='store_true',
                         help=disable_button_help)
-    parser.add_argument('debug', action='store_True',
+    parser.add_argument('debug', action='store_true',
                         help='If set, run application in debug mode')
     parser.add_argument('--host', help='host IP used to serve application')
-    parser.add_argument('--port', help='port used to serve application')
+    parser.add_argument('--port', help=port_help)
     args = parser.parse_args()
     launch_dash_app(args.directory, args.filepath, args.disable_buttons,
                     args.debug, args.host, args.port)
