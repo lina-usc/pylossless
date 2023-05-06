@@ -534,17 +534,20 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
             return
 
         if slider_val is not None:
-            self.offset = self.topo_slider.max-slider_val
+            #self.offset = self.topo_slider.max-slider_val
+            self.offset = slider_val - self.nb_topo + 1
+            print('########## ', self.topo_slider.max, slider_val)
 
         titles = self.data.topo_values.index
-        titles = titles[self.offset:self.offset+self.rows*self.cols]
+        titles = titles[::-1][self.offset:self.offset+self.rows*self.cols]
         colors = [self.head_contours_color[title] for title in titles]
 
-        plot_data = self.data.topo_values.iloc[self.offset:
-                                               self.offset+self.nb_topo]
+        plot_data = self.data.topo_values.iloc[::-1].iloc[self.offset:
+                                                          self.offset +
+                                                          self.nb_topo]
         plot_data = list(plot_data.T.to_dict().values())
 
-        nb_subplots = self.rows*self.cols
+        nb_subplots = self.nb_topo  #self.rows*self.cols
         if len(plot_data) < nb_subplots:
             plot_data = np.concatenate((plot_data,
                                         [None]*(nb_subplots-len(plot_data))))

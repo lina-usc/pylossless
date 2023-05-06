@@ -1,4 +1,4 @@
-component	annotater	ic_type	confidence
+component	annotator	ic_type	confidence
 ICA000	ic_label	other	0.6413744
 ICA001	ic_label	muscle	0.66870147
 ICA002	ic_label	other	0.6644514
