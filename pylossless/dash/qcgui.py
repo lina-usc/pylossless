@@ -11,7 +11,8 @@ import tkinter as tk
 from tkinter import filedialog
 import multiprocessing
 
-import numpy as np
+
+import pandas as pd
 
 import dash
 from dash import dcc, html, no_update
@@ -137,26 +138,19 @@ class QCGUI:
 
         self.ica_visualizer.update_layout()
 
-    def update_bad_ics(self):
+    def update_bad_ics(self, annotator="manual"):
         """Add IC name to raw.info['bads'] after selection by user in app."""
         df = self.pipeline.flags['ic'].data_frame
-        ic_names = self.raw_ica.ch_names
-        df['ic_names'] = ic_names
-        df.set_index('ic_names', inplace=True)
-        for ic_name in self.raw_ica.ch_names:
-            ic_type = df.loc[ic_name, 'ic_type']
-            is_mne_bad = ic_name in self.raw_ica.info['bads']
-            was_mne_bad = df.loc[ic_name, 'annotate_method'] == 'manual'
-            if is_mne_bad:  # user added channel to info['bads']
-                df.loc[ic_name, 'annotate_method'] = 'manual'
-                df.loc[ic_name, 'status'] = 'bad'
-            elif was_mne_bad and not is_mne_bad:
-                df.loc[ic_name, 'annotate_method'] = np.nan
-                if ic_type == "brain":
-                    df.loc[ic_name, 'status'] = 'good'
-        df.reset_index(drop=True, inplace=True)
-        # TODO understand why original component values are lost to begin with
-        df["component"] = np.arange(df.shape[0])
+        manual_labels_df = pd.DataFrame(
+            dict(
+                component=self.raw_ica.info['bads'],
+                annotater=[annotator] * len(self.raw_ica.info['bads']),
+                ic_type=["manual"] * len(self.raw_ica.info['bads']),
+                confidence=[1.0] * len(self.raw_ica.info['bads'])
+                )
+        )
+        df = pd.concat((df[df.annotator != annotator], manual_labels_df))
+        self.pipeline.flags['ic'].data_frame = df
 
     def set_layout(self, disable_buttons=False):
         """Create the app.layout for the app object.
