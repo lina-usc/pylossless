@@ -1,0 +1,2 @@
+recursive-include pylossless/assets *
+include pylossless/dash/assets/logo.png
