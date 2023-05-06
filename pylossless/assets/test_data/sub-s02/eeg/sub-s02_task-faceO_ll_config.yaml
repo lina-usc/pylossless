@@ -4,42 +4,34 @@ bridge:
     bridge_z: 6
 ch_ch_sd:
     flag_crit: 0.2
-    flag_method: fixed
-    flag_vals: []
-    init_crit: 16
-    init_vals:
-    - 0.3
-    - 0.7
-    outlier_method: q
+    outlier_method: quantile
+    outliers_kwargs:
+        k: 3
+        lower: 0.15
+        upper: 0.85
 ch_low_r:
     flag_crit: 0.2
-    flag_method: fixed
-    flag_vals: []
-    init_crit: 16
-    init_vals:
-    - 0.3
-    - 0.7
-    outlier_method: q
+    outlier_method: quantile
+    outliers_kwargs:
+        k: 3
+        lower: 0.15
+        upper: 0.85
 epoch_ch_sd:
     flag_crit: 0.2
-    flag_method: fixed
-    flag_vals: []
-    init_crit: 16
-    init_vals:
-    - 0.3
-    - 0.7
-    outlier_method: q
+    outlier_method: quantile
+    outliers_kwargs:
+        k: 3
+        lower: 0.15
+        upper: 0.85
 epoch_gap:
     min_gap_ms: 2000
 epoch_low_r:
     flag_crit: 0.2
-    flag_method: fixed
-    flag_vals: []
-    init_crit: 16
-    init_vals:
-    - 0.3
-    - 0.7
-    outlier_method: q
+    outlier_method: quantile
+    outliers_kwargs:
+        k: 3
+        lower: 0.15
+        upper: 0.85
 epoching:
     epochs_args:
         baseline: null
@@ -48,21 +40,25 @@ epoching:
     overlap: 0
 filtering:
     filter_args:
-        h_freq: 100
+        h_freq: 30
         l_freq: 1
     notch_filter_args:
-        freqs: 60
-find_breaks: null
+        freqs: []
+find_breaks:
+    ignore:
+    - boundary
+    - e-255
+    min_break_duration: 10
+    t_start_after_previous: 3
+    t_stop_before_next: 0
 ica:
     ic_ic_sd:
         flag_crit: 0.2
-        flag_method: fixed
-        flag_vals: null
-        init_crit: 6
-        init_vals:
-        - 0.3
-        - 0.7
-        outlier_method: q
+        outlier_method: quantile
+        outliers_kwargs:
+            k: 6
+            lower: 0.3
+            upper: 0.7
     ica_args:
         run1:
             max_iter: auto
