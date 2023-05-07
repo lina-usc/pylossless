@@ -236,7 +236,10 @@ class QCGUI:
         self.fpath = Path(fpath)
         # iclabel_fpath = self.fpath.parent /
         #   self.fpath.name.replace("_eeg.edf", "_iclabels.tsv")
-        self.pipeline.load_ll_derivative(self.fpath)
+        try:
+            self.pipeline.load_ll_derivative(self.fpath)
+        except:
+            print(f"FAILED TO LOAD {self.fpath}")
         self.raw = self.pipeline.raw
         self.ica = self.pipeline.ica2
         if self.raw:
