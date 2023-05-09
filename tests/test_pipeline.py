@@ -5,6 +5,7 @@ import pytest
 
 import pylossless as ll
 
+import mne
 import mne_bids
 
 import openneuro
@@ -65,3 +66,20 @@ def test_pipeline_run(dataset):
     pipeline.run_with_raw(pipeline.raw)
     Path('test_config.yaml').unlink()  # delete config file
     shutil.rmtree(bids_root)
+
+
+@pytest.mark.test_find_breaks
+def test_find_breaks():
+    """Make sure MNE's annotate_break function can run."""
+    testing_path = mne.datasets.testing.data_path()
+    fname = testing_path / 'EDF' / 'test_edf_overlapping_annotations.edf'
+    raw = mne.io.read_raw_edf(fname, preload=True)
+    config = ll.config.Config()
+    config.load_default()
+    config['find_breaks'] = {}
+    config['find_breaks']['min_break_duration'] = 15
+    config.save("find_breaks_config.yaml")
+    pipeline = ll.LosslessPipeline('find_break_config.yaml')
+    pipeline.raw = raw
+    pipeline.find_breaks()
+    Path('find_breaks_config.yaml').unlink()  # delete config file
