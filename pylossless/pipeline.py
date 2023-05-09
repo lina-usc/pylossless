@@ -1052,7 +1052,7 @@ class LosslessPipeline():
         self.run_staging_script()
 
         # find breaks
-        self.find_breaks("Looking for break periods between tasks")
+        self.find_breaks(message="Looking for break periods between tasks")
 
         # OPTIONAL: Flag chs/epochs based off fixed std threshold of time axis
         self.flag_epochs_fixed_threshold()
