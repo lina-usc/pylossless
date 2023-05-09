@@ -68,8 +68,8 @@ def test_pipeline_run(dataset):
     shutil.rmtree(bids_root)
 
 
-@pytest.mark.test_find_breaks
-def test_find_breaks():
+@pytest.mark.parametrize('logging', [True, False])
+def test_find_breaks(logging):
     """Make sure MNE's annotate_break function can run."""
     testing_path = mne.datasets.testing.data_path()
     fname = testing_path / 'EDF' / 'test_edf_overlapping_annotations.edf'
@@ -81,5 +81,8 @@ def test_find_breaks():
     config.save("find_breaks_config.yaml")
     pipeline = ll.LosslessPipeline('find_break_config.yaml')
     pipeline.raw = raw
-    pipeline.find_breaks()
+    if logging:
+        pipeline.find_breaks(message="Looking for break periods between tasks")
+    else:
+        pipeline.find_breaks()
     Path('find_breaks_config.yaml').unlink()  # delete config file
