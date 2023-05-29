@@ -1,87 +1,102 @@
 from pathlib import Path
+import shutil
 from time import sleep
 import pytest
-import shutil
 
 import pylossless as ll
 
+import mne
 import mne_bids
-from mne_bids import write_raw_bids
 
 import openneuro
 
-import mne
-from mne.datasets import sample
-from mne.datasets.testing import data_path, requires_testing_data
-
-egi_mff_fname = data_path() / 'EGI' / 'test_egi.mff'
 
 def load_openneuro_bids():
-    ll_default_config = ll.config.get_default_config()
-    ll_default_config['project']['bids_montage'] = '' 
-    ll_default_config['project']['analysis_montage'] = 'standard_1020'
-    ll_default_config['project']['set_montage_kwargs']['on_missing'] = 'warn'
+    config = ll.config.Config()
+    config.load_default()
+    config['project']['bids_montage'] = ''
+    config['project']['analysis_montage'] = 'standard_1020'
+    config['project']['set_montage_kwargs']['on_missing'] = 'warn'
 
-    #Shamelessly copied from https://mne.tools/mne-bids/stable/auto_examples/read_bids_datasets.html
-    #pip install openneuro-py
+    # Shamelessly copied from
+    # https://mne.tools/mne-bids/stable/auto_examples/read_bids_datasets.html
+    # pip install openneuro-py
 
     dataset = 'ds002778'
     subject = 'pd6'
 
     # Download one subject's data from each dataset
-    bids_root = sample.data_path() / dataset
+    bids_root = Path('.') / dataset
+    # TODO: Delete this directory after test otherwise MNE will think the
+    # sample directory is outdated, and will re-download it the next time
+    # data_path() is called, which is annoying for users.
     bids_root.mkdir(exist_ok=True)
 
     openneuro.download(dataset=dataset, target_dir=bids_root,
-                    include=[f'sub-{subject}'])
-
-
+                       include=[f'sub-{subject}'])
 
     datatype = 'eeg'
     session = 'off'
     task = 'rest'
     suffix = 'eeg'
     bids_path = mne_bids.BIDSPath(subject=subject, session=session, task=task,
-                                suffix=suffix, datatype=datatype, root=bids_root)
+                                  suffix=suffix, datatype=datatype,
+                                  root=bids_root)
 
     while not bids_path.fpath.with_suffix('.bdf').exists():
         print(list(bids_path.fpath.glob('*')))
         sleep(1)
     raw = mne_bids.read_raw_bids(bids_path)
-    return raw, ll_default_config
-
-def test_egi_mff():
-    """Test running full pipeline on EGI MFF simple binary files."""
-    egi_mff_fname = data_path() / 'EGI' / 'test_egi.mff'
-    bids_path = ll.bids.convert_recording_to_bids(mne.io.read_raw_egi,
-                        import_kwargs={'input_fname':egi_mff_fname},
-                        bids_path_kwargs={'subject':'testegi','task':'test','root':'tmp_test_files'},
-                        import_events=False,
-                        overwrite=True)
-
-    ll_default_config = ll.config.get_default_config()
-    ll_default_config['project']['analysis_montage'] = 'GSN-HydroCel-129'
-    ll_default_config['project']['set_montage_kwargs'] = {'match_alias':True}
-    ll.config.save_config(ll_default_config, "project_ll_config_test_egi.yaml")
-
-    pipeline = ll.LosslessPipeline('project_ll_config_test_egi.yaml')
-    pipeline.run(bids_path, save=False)
-    Path('project_ll_config_test_egi.yaml').unlink()
-    shutil.rmtree(bids_path.root)
+    annots = mne.Annotations(onset=[1, 15],
+                             duration=[1, 1],
+                             description=['test_annot', 'test_annot'])
+    raw.set_annotations(annots)
+    return raw, config, bids_root
 
 
-@pytest.mark.parametrize('dataset', ['openneuro'])
-def test_pipeline_run(dataset):
+# @pytest.mark.xfail
+@pytest.mark.parametrize('dataset, find_breaks', [('openneuro', True),
+                                                  ('openneuro', False)])
+def test_pipeline_run(dataset, find_breaks):
     """test running the pipeline."""
     if dataset == 'openneuro':
-        raw, ll_default_config = load_openneuro_bids()
-    elif dataset == 'egi_mff':
-        raw, ll_default_config = load_test_egi_mff()
+        raw, config, bids_root = load_openneuro_bids()
 
-    ll.config.save_config(ll_default_config, "project_ll_config.yaml")
-    pipeline = ll.LosslessPipeline('my_project_ll_config.yaml')
-    pipeline.run(raw.pick('eeg', exclude=['EXG1', 'EXG2', 'EXG3', 'EXG4', 'EXG5', 'EXG6', 'EXG7', 'EXG8']))
-    Path('my_project_ll_config.yaml').unlink()  # delete config file we made
+    if find_breaks:
+        config['find_breaks'] = {}
+        config['find_breaks']['min_break_duration'] = 9
+        config['find_breaks']['t_start_after_previous'] = 1
+        config['find_breaks']['t_stop_before_next'] = 0
+    config.save("test_config.yaml")
+    pipeline = ll.LosslessPipeline('test_config.yaml')
+    not_in_1020 = ['EXG1', 'EXG2', 'EXG3', 'EXG4',
+                   'EXG5', 'EXG6', 'EXG7', 'EXG8']
+    pipeline.raw = raw.pick('eeg',
+                            exclude=not_in_1020).load_data()
+    pipeline.run_with_raw(pipeline.raw)
 
-# TODO: Add a save-load roundtrip test
-#          - Check that FlaggedEpochs indices are preserved save-load roundtrip
+    if find_breaks:
+        assert 'BAD_break' in raw.annotations.description
+
+    Path('test_config.yaml').unlink()  # delete config file
+    shutil.rmtree(bids_root)
+
+
+@pytest.mark.parametrize('logging', [True, False])
+def test_find_breaks(logging):
+    """Make sure MNE's annotate_break function can run."""
+    testing_path = mne.datasets.testing.data_path()
+    fname = testing_path / 'EDF' / 'test_edf_overlapping_annotations.edf'
+    raw = mne.io.read_raw_edf(fname, preload=True)
+    config = ll.config.Config()
+    config.load_default()
+    config['find_breaks'] = {}
+    config['find_breaks']['min_break_duration'] = 15
+    config.save("find_breaks_config.yaml")
+    pipeline = ll.LosslessPipeline('find_break_config.yaml')
+    pipeline.raw = raw
+    if logging:
+        pipeline.find_breaks(message="Looking for break periods between tasks")
+    else:
+        pipeline.find_breaks()
+    Path('find_breaks_config.yaml').unlink()  # delete config file

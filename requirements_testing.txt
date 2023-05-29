@@ -2,3 +2,4 @@ pytest
 flake8
 codespell
 pydocstyle
+coverage

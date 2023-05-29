@@ -30,7 +30,7 @@ class MNEVisualizer:
     """Visualize an mne.io.raw object in a dash graph."""
 
     def __init__(self, app, inst, dcc_graph_kwargs=None,
-                 dash_id_suffix='',
+                 dash_id_suffix=None,
                  show_time_slider=True, show_ch_slider=True,
                  scalings='auto', zoom=2, remove_dc=True,
                  annot_created_callback=None, refresh_inputs=None,
@@ -86,13 +86,15 @@ class MNEVisualizer:
         self.annot_created_callback = annot_created_callback
         self.new_annot_desc = 'selected_time'
         self.mne_annots = None
+        self.loading_div = None
 
         # setting component ids based on dash_id_suffix
         default_ids = ['graph', 'ch-slider', 'time-slider',
-                       'container-plot', 'output', 'mne-annotations']
+                       'container-plot', 'output', 'mne-annotations',
+                       'loading', "loading-output"]
         self.dash_ids = {id_: (id_ + f'_{dash_id_suffix}')
-                         for id_
-                         in default_ids}
+                         if dash_id_suffix else id_
+                         for id_ in default_ids}
         modebar_buttons = {'modeBarButtonsToAdd': ["eraseshape"],
                            'modeBarButtonsToRemove': ['zoom', 'pan']}
         self.dcc_graph_kwargs = dict(id=self.dash_ids['graph'],
@@ -112,9 +114,11 @@ class MNEVisualizer:
         self.inst = inst
 
         # initialization subroutines
-        self.init_sliders()
-        self.init_annot_store()
-        self.set_div()
+        self._init_sliders()
+        self._init_annot_store()
+        self._set_loading_icon()
+        self._set_div()
+
         self.initialize_layout()
         if set_callbacks:
             self.set_callback()
@@ -308,7 +312,8 @@ class MNEVisualizer:
         if self.refresh_inputs:
             args += self.refresh_inputs
 
-        @self.app.callback(*args, suppress_callback_exceptions=False)
+        @self.app.callback(*args, suppress_callback_exceptions=False,
+                           prevent_initial_call=False)
         def callback(ch, time, click_data, relayout_data, *args):
             if not self.inst:
                 return dash.no_update
@@ -321,11 +326,14 @@ class MNEVisualizer:
                                           for inp
                                           in self.refresh_inputs])
 
+            update_layout = False
             ctx = dash.callback_context
-            if len(ctx.triggered[0]['prop_id'].split('.')) == 2:
-                object_, dash_event = ctx.triggered[0]["prop_id"].split('.')
-                if object_ == self.dash_ids['graph']:
 
+            events = [event['prop_id'].split('.') for event in ctx.triggered
+                      if len(event['prop_id'].split('.')) == 2]
+            for object_, dash_event in events:
+
+                if object_ == self.dash_ids['graph']:
                     if dash_event == 'clickData':
                         # Working on traces
                         logger.debug('** Trace selected')
@@ -335,7 +343,7 @@ class MNEVisualizer:
                             self.inst.info['bads'].pop()
                         else:
                             self.inst.info['bads'].append(ch_name)
-                        self.update_layout()
+                        update_layout = True
 
                     elif dash_event == 'relayoutData':
                         # Working on annotations
@@ -378,15 +386,18 @@ class MNEVisualizer:
                                 annot = self.mne_annots.data[name]
                                 annot.onset = x0
                                 annot.duration = x1 - x0
-
                         else:
-                            return no_update
-                        self.refresh_shapes()
+                            continue
+                        update_layout = True
 
                 elif object_ in update_layout_ids:
-                    self.update_layout(ch_slider_val=ch, time_slider_val=time)
+                    update_layout = True
 
-            return self.graph.figure
+            if update_layout:
+                self.update_layout(ch_slider_val=ch, time_slider_val=time)
+                return self.graph.figure
+
+            return no_update
 
     @property
     def nb_channels(self):
@@ -407,7 +418,7 @@ class MNEVisualizer:
             return self.inst.times
         return [0]
 
-    def init_sliders(self):
+    def _init_sliders(self):
         """Initialize the Channel and Time dcc.Slider components."""
         self.channel_slider = dcc.Slider(id=self.dash_ids["ch-slider"],
                                          min=self.n_sel_ch - 1,
@@ -442,11 +453,21 @@ class MNEVisualizer:
         if not self.show_time_slider:
             self.time_slider_div.style.update({'display': 'none'})
 
-    def init_annot_store(self):
+    def _init_annot_store(self):
         """Initialize the dcc.Store component of mne annotations."""
         self.mne_annots = dcc.Store(id=self.dash_ids["mne-annotations"])
 
-    def set_div(self):
+    def _set_loading_icon(self):
+        """Add the loading icon."""
+        loading = dcc.Loading(
+            id=self.dash_ids['loading'],
+            type="circle",
+            children=html.Div(id=self.dash_ids['loading-output'])
+        )
+        self.loading_div = html.Div(loading)
+        self.graph_div.children.append(self.loading_div)
+
+    def _set_div(self):
         """Build the final html.Div component to be returned."""
         # include both the timeseries graph and the sliders
         # note that the order of components is important
