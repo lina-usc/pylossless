@@ -50,9 +50,6 @@ def test_GridTopoPlot():
 
 
 # chromedriver: https://chromedriver.storage.googleapis.com/index.html?path=114.0.5735.90/
-import os 
-os.environ['PATH'] = os.environ['PATH'] + ':/Users/christian/Code/pylossless'
-
 def test_TopoViz(dash_duo):
     raw, ica = get_raw_ica()
 
