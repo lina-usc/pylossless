@@ -14,7 +14,8 @@ jobs:
     - name: Install Pylossless & Deps
       run: pip install -e .
     - name: Install testing dependencies
-      run: pip install -r requirements_testing.txt &
+      run: pip install -r requirements_testing.txt
+    - name Install QC depedencies
       run: pip install -r requirements_qc.txt      
     - name: install openneuro
       run: pip install openneuro-py
