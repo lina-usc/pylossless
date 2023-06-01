@@ -5,6 +5,7 @@
 # License: MIT
 from copy import copy
 import warnings
+from collections import OrderedDict
 
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -85,7 +86,7 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
         self.info = None
         self.pos = None
         self.contours = None
-        self.data = data
+        self.__data = data
         self.pos = None
         self.outlines = None
         self.color = color
@@ -112,6 +113,14 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
         self.set_data(data)
         self.plot_topo()
 
+    @property
+    def data(self):
+        return self.__data
+
+    @data.setter
+    def data(self, data):
+        self.set_data(data)
+
     def set_data(self, data):
         """Set the data used for plotting.
 
@@ -123,8 +132,8 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
         """
         if data is None:
             return
-        self.data = data
-        names = list(self.data.keys())
+        self.__data = OrderedDict(data)
+        names = list(self.__data.keys())
         self.info = create_info(names, sfreq=256, ch_types="eeg")
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -185,7 +194,7 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
                                           extrapolate=extrapolate,
                                           outlines=self.outlines,
                                           border='mean')
-        interp.set_values(np.array(list(self.data.values())))
+        interp.set_values(np.array(list(self.__data.values())))
         Zi = interp.set_locations(Xi, Yi)()
 
         # Clip to the outer circler
@@ -229,7 +238,7 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
         -------
             A plotly.graph_objects.Figure object.
         """
-        if self.data is None:
+        if self.__data is None:
             return
 
         heatmap_trace = go.Heatmap(showscale=self.colorbar,
@@ -308,9 +317,9 @@ class GridTopoPlot:
         self.figure = None
 
         if data is None:
-            self.data = None
+            self.__data = None
             return
-        self.data = __check_shape__(rows, cols, data)
+        self.__data = __check_shape__(rows, cols, data)
 
         if figure is None:
             self.figure = make_subplots(rows=rows, cols=cols,
@@ -325,7 +334,7 @@ class GridTopoPlot:
                                 in enumerate(zip(montage_row, data_row,
                                                  color_row))]
                                for row, (montage_row, data_row, color_row)
-                               in enumerate(zip(montage, self.data,
+                               in enumerate(zip(montage, self.__data,
                                                 self.color))])
 
     @property
