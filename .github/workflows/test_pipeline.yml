@@ -19,7 +19,7 @@ jobs:
       run: pip install openneuro-py
     - name: Test Pipeline
       run: | 
-        coverage run **/tests/test_*.py
+        coverage run -m pytest
     - name: Upload coverage to codecov
       uses: codecov/codecov-action@v3
       with:
