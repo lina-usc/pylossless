@@ -12,7 +12,6 @@ import pandas as pd
 
 def _icalabel_to_data_frame(ica):
     """Export IClabels to pandas DataFrame."""
-
     ic_type = [''] * ica.n_components_
     for label, comps in ica.labels_.items():
         for comp in comps:
