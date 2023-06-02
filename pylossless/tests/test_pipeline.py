@@ -88,15 +88,16 @@ def test_find_breaks(logging):
     testing_path = mne.datasets.testing.data_path()
     fname = testing_path / 'EDF' / 'test_edf_overlapping_annotations.edf'
     raw = mne.io.read_raw_edf(fname, preload=True)
+    config_fname = "find_breaks_config.yaml"
     config = ll.config.Config()
     config.load_default()
     config['find_breaks'] = {}
     config['find_breaks']['min_break_duration'] = 15
-    config.save("find_breaks_config.yaml")
-    pipeline = ll.LosslessPipeline('find_break_config.yaml')
+    config.save(config_fname)
+    pipeline = ll.LosslessPipeline(config_fname)
     pipeline.raw = raw
     if logging:
         pipeline.find_breaks(message="Looking for break periods between tasks")
     else:
         pipeline.find_breaks()
-    Path('find_breaks_config.yaml').unlink()  # delete config file
+    Path(config_fname).unlink()  # delete config file
