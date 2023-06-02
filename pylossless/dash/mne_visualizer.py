@@ -276,11 +276,12 @@ class MNEVisualizer:
         self.layout.yaxis['ticktext'] = ch_names
         ch_types_list = self.inst.get_channel_types()
         ch_types = ch_types_list[::-1][first_sel_ch:last_sel_ch]
-        ch_zip = zip(ch_names, data, self.traces, ch_types)
-        for i, (ch_name, signal, trace, ch_type) in enumerate(ch_zip):
+        ch_zip = zip(range(1, self.n_sel_ch+1), ch_names,
+                     data, self.traces, ch_types)
+        for i, ch_name, signal, trace, ch_type in ch_zip:
             trace.x = np.round(times, 3)
             step_trace = signal / self._get_norm_factor(ch_type)
-            trace.y = step_trace - (self.n_sel_ch - i - 1)
+            trace.y = step_trace + i - self.n_sel_ch
             trace.name = ch_name
             if ch_name in self.inst.info['bads']:
                 trace.line.color = '#d3d3d3'

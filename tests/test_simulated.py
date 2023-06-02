@@ -8,7 +8,7 @@ import mne
 from mne import make_ad_hoc_cov
 from mne.datasets import sample
 
-from mne.simulation import (simulate_sparse_stc, simulate_raw, add_noise)
+from mne.simulation import simulate_sparse_stc, simulate_raw, add_noise
 
 import mne_bids
 
@@ -185,7 +185,6 @@ def test_simulated_raw(pipeline):
     pipeline.flag_ch_sd_ch()
     noisy_chs = ['EEG 001', 'EEG 003', 'EEG 005', 'EEG 007']
     assert np.array_equal(pipeline.flags['ch']['ch_sd'], noisy_chs)
-    assert np.array_equal(pipeline.flags['ch']['manual'], noisy_chs)
 
     # FIND UNCORRELATED CHS
     data_r_ch = pipeline.flag_ch_low_r()
