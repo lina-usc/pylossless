@@ -44,7 +44,7 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
 
         Parameters
         ----------
-        montage : mne.channels.DigMontage
+        montage : mne.channels.DigMontage | str
             Montage for digitized electrode and headshape position data.
             See mne.channels.make_standard_montage(), and
             mne.channels.get_builtin_montages() for more information
@@ -86,7 +86,6 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
         self.pos = None
         self.contours = None
         self.__data = None
-        self.data = data
         self.pos = None
         self.outlines = None
         self.color = color
@@ -110,7 +109,7 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
         if data is None:
             return
 
-        self.set_data(data)
+        self.data = data
         self.plot_topo()
 
     @property
