@@ -1,49 +1,8 @@
 labels	ch_names
-manual	A27
-manual	A5
-manual	B10
-manual	B16
-manual	B17
-manual	B27
-manual	B28
-manual	C10
-manual	C12
-manual	C17
-manual	C18
-manual	C3
-manual	Status
-outliers	"<xarray.DataArray 'ch' ()>
-array('A5', dtype='<U6')
-Coordinates:
-    ch       <U6 'A5'"
-outliers	"<xarray.DataArray 'ch' ()>
-array('A27', dtype='<U6')
-Coordinates:
-    ch       <U6 'A27'"
-outliers	"<xarray.DataArray 'ch' ()>
-array('B10', dtype='<U6')
-Coordinates:
-    ch       <U6 'B10'"
-outliers	"<xarray.DataArray 'ch' ()>
-array('C3', dtype='<U6')
-Coordinates:
-    ch       <U6 'C3'"
-outliers	"<xarray.DataArray 'ch' ()>
-array('C10', dtype='<U6')
-Coordinates:
-    ch       <U6 'C10'"
-outliers	"<xarray.DataArray 'ch' ()>
-array('C17', dtype='<U6')
-Coordinates:
-    ch       <U6 'C17'"
-outliers	"<xarray.DataArray 'ch' ()>
-array('C18', dtype='<U6')
-Coordinates:
-    ch       <U6 'C18'"
-outliers	"<xarray.DataArray 'ch' ()>
-array('Status', dtype='<U6')
-Coordinates:
-    ch       <U6 'Status'"
+ch_sd	B10
+ch_sd	C1
+ch_sd	C10
+ch_sd	C18
 bridge	B16
 bridge	B17
 bridge	B27

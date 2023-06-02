@@ -550,7 +550,7 @@ class LosslessPipeline():
                             preload=preload, **epoching_kwargs)
         epochs = (epochs.pick(picks=picks, exclude='bads')
                         .pick(picks=None,
-                              exclude=list(self.flags["ch"]['manual'])
+                              exclude=list(self.flags["ch"].get_flagged())
                               )
                   )
         if rereference:
@@ -780,7 +780,7 @@ class LosslessPipeline():
     def get_n_nbr(self):
         """Calculate nearest neighbour correlation for channels."""
         # Calculate nearest neighbour correlation on
-        # non-'manual' flagged channels and epochs...
+        # non-flagged channels and epochs...
         epochs = self.get_epochs()
         n_nbr_ch = self.config['nearest_neighbors']['n_nbr_ch']
         return chan_neighbour_r(epochs, n_nbr_ch, 'max'), epochs
@@ -795,7 +795,7 @@ class LosslessPipeline():
             an instance of `numpy.array`
         """
         # Calculate nearest neighbour correlation on
-        # non-'manual' flagged channels and epochs...
+        # non-flagged channels and epochs...
         data_r_ch = self.get_n_nbr()[0]
 
         # Create the window criteria vector for flagging low_r chan_info...
@@ -854,9 +854,9 @@ class LosslessPipeline():
         data_r_ch : `numpy.array`.
             an instance of `numpy.array`.
         """
-        if len(self.flags["ch"]['manual']):
+        if len(self.flags["ch"].get_flagged()):
             ch_sel = [ch for ch in data_r_ch.ch.values
-                      if ch not in self.flags["ch"]['manual']]
+                      if ch not in self.flags["ch"].get_flagged()]
             data_r_ch = data_r_ch.sel(ch=ch_sel)
 
         bad_ch_names = [str(data_r_ch.median("epoch")
@@ -878,7 +878,7 @@ class LosslessPipeline():
         epochs of time. Time segments are flagged for removal.
         """
         # Calculate nearest neighbour correlation on
-        # non-'manual' flagged channels and epochs...
+        # non-flagged channels and epochs...
         data_r_ch, epochs = self.get_n_nbr()
 
         bad_epoch_inds = _detect_outliers(data_r_ch, flag_dim='epoch',
