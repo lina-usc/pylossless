@@ -47,7 +47,7 @@ def test_GridTopoPlot():
     offset = 2
     nb_topo = 4
     plot_data = topo_data.topo_values.iloc[::-1].iloc[offset:offset+nb_topo]
-    plot_data = list(plot_data.T.to_dict().values())
+    plot_data = plot_data.values.tolist()
 
     GridTopoPlot(2, 2, raw.get_montage(), plot_data,
                  res=200, width=300, height=300,
