@@ -504,6 +504,10 @@ class LosslessPipeline():
         duration = (np.ones_like(t_onset) /
                     epochs.info['sfreq'] * len(epochs.times)
                     )
+
+        t_onset += (2 / epochs.info['sfreq'])  # start 2 samples later
+        duration -= (4 / epochs.info['sfreq'])  # Shave 4 samples from end
+
         description = [f'bad_pylossless_{event_type}'] * len(t_onset)
         annotations = mne.Annotations(t_onset, duration, description,
                                       orig_time=self.raw.annotations.orig_time)
