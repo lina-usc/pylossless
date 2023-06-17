@@ -176,10 +176,16 @@ pipeline.raw = raw_sim
 @pytest.mark.parametrize('pipeline',
                          [(pipeline)])
 def test_simulated_raw(pipeline):
+    pipeline._check_sfreq()
+    # This file should have been downsampled
+    assert pipeline.raw.info['sfreq'] == 600
     # FIND NOISY EPOCHS
     pipeline.flag_ch_sd_epoch()
     # Epoch 2 was made noisy and should be flagged.
     assert np.array_equal(pipeline.flags['epoch']['ch_sd'], [2])
+    epochs = pipeline.get_epochs()
+    # only epoch at indice 2 should have been dropped
+    assert all(not tup or i == 2 for i, tup in enumerate(epochs.drop_log))
 
     # RUN FLAG_CH_SD
     pipeline.flag_ch_sd_ch()
