@@ -7,6 +7,7 @@
 
 """Classes and Functions for running the Lossless Pipeline."""
 
+from copy import deepcopy
 from pathlib import Path
 from functools import partial
 
@@ -464,6 +465,24 @@ class LosslessPipeline():
         """Load the config file."""
         self.config = Config().read(self.config_fname)
 
+    def _check_sfreq(self):
+        """Make sure sampling frequency is an integer.
+
+        If the sfreq is a float, it will cause slightly incorrect mappings
+        from epochs to raw annotations. For example the annotation might start
+        at 0.98 when it should start at 1, which will result in 2 epochs
+        being dropped the next time data are epoched.
+        """
+        sfreq = self.raw.info['sfreq']
+        if not sfreq.is_integer():
+            # we can't use f-strings in the logging module
+            msg = ("The Raw sampling frequency is %.2f. a non-integer"
+                   " sampling frequency can cause incorrect mapping of epochs "
+                   "to annotations. downsampling to %d" % (sfreq, int(sfreq)))
+            logger.warn(msg)
+            self.raw.resample(int(sfreq))
+        return self.raw
+
     def set_montage(self):
         """Set the montage."""
         analysis_montage = self.config['project']['analysis_montage']
@@ -501,8 +520,12 @@ class LosslessPipeline():
         """
         # Concatenate epoched data back to continuous data
         t_onset = epochs.events[inds, 0] / epochs.info['sfreq']
+        # We exclude the last sample from the duration because
+        # if the annot lasts the whole duration of the epoch
+        # it's end will coincide with the first sample of the
+        # next epoch, causing it to erroneously be rejected.
         duration = (np.ones_like(t_onset) /
-                    epochs.info['sfreq'] * len(epochs.times)
+                    epochs.info['sfreq'] * len(epochs.times[:-1])
                     )
         description = [f'bad_pylossless_{event_type}'] * len(t_onset)
         annotations = mne.Annotations(t_onset, duration, description,
@@ -543,14 +566,19 @@ class LosslessPipeline():
         # TODO: automatically load detrend/preload description from MNE.
         logger.info("🧹 Epoching..")
         events = self.get_events()
-        epoching_kwargs = self.config['epoching']['epochs_args']
+        epoching_kwargs = deepcopy(self.config['epoching']['epochs_args'])
+
+        # MNE epoching is end-inclusive, causing an extra time
+        # sample be included. This removes that extra sample:
+        # https://github.com/mne-tools/mne-python/issues/6932
+        epoching_kwargs["tmax"] -= 1 / self.raw.info['sfreq']
         if detrend is not None:
             epoching_kwargs['detrend'] = detrend
         epochs = mne.Epochs(self.raw, events=events,
                             preload=preload, **epoching_kwargs)
         epochs = (epochs.pick(picks=picks, exclude='bads')
                         .pick(picks=None,
-                              exclude=list(self.flags["ch"]['manual'])
+                              exclude=list(self.flags["ch"].get_flagged())
                               )
                   )
         if rereference:
@@ -780,7 +808,7 @@ class LosslessPipeline():
     def get_n_nbr(self):
         """Calculate nearest neighbour correlation for channels."""
         # Calculate nearest neighbour correlation on
-        # non-'manual' flagged channels and epochs...
+        # non-flagged channels and epochs...
         epochs = self.get_epochs()
         n_nbr_ch = self.config['nearest_neighbors']['n_nbr_ch']
         return chan_neighbour_r(epochs, n_nbr_ch, 'max'), epochs
@@ -795,7 +823,7 @@ class LosslessPipeline():
             an instance of `numpy.array`
         """
         # Calculate nearest neighbour correlation on
-        # non-'manual' flagged channels and epochs...
+        # non-flagged channels and epochs...
         data_r_ch = self.get_n_nbr()[0]
 
         # Create the window criteria vector for flagging low_r chan_info...
@@ -854,9 +882,9 @@ class LosslessPipeline():
         data_r_ch : `numpy.array`.
             an instance of `numpy.array`.
         """
-        if len(self.flags["ch"]['manual']):
+        if len(self.flags["ch"].get_flagged()):
             ch_sel = [ch for ch in data_r_ch.ch.values
-                      if ch not in self.flags["ch"]['manual']]
+                      if ch not in self.flags["ch"].get_flagged()]
             data_r_ch = data_r_ch.sel(ch=ch_sel)
 
         bad_ch_names = [str(data_r_ch.median("epoch")
@@ -878,7 +906,7 @@ class LosslessPipeline():
         epochs of time. Time segments are flagged for removal.
         """
         # Calculate nearest neighbour correlation on
-        # non-'manual' flagged channels and epochs...
+        # non-flagged channels and epochs...
         data_r_ch, epochs = self.get_n_nbr()
 
         bad_epoch_inds = _detect_outliers(data_r_ch, flag_dim='epoch',
@@ -1046,6 +1074,10 @@ class LosslessPipeline():
 
     @lossless_time
     def _run(self):
+
+        # Make sure sampling frequency is an integer
+        self._check_sfreq()
+
         self.set_montage()
 
         # 1. Execute the staging script if specified.

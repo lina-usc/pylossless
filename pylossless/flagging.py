@@ -49,8 +49,6 @@ class FlaggedChs(dict):
     def __init__(self, ll, *args, **kwargs):
         """Initialize class."""
         super().__init__(*args, **kwargs)
-        if 'manual' not in self:
-            self['manual'] = []
         self.ll = ll
 
     def add_flag_cat(self, kind, bad_ch_names, *args):
@@ -73,9 +71,14 @@ class FlaggedChs(dict):
         if isinstance(bad_ch_names, xr.DataArray):
             bad_ch_names = bad_ch_names.values
         self[kind] = bad_ch_names
+
+    def get_flagged(self):
+        """Return a list of channels flagged by the lossless pipeline."""
         flagged_chs = list(self.values())
+        if not flagged_chs:
+            return []
         flagged_chs = np.unique(np.concatenate(flagged_chs))  # drop duplicates
-        self['manual'] = flagged_chs.tolist()
+        return flagged_chs.tolist()
 
     def rereference(self, inst, **kwargs):
         """Re-reference the Raw object attached to the LosslessPipeline.
@@ -90,7 +93,7 @@ class FlaggedChs(dict):
         """
         # Concatenate and remove duplicates
         bad_chs = list(set(self.ll.find_outlier_chs(inst) +
-                           self['manual'] +
+                           self.get_flagged() +
                            inst.info['bads']))
         ref_chans = [ch for ch in inst.copy().pick("eeg").ch_names
                      if ch not in bad_chs]
@@ -160,8 +163,6 @@ class FlaggedEpochs(dict):
             keyword arguments accepted by python's dictionary class.
         """
         super().__init__(*args, **kwargs)
-        if 'manual' not in self:
-            self['manual'] = []
 
         self.ll = ll
 
@@ -182,7 +183,6 @@ class FlaggedEpochs(dict):
             being assessed by the LosslessPipeline.
         """
         self[kind] = bad_epoch_inds
-        self['manual'] = np.unique(np.concatenate(list(self.values())))
         self.ll.add_pylossless_annotations(bad_epoch_inds, kind, epochs)
 
     def load_from_raw(self, raw):

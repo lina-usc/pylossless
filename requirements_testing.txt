@@ -3,3 +3,5 @@ flake8
 codespell
 pydocstyle
 coverage
+dash[testing]
+selenium
