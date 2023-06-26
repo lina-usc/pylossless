@@ -500,11 +500,14 @@ class LosslessPipeline():
             self.raw.set_montage(montage,
                                  **montage_kwargs)
         else:  # If the montage is a filepath of a custom montage
-            raise ValueError('self.config["project"]["analysis_montage"]'
-                             ' should be one of the default MNE montages as'
-                             ' specified by'
-                             ' mne.channels.get_builtin_montages().')
-            # montage = read_custom_montage(chan_locs)
+            # For now, assuming it MUST end in .fif
+            if self.config["project"]["analysis_montage"].endswith('.fif'):
+                logger.info(f"LOSSLESS: 🚩 Loading Custom Montage")
+                montage = mne.channels.read_dig_fif(self.config["project"]["analysis_montage"])
+                self.raw.set_montage(montage,
+                                 **montage_kwargs)
+            else:
+                raise ValueError('Custom montages must be in .fif format.')
 
     def add_pylossless_annotations(self, inds, event_type, epochs):
         """Add annotations for flagged epochs.
