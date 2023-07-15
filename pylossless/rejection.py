@@ -3,7 +3,7 @@
 #
 # License: MIT
 
-"""Classe to implement a policy on how to apply flags to reject artifacts."""
+"""Class to implement a policy on how to apply flags to reject artifacts."""
 
 import numpy as np
 
