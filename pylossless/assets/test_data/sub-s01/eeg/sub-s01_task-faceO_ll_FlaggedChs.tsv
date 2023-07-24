@@ -1,0 +1,14 @@
+labels	ch_names
+ch_sd	B14
+ch_sd	C1
+ch_sd	C10
+low_r	B1
+low_r	C2
+low_r	D15
+bridge	A9
+bridge	A10
+bridge	A11
+bridge	A12
+bridge	A25
+bridge	A26
+rank	C15

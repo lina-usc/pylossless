@@ -1,25 +1,20 @@
+[![codecov](https://codecov.io/github/lina-usc/pylossless/branch/main/graph/badge.svg?token=SVAD8HTJNG)](https://codecov.io/github/lina-usc/pylossless)
 
 ![logo](./docs/source/_static/logo_white.png)
 
-[![codecov](https://codecov.io/github/lina-usc/pylossless/branch/main/graph/badge.svg?token=SVAD8HTJNG)](https://codecov.io/github/lina-usc/pylossless)
-
-
 ![QCR Dashboard](./docs/source/_images/qc_screenshot.png)
 
-# **Note: This software has ALPHA status. This means that this package is young and will likely undergo frequent changes and improvements. Please report any problems or bugs via a github issues ticket.**
-
-
-- 🦾 Fully automated EEG processing pipeline built on MNE-Python.
-- :recycle: Keeps your EEG recordings in their continuous state.
-- 📝 Artifacts are annotated in your raw data.
-- 👩‍💻 Use our dashboard to review the pipelines decisions on your files.
-
+### **Note: This software has alpha status. This means that this package is young and will likely undergo frequent changes and improvements.
 
 
 ## 📘 Installation and usage instructions
 
-This package is not yet deployed on PyPI. It can therefore be installed with
+This package can be install from PyPI with
+```bash
+$ pip install pylossless
+```
 
+The development version can be installed from GitHub with
 ```bash
 $ git clone git@github.com:lina-usc/pylossless.git
 $ pip install --editable ./pylossless
@@ -40,7 +35,7 @@ Below is a minimal example that runs the pipeline one of MNE's sample files.
 import pylossless as ll 
 import mne
 fname = mne.datasets.sample.data_path() / 'MEG' / 'sample' /  'sample_audvis_raw.fif'
-raw = mne.io.read_raw_fif(fname, preload=True).pick_types(eeg=True)  # pick EEG chans.
+raw = mne.io.read_raw_fif(fname, preload=True)
 
 config = ll.config.Config()
 config.load_default()
@@ -61,7 +56,42 @@ Once you are ready, you can save your file:
 pipeline.save(pipeline.get_derivative_path(bids_path), overwrite=True)
 ```
 
+## ▶️ Example HPC Environment Setup
+
+Assuming you are on a system such as [Narval](https://docs.alliancecan.ca/wiki/Narval/en):
+
+```bash
+module load python/3.10
+
+# Build the virtualenv in your homedir
+virtualenv --no-download eeg-env
+source eeg-env/bin/activate
+
+pip install --no-index mne
+pip install --no-index pandas
+pip install --no-index xarray
+pip install --no-index pyyaml
+pip install --no-index sklearn
+pip install mne_bids
+
+# Clone down mne-iclabel and switch to the right version and install it locally
+git clone https://github.com/mne-tools/mne-icalabel.git
+cd mne-icalabel
+git checkout maint/0.4
+pip install .
+
+# Clone down pipeline and install without reading dependencies
+git clone git@github.com:lina-usc/pylossless.git
+cd pylossless
+pip install --no-deps .
+
+# Verify that the package has installed correct with an import
+python -c 'import pylossless'
+```
+
 ## 👩‍💻 Dashboard Review
+[![Open in Colab](https://camo.githubusercontent.com/84f0493939e0c4de4e6dbe113251b4bfb5353e57134ffd9fcab6b8714514d4d1/68747470733a2f2f636f6c61622e72657365617263682e676f6f676c652e636f6d2f6173736574732f636f6c61622d62616467652e737667)](https://colab.research.google.com/github/lina-usc/pylossless/blob/main/notebooks/qc_example.ipynb)
+
 ![QCR Dashboard](./docs/source/_images/qc_screenshot.png)
 
 After running the Lossless pipeline, you can launch the Quality Control

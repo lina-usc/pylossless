@@ -15,12 +15,13 @@ jobs:
       run: pip install -e .
     - name: Install testing dependencies
       run: pip install -r requirements_testing.txt
+    - name: Install QC depedencies
+      run: pip install -r requirements_qc.txt      
     - name: install openneuro
       run: pip install openneuro-py
     - name: Test Pipeline
       run: | 
-        coverage run tests/test_simulated.py &
-        coverage run tests/test_pipeline.py
+        coverage run -m pytest
     - name: Upload coverage to codecov
       uses: codecov/codecov-action@v3
       with:

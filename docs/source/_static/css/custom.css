@@ -6,4 +6,9 @@ html[data-theme="dark"] {
     --pst-color-primary: #FFFFFF;
     --pst-color-background: #0D1012;
     --pst-color-on-background: #0E1012;
+    --pst-color-text-base: #FFFFFF;
+}
+
+html{ 
+    --pst-font-family-heading: HelveticaNeue-Light, var(--pst-font-family-base-system);
 }

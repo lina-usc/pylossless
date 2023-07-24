@@ -5,6 +5,7 @@
 # License: MIT
 from copy import copy
 import warnings
+from collections import OrderedDict
 
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -43,14 +44,13 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
 
         Parameters
         ----------
-        montage : mne.channels.DigMontage
+        montage : mne.channels.DigMontage | str
             Montage for digitized electrode and headshape position data.
             See mne.channels.make_standard_montage(), and
             mne.channels.get_builtin_montages() for more information
             on making montage objects in MNE.
-        data : mne.preprocessing.ICA | None
-            The data to use for the topoplots. Can be an instance of
-            mne.preprocessing.ICA.
+        data : OrderedDict | None
+            The data to use for the topoplots.
         figure : plotly.graph_objects.Figure | None
             Figure to use (if not None) for plotting.
         color : str
@@ -85,7 +85,7 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
         self.info = None
         self.pos = None
         self.contours = None
-        self.data = data
+        self.__data = None
         self.pos = None
         self.outlines = None
         self.color = color
@@ -109,8 +109,31 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
         if data is None:
             return
 
-        self.set_data(data)
+        self.data = data
         self.plot_topo()
+
+    @property
+    def data(self):
+        """Get accessor for the object containing the topomap data.
+
+        Returns
+        -------
+        An OrderedDict with the channel names as keys, and the values
+        to plot as values.
+        """
+        return self.__data
+
+    @data.setter
+    def data(self, data):
+        """Setter accessor for the data of the topomap.
+
+        Parameters
+        ----------
+        data : dict
+            Dictionary of channel name (key) and corresponding values
+            to be plotted.
+        """
+        self.set_data(data)
 
     def set_data(self, data):
         """Set the data used for plotting.
@@ -123,8 +146,8 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
         """
         if data is None:
             return
-        self.data = data
-        names = list(self.data.keys())
+        self.__data = OrderedDict(data)
+        names = list(self.__data.keys())
         self.info = create_info(names, sfreq=256, ch_types="eeg")
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -185,7 +208,7 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
                                           extrapolate=extrapolate,
                                           outlines=self.outlines,
                                           border='mean')
-        interp.set_values(np.array(list(self.data.values())))
+        interp.set_values(np.array(list(self.__data.values())))
         Zi = interp.set_locations(Xi, Yi)()
 
         # Clip to the outer circler
@@ -229,7 +252,7 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
         -------
             A plotly.graph_objects.Figure object.
         """
-        if self.data is None:
+        if self.__data is None:
             return
 
         heatmap_trace = go.Heatmap(showscale=self.colorbar,
@@ -308,9 +331,9 @@ class GridTopoPlot:
         self.figure = None
 
         if data is None:
-            self.data = None
+            self.__data = None
             return
-        self.data = __check_shape__(rows, cols, data)
+        self.__data = __check_shape__(rows, cols, data)
 
         if figure is None:
             self.figure = make_subplots(rows=rows, cols=cols,
@@ -325,7 +348,7 @@ class GridTopoPlot:
                                 in enumerate(zip(montage_row, data_row,
                                                  color_row))]
                                for row, (montage_row, data_row, color_row)
-                               in enumerate(zip(montage, self.data,
+                               in enumerate(zip(montage, self.__data,
                                                 self.color))])
 
     @property
@@ -466,12 +489,12 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
                                   className=CSS['topo-dcc-div'],
                                   style=STYLE['topo-dcc-div'])
 
-        self.init_slider()
+        self._init_slider()
         self.set_data(montage, data, head_contours_color)
-        self.set_div()
+        self._set_div()
         self.figure = None
 
-        self.set_callback()
+        self._set_callback()
 
         if "standalone" in self.mode:
             self.app.layout.children.append(self.container_plot)
@@ -534,20 +557,30 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
             return
 
         if slider_val is not None:
-            self.offset = self.topo_slider.max-slider_val
+            """
+            For a total of N topomaps and a grid of M topomaps being displayed,
+            the values for the slide varies from [M-1, N-1] with an initial
+            value at N-1.
+            """
+            self.offset = slider_val - self.nb_sel_topo + 1
 
         titles = self.data.topo_values.index
-        titles = titles[self.offset:self.offset+self.rows*self.cols]
+
+        last_sel_topo = self.offset+self.nb_sel_topo
+        titles = titles[::-1][self.offset:last_sel_topo][::-1]
         colors = [self.head_contours_color[title] for title in titles]
 
-        plot_data = self.data.topo_values.iloc[self.offset:
-                                               self.offset+self.nb_topo]
+        # The indexing with ch_names is to ensure the order
+        # of the channels are compatible between plot_data and the montage
+        ch_names = [ch_name for ch_name in self.montage.ch_names
+                    if ch_name in self.data.topo_values.columns]
+        plot_data = self.data.topo_values.loc[titles, ch_names]
         plot_data = list(plot_data.T.to_dict().values())
 
-        nb_subplots = self.rows*self.cols
-        if len(plot_data) < nb_subplots:
+        if len(plot_data) < self.nb_sel_topo:
+            nb_missing_topo = self.nb_sel_topo-len(plot_data)
             plot_data = np.concatenate((plot_data,
-                                        [None]*(nb_subplots-len(plot_data))))
+                                        [None]*nb_missing_topo))
 
         self.figure = GridTopoPlot(rows=self.rows, cols=self.cols,
                                    montage=self.montage, data=plot_data,
@@ -564,14 +597,27 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
                                    ).figure
 
     @property
-    def nb_topo(self):
-        """Return the number of topoplots."""
+    def nb_sel_topo(self):
+        """Return the number of visible topoplots."""
         return self.rows * self.cols
 
-    def init_slider(self):
+    @property
+    def nb_topo(self):
+        """Return the total number of topoplots.
+
+        Returns
+        -------
+           The total thumber of topomaps, which may be a faction of
+           the number of visible topomaps at a givent time.
+        """
+        if self.data:
+            return self.data.nb_topo
+        return 0
+
+    def _init_slider(self):
         """Initialize the dcc.Slider component for the topoplots."""
         self.topo_slider = dcc.Slider(id='topo-slider',
-                                      min=self.rows * self.cols - 1,
+                                      min=self.nb_sel_topo - 1,
                                       max=self.nb_topo - 1,
                                       step=1,
                                       marks=None,
@@ -586,7 +632,7 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
         if not self.show_slider:
             self.topo_slider_div.style.update({'display': 'none'})
 
-    def set_div(self):
+    def _set_div(self):
         """Set the html.Div component for the topoplots."""
         # outer_div includes slider obj
         graph_components = [self.topo_slider_div, self.graph_div]
@@ -595,7 +641,7 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
                                        className=CSS['topo-container'],
                                        style={'display': 'none'})
 
-    def set_callback(self):
+    def _set_callback(self):
         """Create the callback for the dcc.graph component of the topoplots."""
         args = [Output('topo-graph', 'figure')]
         args += [Input('topo-slider', 'value')]

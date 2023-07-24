@@ -7,6 +7,7 @@
 
 """Classes and Functions for running the Lossless Pipeline."""
 
+from copy import deepcopy
 from pathlib import Path
 from functools import partial
 
@@ -24,231 +25,12 @@ from mne.preprocessing import annotate_break
 from mne.preprocessing import ICA
 from mne.coreg import Coregistration
 from mne.utils import logger
-import mne_icalabel
-from mne_icalabel.config import ICLABEL_LABELS_TO_MNE
 import mne_bids
 from mne_bids import get_bids_path_from_fname, BIDSPath
 
 from .config import Config
+from .flagging import FlaggedChs, FlaggedEpochs, FlaggedICs
 from ._logging import lossless_logger, lossless_time
-
-
-class FlaggedChs(dict):
-    """Object for handling flagged channels in an instance of mne.Raw.
-
-    Methods
-    -------
-    add_flag_cat:
-        Append a list of one or more channel names that should be considered
-        `'bad'` to the `'manual'` `dict` key.
-    rereference:
-        re-ference instance of mne.Raw, using the mne.Raw.set_eeg_reference
-        method. Applicable only for EEG data.
-    """
-
-    def __init__(self, ll, *args, **kwargs):
-        """Initialize class."""
-        super().__init__(*args, **kwargs)
-        if 'manual' not in self:
-            self['manual'] = []
-        self.ll = ll
-
-    def add_flag_cat(self, kind, bad_ch_names, *args):
-        """Append a list of channel names to the 'manual' dict key.
-
-        Parameters:
-        -----------
-            kind : str
-                Should be one of 'outlier', 'ch_sd', 'low_r', 'bridge', 'rank'.
-            bad_ch_names : list | tuple
-                Channel names. Will be the values for the `kind` `dict` `key`.
-        """
-        logger.debug(f'NEW BAD CHANNELS {bad_ch_names}')
-        if isinstance(bad_ch_names, xr.DataArray):
-            bad_ch_names = bad_ch_names.values
-        self[kind] = bad_ch_names
-        flagged_chs = list(self.values())
-        flagged_chs = np.unique(np.concatenate(flagged_chs))  # drop duplicates
-        self['manual'] = flagged_chs.tolist()
-
-    def rereference(self, inst, **kwargs):
-        """Re-reference instance of mne.Raw.
-
-        Parameters
-        ----------
-        inst : mne.Raw
-            An instance of mne.Raw that contains channels of type `EEG`.
-        kwargs : `dict`
-            `dict` of valid keyword arguments for the
-            `mne.Raw.set_eeg_reference` method.
-        """
-        # Concatenate and remove duplicates
-        bad_chs = list(set(self.ll.find_outlier_chs(inst) +
-                           self['manual'] +
-                           inst.info['bads']))
-        ref_chans = [ch for ch in inst.copy().pick("eeg").ch_names
-                     if ch not in bad_chs]
-        inst.set_eeg_reference(ref_channels=ref_chans,
-                               **kwargs)
-
-    # TODO: Add parameters and return.
-    def save_tsv(self, fname):
-        """Serialize channel annotations."""
-        labels = []
-        ch_names = []
-        for key in self:
-            labels.extend([key]*len(self[key]))
-            ch_names.extend(self[key])
-        pd.DataFrame({"labels": labels,
-                      "ch_names": ch_names}).to_csv(fname,
-                                                    index=False, sep="\t")
-
-    # TODO: Add parameters and return.
-    def load_tsv(self, fname):
-        """Load serialized channel annotations."""
-        out_df = pd.read_csv(fname, sep='\t')
-        for label, grp_df in out_df.groupby("labels"):
-            self[label] = grp_df.ch_names.values
-
-
-class FlaggedEpochs(dict):
-    """Object for handling flagged Epochs in an instance of mne.Epochs.
-
-    Methods
-    -------
-    add_flag_cat:
-        Append a list of indices (corresponding to Epochs in an instance of
-        mne.Epochs) to the 'manual' `dict` key.
-    """
-
-    def __init__(self, ll, *args, **kwargs):
-        """Initialize class.
-
-        Parameters
-        ----------
-        ll : LosslessPipeline
-            Instance of the lossless pipeline.
-        args : list | tuple
-            positional arguments accepted by `dict` class
-        kwargs : dict
-            keyword arguments accepted by `dict` class
-        """
-        super().__init__(*args, **kwargs)
-        if 'manual' not in self:
-            self['manual'] = []
-
-        self.ll = ll
-
-    def add_flag_cat(self, kind, bad_epoch_inds, epochs):
-        """Append a list of channel names to the 'manual' dict key.
-
-        Parameters:
-        -----------
-        kind : str
-            Should be one of 'ch_sd', 'low_r' 'ic_sd1'.
-        bad_epochs_inds : list | tuple
-            Indices for the epochs in an `mne.Epochs` object. Will be the
-            values for the `kind` `dict` `key`.
-        raw : mne.raw
-            an instance of mne.Raw
-        epochs : mne.Epochs
-            an instance of mne.Epochs
-        """
-        self[kind] = bad_epoch_inds
-        self['manual'] = np.unique(np.concatenate(list(self.values())))
-        self.ll.add_pylossless_annotations(bad_epoch_inds, kind, epochs)
-
-    # TODO: Add parameters and return.
-    def load_from_raw(self, raw):
-        """Load flagged bad epochs data from raw file."""
-        sfreq = raw.info['sfreq']
-        for annot in raw.annotations:
-            if annot['description'].startswith('bad_pylossless'):
-                ind_onset = int(np.round(annot['onset'] * sfreq))
-                ind_dur = int(np.round(annot['duration'] * sfreq))
-                inds = np.arange(ind_onset, ind_onset + ind_dur)
-                if annot['description'] not in self:
-                    self[annot['description']] = list()
-                self[annot['description']].append(inds)
-
-
-class FlaggedICs(dict):
-    """Object for handling IC classification in an instance of mne.ICA.
-
-    Attributes
-    ----------
-    fname : `pathlib.Path`
-        Filepath to the `derivatives/pylosssless` folder in the `bids_root`
-        directory.
-    ica : `mne.ICA`
-        An instance of `mne.ICA` to be passed into `mne.icalabel`
-    data_frame : `pd.DataFrame`
-        An instance of `pd.DataFrame` that contains the `dict` returned by
-        `mne.icalabel.label_components`.
-    Methods
-    -------
-    add_flag_cat :
-        Label one or more Independent Components in an instance of mne.ICA,
-        with one of the labels from mne.icalabel ('brain', 'channel' etc.).
-    label_components :
-        Labels the independent components in an instance of mne.ICA using
-        mne.icalabel.label_components. Assigns returned `dict` to
-        `self.data_frame`
-    save :
-        Save the ic_labels returned by `mne.icalabel.write_components_tsv` to
-        the `derivatives/pylossless` folder in the `bids_root` directory.
-    """
-
-    def __init__(self, *args, **kwargs):
-        """Initialize class.
-
-        Parameters
-        ----------
-        args : list | tuple
-            positional arguments accepted by `dict` class
-        kwargs : dict
-            keyword arguments accepted by `dict` class.
-        """
-        super().__init__(*args, **kwargs)
-        self.fname = None
-        self.data_frame = None
-
-    def label_components(self, epochs, ica):
-        """Classify components using mne_icalabel.
-
-        Parameters
-        ----------
-        epochs : mne.Epochs
-            instance of `mne.Epochs` to be passed into
-            `mne_icalabel.label_components`.
-        ica : mne.ICA
-            instance of `mne.ICA` to be passed into
-            `mne_icalabel.label_components`.
-        method : str (default "iclabel")
-            The proposed method for labeling components, to be passed into
-            `mne_icalabel.label_components`. Must be one of: `'iclabel'`.
-        """
-        mne_icalabel.label_components(epochs, ica, method="iclabel")
-        self.data_frame = _icalabel_to_data_frame(ica)
-
-    def save_tsv(self, fname):
-        """Save IC labels.
-
-        Parameters
-        ----------
-        fname : str | pathlib.Path
-            The output filename.
-        """
-        self.fname = fname
-        self.data_frame.to_csv(fname, sep='\t', index=False, na_rep='n/a')
-
-    # TODO: Add parameters.
-    def load_tsv(self, fname, data_frame=None):
-        """Load flagged ICs from file."""
-        self.fname = fname
-        if data_frame is None:
-            data_frame = pd.read_csv(fname, sep='\t')
-        self.data_frame = data_frame
 
 
 def epochs_to_xr(epochs, kind="ch", ica=None):
@@ -256,15 +38,22 @@ def epochs_to_xr(epochs, kind="ch", ica=None):
 
     Parameters
     ----------
-        epochs : mne.Epochs
-            an instance of mne.Epochs
-        kind : str (default 'ch')
-            The name to be passed into the `coords` argument of xr.DataArray
-            corresponding to the channel dimension of the epochs object.
-            Must be 'ch' or 'ic'.
+    epochs : mne.Epochs
+        an instance of mne.Epochs
+    kind : string
+        The name to be passed into the `coords` argument of xr.DataArray
+        corresponding to the channel dimension of the epochs object.
+        Must be ``'ch'`` or ``'ic'``.
+    ica : mne.preprocessing.ICA
+        If not ``None``, should be an instance of mne.preprocessing.ICA
+        from which to pull the names of the ICA components.
+
     Returns
     -------
-        An Xarray DataArray object.
+    xarray.DataArray
+        an instance of xarray.DataArray, with dimensions ``'epochs'``,
+        ``'time'`` (samples), and either ``'ch'`` (channels) or ``'ic'``
+        (independent components).
     """
     if kind == "ch":
         data = epochs.get_data()  # n_epochs, n_channels, n_times
@@ -282,55 +71,25 @@ def epochs_to_xr(epochs, kind="ch", ica=None):
                                 "time": epochs.times})
 
 
-def _icalabel_to_data_frame(ica):
-    """Export IClabels to pandas DataFrame."""
-    # initialize status, description and IC type
-    status = ["good"] * ica.n_components_
-    status_description = ["n/a"] * ica.n_components_
-    ic_type = ["n/a"] * ica.n_components_
-
-    # extract the component labels if they are present in the ICA instance
-    if ica.labels_:
-        for label, comps in ica.labels_.items():
-            this_status = "good" if label == "brain" else "bad"
-            if label in ICLABEL_LABELS_TO_MNE.values():
-                for comp in comps:
-                    status[comp] = this_status
-                    ic_type[comp] = label
-
-    # Create TSV.
-    return pd.DataFrame(
-        dict(
-            component=list(range(ica.n_components_)),
-            type=["ica"] * ica.n_components_,
-            description=["Independent Component"] * ica.n_components_,
-            status=status,
-            status_description=status_description,
-            annotate_method=["n/a"] * ica.n_components_,
-            annotate_author=["n/a"] * ica.n_components_,
-            ic_type=ic_type,
-        )
-    )
-
-
 def get_operate_dim(array, flag_dim):
-    """Get the Xarray.DataArray dimension to use with pipeline funcs.
+    """Get the xarray.DataArray dimension to flag for a pipeline method.
 
     Parameters
     ----------
-    array : Xarray DataArray
-        An instance of `Xarray.DataArray` that was constructed from an
-        `mne.Epochs` object, using `pylossless.pipeline.epochs_to_xr`.
-        `array` need to be 2D.
+    array : xarray.DataArray
+        An instance of Xarray.DataArray that was constructed from an
+        ``mne.Epochs`` object, using ``pylossless.pipeline.epochs_to_xr``.
+        The ``array`` must be 2D.
     flag_dim : str
-        Name of the Xarray.DataArray.dims to remove. Must be one of 'epoch',
-        'ch', or 'ic'.
+        Name of the dimension to remove in ``xarray.DataArray.dims``.
+        Must be one of ``'epoch'``, ``'ch'``, or ``'ic'``.
 
     Returns
     -------
-    list : an instance of `list`
-        a `list` containing the `dims` of the passed in `Xarray.DataArray`,
-        with the `flag_dim` removed from the list.
+    list : list
+        a list of the dimensions of the xarray.DataArray,
+        excluding the dimension that the pipeline will conduct
+        flagging operations on.
     """
     dims = list(array.dims)
     assert len(dims) == 2
@@ -503,8 +262,8 @@ def _threshold_volt_std(epochs, flag_dim, threshold=5e-5):
 def chan_neighbour_r(epochs, nneigbr, method):
     """Compute nearest Neighbor R.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     epochs : mne.Epochs
 
     nneigbr : int
@@ -658,10 +417,14 @@ def coregister(raw_edf, fiducials="estimated",  # get fiducials from fsaverage
 def warp_locs(self, raw):
     """Warp locs.
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     raw : mne.Raw
         an instance of mne.Raw
+
+    Returns
+    -------
+    None (operates in place)
     """
     if 'montage_info' in self.config['replace_string']:
         if isinstance(self.config['replace_string']['montage_info'], str):
@@ -702,6 +465,24 @@ class LosslessPipeline():
         """Load the config file."""
         self.config = Config().read(self.config_fname)
 
+    def _check_sfreq(self):
+        """Make sure sampling frequency is an integer.
+
+        If the sfreq is a float, it will cause slightly incorrect mappings
+        from epochs to raw annotations. For example the annotation might start
+        at 0.98 when it should start at 1, which will result in 2 epochs
+        being dropped the next time data are epoched.
+        """
+        sfreq = self.raw.info['sfreq']
+        if not sfreq.is_integer():
+            # we can't use f-strings in the logging module
+            msg = ("The Raw sampling frequency is %.2f. a non-integer"
+                   " sampling frequency can cause incorrect mapping of epochs "
+                   "to annotations. downsampling to %d" % (sfreq, int(sfreq)))
+            logger.warn(msg)
+            self.raw.resample(int(sfreq))
+        return self.raw
+
     def set_montage(self):
         """Set the montage."""
         analysis_montage = self.config['project']['analysis_montage']
@@ -739,8 +520,12 @@ class LosslessPipeline():
         """
         # Concatenate epoched data back to continuous data
         t_onset = epochs.events[inds, 0] / epochs.info['sfreq']
+        # We exclude the last sample from the duration because
+        # if the annot lasts the whole duration of the epoch
+        # it's end will coincide with the first sample of the
+        # next epoch, causing it to erroneously be rejected.
         duration = (np.ones_like(t_onset) /
-                    epochs.info['sfreq'] * len(epochs.times)
+                    epochs.info['sfreq'] * len(epochs.times[:-1])
                     )
         description = [f'bad_pylossless_{event_type}'] * len(t_onset)
         annotations = mne.Annotations(t_onset, duration, description,
@@ -781,14 +566,19 @@ class LosslessPipeline():
         # TODO: automatically load detrend/preload description from MNE.
         logger.info("🧹 Epoching..")
         events = self.get_events()
-        epoching_kwargs = self.config['epoching']['epochs_args']
+        epoching_kwargs = deepcopy(self.config['epoching']['epochs_args'])
+
+        # MNE epoching is end-inclusive, causing an extra time
+        # sample be included. This removes that extra sample:
+        # https://github.com/mne-tools/mne-python/issues/6932
+        epoching_kwargs["tmax"] -= 1 / self.raw.info['sfreq']
         if detrend is not None:
             epoching_kwargs['detrend'] = detrend
         epochs = mne.Epochs(self.raw, events=events,
                             preload=preload, **epoching_kwargs)
         epochs = (epochs.pick(picks=picks, exclude='bads')
                         .pick(picks=None,
-                              exclude=list(self.flags["ch"]['manual'])
+                              exclude=list(self.flags["ch"].get_flagged())
                               )
                   )
         if rereference:
@@ -806,7 +596,21 @@ class LosslessPipeline():
 
     @lossless_logger
     def find_breaks(self):
-        """Find breaks using `mne.preprocessing.annotate_break`."""
+        """Find breaks using mne.preprocessing.annotate_break.
+
+        Parameters
+        ----------
+        kwargs : dict
+            a dict with keys that are valid keyword arguments for
+            mne.preprocessing.annotate_break, and with values that
+            are valid for their respective arguments.
+
+        Notes
+        -----
+        ``kwargs=dict(min_break_duration=15.0, t_start_after_previous=5.0)``
+        for example would unpack two keyword arguments from
+        mne.preprocessing.annotate_break
+        """
         if 'find_breaks' not in self.config or not self.config['find_breaks']:
             return
         breaks = annotate_break(self.raw, **self.config['find_breaks'])
@@ -1004,7 +808,7 @@ class LosslessPipeline():
     def get_n_nbr(self):
         """Calculate nearest neighbour correlation for channels."""
         # Calculate nearest neighbour correlation on
-        # non-'manual' flagged channels and epochs...
+        # non-flagged channels and epochs...
         epochs = self.get_epochs()
         n_nbr_ch = self.config['nearest_neighbors']['n_nbr_ch']
         return chan_neighbour_r(epochs, n_nbr_ch, 'max'), epochs
@@ -1019,7 +823,7 @@ class LosslessPipeline():
             an instance of `numpy.array`
         """
         # Calculate nearest neighbour correlation on
-        # non-'manual' flagged channels and epochs...
+        # non-flagged channels and epochs...
         data_r_ch = self.get_n_nbr()[0]
 
         # Create the window criteria vector for flagging low_r chan_info...
@@ -1078,9 +882,9 @@ class LosslessPipeline():
         data_r_ch : `numpy.array`.
             an instance of `numpy.array`.
         """
-        if len(self.flags["ch"]['manual']):
+        if len(self.flags["ch"].get_flagged()):
             ch_sel = [ch for ch in data_r_ch.ch.values
-                      if ch not in self.flags["ch"]['manual']]
+                      if ch not in self.flags["ch"].get_flagged()]
             data_r_ch = data_r_ch.sel(ch=ch_sel)
 
         bad_ch_names = [str(data_r_ch.median("epoch")
@@ -1102,7 +906,7 @@ class LosslessPipeline():
         epochs of time. Time segments are flagged for removal.
         """
         # Calculate nearest neighbour correlation on
-        # non-'manual' flagged channels and epochs...
+        # non-flagged channels and epochs...
         data_r_ch, epochs = self.get_n_nbr()
 
         bad_epoch_inds = _detect_outliers(data_r_ch, flag_dim='epoch',
@@ -1270,13 +1074,17 @@ class LosslessPipeline():
 
     @lossless_time
     def _run(self):
+
+        # Make sure sampling frequency is an integer
+        self._check_sfreq()
+
         self.set_montage()
 
         # 1. Execute the staging script if specified.
         self.run_staging_script()
 
         # find breaks
-        self.find_breaks("Looking for break periods between tasks")
+        self.find_breaks(message="Looking for break periods between tasks")
 
         # OPTIONAL: Flag chs/epochs based off fixed std threshold of time axis
         self.flag_epochs_fixed_threshold()
