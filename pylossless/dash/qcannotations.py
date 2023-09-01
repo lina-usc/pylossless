@@ -36,25 +36,29 @@ class EEGAnnotation:
         self._description = description_str
 
         self._dash_layout = layout
-        self._dash_shape = dict(name=self.id,
-                                type="rect",
-                                xref="x",
-                                yref="y",
-                                x0=self.onset,
-                                y0=self._dash_layout.yaxis['range'][0],
-                                x1=self.onset + self.duration,
-                                y1=self._dash_layout.yaxis['range'][1],
-                                fillcolor='red',
-                                opacity=0.25 if self.duration else .75,
-                                line_width=1,
-                                line_color='black',
-                                layer="below" if self.duration else 'above')
-        self._dash_description = dict(x=self.onset + self.duration / 2,
-                                      y=self._dash_layout.yaxis['range'][1],
-                                      text=self.description,
-                                      showarrow=False,
-                                      yshift=10,
-                                      font={'color': '#F1F1F1'})
+        self._dash_shape = dict(
+            name=self.id,
+            type="rect",
+            xref="x",
+            yref="y",
+            x0=self.onset,
+            y0=self._dash_layout.yaxis["range"][0],
+            x1=self.onset + self.duration,
+            y1=self._dash_layout.yaxis["range"][1],
+            fillcolor="red",
+            opacity=0.25 if self.duration else 0.75,
+            line_width=1,
+            line_color="black",
+            layer="below" if self.duration else "above",
+        )
+        self._dash_description = dict(
+            x=self.onset + self.duration / 2,
+            y=self._dash_layout.yaxis["range"][1],
+            text=self.description,
+            showarrow=False,
+            yshift=10,
+            font={"color": "#F1F1F1"},
+        )
 
     def update_dash_objects(self):
         """Update plotly shape/annotations.
@@ -68,7 +72,7 @@ class EEGAnnotation:
         """
         self._dash_shape["x0"] = self.onset
         self._dash_shape["x1"] = self.onset + self.duration
-        self._dash_shape["opacity"] = 0.25 if self.duration else .75
+        self._dash_shape["opacity"] = 0.25 if self.duration else 0.75
 
         self._dash_description["x"] = self.onset + self.duration / 2
         self._dash_description["text"] = self.description
@@ -133,10 +137,9 @@ class EEGAnnotation:
     @staticmethod
     def from_mne_annotation(annot, layout):
         """Create an EEGAnnotation instance from an mne.annotation."""
-        return EEGAnnotation(annot["onset"],
-                             annot["duration"],
-                             annot["description"],
-                             layout)
+        return EEGAnnotation(
+            annot["onset"], annot["duration"], annot["description"], layout
+        )
 
     def set_editable(self, editable=True):
         """Set the editable property of the layout.shape for this instance.
@@ -165,16 +168,16 @@ class EEGAnnotationList:
         """
         if annotations is not None:
             if isinstance(annotations, list):
-                self.annotations = pd.Series({annot.id: annot
-                                              for annot in annotations})
+                self.annotations = pd.Series({annot.id: annot for annot in annotations})
             else:
                 self.annotations = pd.Series(annotations)
         else:
             self.annotations = pd.Series()
 
     def __get_series(self, attr):
-        return pd.Series({annot.id: getattr(annot, attr)
-                          for annot in self.annotations.values})
+        return pd.Series(
+            {annot.id: getattr(annot, attr) for annot in self.annotations.values}
+        )
 
     @property
     def durations(self):
@@ -228,10 +231,11 @@ class EEGAnnotationList:
         annot_tmin = self.onsets
         annot_tmax = annot_tmin + self.durations
 
-        mask = (((tmin <= annot_tmin) & (annot_tmin < tmax)) |
-                ((tmin < annot_tmax) & (annot_tmax <= tmax)) |
-                ((annot_tmin < tmin) & (annot_tmax > tmax))
-                )
+        mask = (
+            ((tmin <= annot_tmin) & (annot_tmin < tmax))
+            | ((tmin < annot_tmax) & (annot_tmax <= tmax))
+            | ((annot_tmin < tmin) & (annot_tmax > tmax))
+        )
         return EEGAnnotationList(self.annotations[mask])
 
     def remove(self, id_):
@@ -241,8 +245,10 @@ class EEGAnnotationList:
     @staticmethod
     def from_mne_inst(inst, layout):
         """Create EEGAnnotationList object from a list of mne.annotations."""
-        annots = [EEGAnnotation.from_mne_annotation(annot, layout)
-                  for annot in inst.annotations]
+        annots = [
+            EEGAnnotation.from_mne_annotation(annot, layout)
+            for annot in inst.annotations
+        ]
         return EEGAnnotationList(annots)
 
     def __len__(self):

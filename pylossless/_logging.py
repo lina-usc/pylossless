@@ -3,17 +3,16 @@ import time
 from mne.utils import logger
 from functools import wraps
 
-CONF_MAP = {'run_staging_script': 'staging_script',
-            'find_breaks': 'find_breaks'}
+CONF_MAP = {"run_staging_script": "staging_script", "find_breaks": "find_breaks"}
 
 
 def _is_step_run(func, instance):
     """Check if step was run."""
-    if func.__name__ in ['run_staging_script', 'find_breaks']:
+    if func.__name__ in ["run_staging_script", "find_breaks"]:
         step = CONF_MAP[func.__name__]
-        return (True if
-                step not in instance.config or not instance.config[step]
-                else False)
+        return (
+            True if step not in instance.config or not instance.config[step] else False
+        )
     else:
         return False
 
@@ -49,14 +48,15 @@ def lossless_logger(func=None, *, message=None, verbose=True):
         end_time = time.time()
         dur = f"{end_time - start_time:.2f}"
         if verbose:
-            logger.info(f"LOSSLESS: 🏁 Finished {this_step} after {dur}"
-                        " seconds.")
+            logger.info(f"LOSSLESS: 🏁 Finished {this_step} after {dur}" " seconds.")
         return result
+
     return wrapper
 
 
 def lossless_time(func):
     """Log the time of a full pipeline run."""
+
     def wrapper(*args, **kwargs):
         logger.info(" ⏩ LOSSLESS: Starting Pylossless Pipeline.")
         start_time = time.time()
@@ -65,4 +65,5 @@ def lossless_time(func):
         dur = f"{(end_time - start_time) / 60:.2f}"
         logger.info(f"  ✅ LOSSLESS: Pipeline completed! took {dur} minutes.")
         return result
+
     return wrapper

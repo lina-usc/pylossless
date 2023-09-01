@@ -13,6 +13,6 @@ from selenium.webdriver.chrome.options import Options
 def pytest_setup_options():
     """Configure the dash tests with the chrom webdrive for CI."""
     options = Options()
-    options.add_argument('--headless')
-    options.add_argument('--disable-gpu')
+    options.add_argument("--headless")
+    options.add_argument("--disable-gpu")
     return options
