@@ -10,8 +10,6 @@ from mne.datasets import sample
 
 from mne.simulation import simulate_sparse_stc, simulate_raw, add_noise
 
-import mne_bids
-
 import pylossless as ll
 
 # LOAD DATA
@@ -20,13 +18,9 @@ meg_path = data_path / "MEG" / "sample"
 raw_fname = meg_path / "sample_audvis_raw.fif"
 fwd_fname = meg_path / "sample_audvis-meg-eeg-oct-6-fwd.fif"
 
-# make BIDS object
-bpath = mne_bids.get_bids_path_from_fname(raw_fname, check=False)
-bpath.suffix = "sample_audvis_raw"
-
 
 # Load real data as the template
-raw = mne_bids.read_raw_bids(bpath)
+raw = mne.io.read_raw_fif(raw_fname)
 raw.set_eeg_reference(projection=True)
 
 

@@ -24,7 +24,7 @@ import mne
 from mne.preprocessing import annotate_break
 from mne.preprocessing import ICA
 from mne.coreg import Coregistration
-from mne.utils import logger
+from mne.utils import logger, warn
 import mne_bids
 from mne_bids import get_bids_path_from_fname, BIDSPath
 
@@ -516,11 +516,11 @@ class LosslessPipeline:
         if not sfreq.is_integer():
             # we can't use f-strings in the logging module
             msg = (
-                "The Raw sampling frequency is %.2f. a non-integer"
-                " sampling frequency can cause incorrect mapping of epochs "
-                "to annotations. downsampling to %d" % (sfreq, int(sfreq))
+                f"The Raw sampling frequency is {sfreq:.2f}. a non-integer "
+                f"sampling frequency can cause incorrect mapping of epochs "
+                f"to annotations. downsampling to {int(sfreq)}"
             )
-            logger.warn(msg)
+            warn(msg)
             self.raw.resample(int(sfreq))
         return self.raw
 
