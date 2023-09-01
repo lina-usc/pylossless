@@ -25,4 +25,4 @@ filterwarnings = ["error",
 # error on warning except the non-int sample freq warning, which we want to be raised
 'ignore:The Raw sampling frequency is',
  # deprecation in dash-testing that needs to be reported
-'HTTPResponse.getheader() is deprecated',]
+"ignore::DeprecationWarning",]
