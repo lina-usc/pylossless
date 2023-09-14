@@ -125,6 +125,8 @@ config = ll.config.Config()
 config.load_default()
 config["ch_ch_sd"]["outliers_kwargs"]["lower"] = 0.25
 config["ch_ch_sd"]["outliers_kwargs"]["upper"] = 0.75
+# short file, raise threshold so epochs w/ blinks dont cause flag
+config["ch_ch_sd"]["flag_crit"] = 0.30
 config.save("sample_audvis_config.yaml")
 # GENERATE PIPELINE
 pipeline = ll.LosslessPipeline("sample_audvis_config.yaml")
