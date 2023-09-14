@@ -69,6 +69,7 @@ def test_pipeline_run(dataset, find_breaks):
     """Test running the pipeline."""
     if dataset == "openneuro":
         raw, config, bids_root = load_openneuro_bids()
+    raw.crop(tmin=0, tmax=60)  # take 60 seconds for speed
 
     if find_breaks:
         config["find_breaks"] = {}
