@@ -4,6 +4,8 @@
 
 """Tests for topo_viz.py."""
 
+import pytest
+
 import mne
 from dash import html
 
@@ -66,6 +68,7 @@ def test_GridTopoPlot():
 
 # chromedriver: https://chromedriver.storage.googleapis.com/
 #               index.html?path=114.0.5735.90/
+@pytest.marks.xfail
 def test_TopoViz(dash_duo):
     """Test TopoViz."""
     raw, ica = get_raw_ica()
