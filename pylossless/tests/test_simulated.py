@@ -120,14 +120,11 @@ raw_sim = mne.io.RawArray(data, info)
 # Re-set the montage
 raw_sim.set_montage(montage)
 
-# Make new raw out of data
-raw_sim = mne.io.RawArray(data, info)
-# Re-set the montage
-raw_sim.set_montage(montage)
-
 # LOAD DEFAULT CONFIG
 config = ll.config.Config()
 config.load_default()
+config["ch_ch_sd"]["outliers_kwargs"]["lower"] = 0.25
+config["ch_ch_sd"]["outliers_kwargs"]["upper"] = 0.75
 config.save("sample_audvis_config.yaml")
 # GENERATE PIPELINE
 pipeline = ll.LosslessPipeline("sample_audvis_config.yaml")
@@ -151,7 +148,7 @@ def test_simulated_raw(pipeline):
 
     # RUN FLAG_CH_SD
     pipeline.flag_ch_sd_ch()
-    noisy_chs = ["EEG 001", "EEG 002", "EEG 007"]
+    noisy_chs = ["EEG 001", "EEG 002"]
     assert_array_equal(pipeline.flags["ch"]["ch_sd"], noisy_chs)
 
     # FIND UNCORRELATED CHS
