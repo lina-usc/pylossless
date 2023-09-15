@@ -12,14 +12,14 @@ def get_app(fpath=None, project_root=None, disable_buttons=False, kind="dash"):
     """Call either Dash or Jupyter for Lossless QC procedure."""
     if kind == "jupyter":
         from jupyter_dash import JupyterDash
+
         app = JupyterDash(__name__, external_stylesheets=[dbc.themes.SLATE])
     else:
         app = dash.Dash(__name__, external_stylesheets=[dbc.themes.SLATE])
 
-    QCGUI(app, fpath=fpath, project_root=project_root,
-          disable_buttons=disable_buttons)
+    QCGUI(app, fpath=fpath, project_root=project_root, disable_buttons=disable_buttons)
     return app
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     get_app().run_server(debug=False, use_reloader=False)

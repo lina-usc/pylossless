@@ -113,7 +113,7 @@ Viewing the docs locally
 
 The built documentation is placed in ``docs/build``. You should not
 change any files in this directory. If you want to view the documentation
-locally, simply click on the ``docs/build/html/index.rst`` file from your
+locally, simply click on the ``docs/build/html/index.html`` file from your
 file browser or open it with the command line:
 
 If you are in the ``docs`` directory:
