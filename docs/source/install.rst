@@ -94,6 +94,6 @@ git repository directory, before running the code below:
 
 PyLossless uses `black <https://github.com/psf/black>`_ style formatting. If you are
 using Visual Studio Code, you can also install the black extension to automatically
-format your code. See the instrucitons at this
+format your code. See the instructions at this
 `link 
 <https://dev.to/adamlombard/how-to-use-the-black-python-code-formatter-in-vscode-3lo0>`_
