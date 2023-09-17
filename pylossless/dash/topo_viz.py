@@ -55,7 +55,7 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
         res=64,
         width=None,
         height=None,
-        cmap="RdBu_r",
+        cmap=None,
         show_sensors=True,
         colorbar=False,
     ):
