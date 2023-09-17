@@ -18,11 +18,7 @@ def _setup_vmin_vmax(data, vmin, vmax, norm=False):
     in the MNE version vmin and vmax can be callables that drive the operation,
     but for the sake of simplicity this was not copied over.
     """
-    should_warn = False
     if vmax is None and vmin is None:
         vmax = np.abs(data).max()
         vmin = 0.0 if norm else -vmax
-        if vmin == 0 and np.min(data) < 0:
-            should_warn = True
-
     return vmin, vmax
