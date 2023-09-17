@@ -287,12 +287,24 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
         -------
             A plotly.graph_objects.Figure object.
         """
+        from .utils import _setup_vmin_vmax
+
         if self.__data is None:
             return
 
+        data = np.array(list(self.__data.values()))
+        norm = min(np.array(data)) >= 0
+        vmin, vmax = _setup_vmin_vmax(data, None, None, norm)
+        if self.cmap is None:
+            cmap = "Reds" if norm else "RdBu_r"
+        else:
+            cmap = self.cmap
+
         heatmap_trace = go.Heatmap(
             showscale=self.colorbar,
-            colorscale=self.cmap,
+            colorscale=cmap,
+            zmin=vmin,
+            zmax=vmax,
             **self.get_heatmap_data(**kwargs)
         )
 
