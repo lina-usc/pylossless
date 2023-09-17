@@ -34,6 +34,7 @@ yaxis.update({"scaleanchor": "x", "scaleratio": 1})
 
 
 def pick_montage(montage, ch_names):
+    """Pick a subset of channels from a montage."""
     digs = montage.remove_fiducials().dig
     assert len(digs) == len(montage.ch_names)
     digs = [dig for dig, ch_name in zip(digs, montage.ch_names) if ch_name in ch_names]
