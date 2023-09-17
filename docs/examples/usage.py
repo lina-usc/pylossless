@@ -17,5 +17,6 @@ notebooks/qc_example.ipynb>`__.
 # Then, we import the function we need.
 # For use in jupyter notebooks, We just need to import a single function.
 from pylossless.dash.app import get_app
+
 app = get_app(kind="jupyter")
 app.run_server(mode="inline")

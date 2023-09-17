@@ -1,22 +1,22 @@
-name: PEP8 Compliance, Spellcheck, & Docstring
+name: Style, Spellcheck, & Docstring
 
 on: pull_request
 
 jobs:
-  linting:
+  style:
+    name: Style
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python 3.x
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.x"
-    - name: Install dependencies
-      run: pip install -r requirements_testing.txt
-    - name: Run flake8
-      run: flake8 pylossless docs --exclude pylossless/__init__.py
-    - name: Run Codespell
-      run: codespell pylossless docs --skip docs/source/generated
-    - name: Check Numpy Format Docstring
-      run: pydocstyle pylossless
-
+      - uses: actions/checkout@v3
+        with:
+          python-version: "3.11"
+      - uses: psf/black@stable
+      - uses: pre-commit/action@v3.0.0
+      - name: Install dependencies
+        run: pip install -r requirements_testing.txt
+      # Run Ruff
+      - name: Run Ruff
+        run: ruff pylossless
+      # Run Codespell
+      - name: Run Codespell
+        run: codespell pylossless docs

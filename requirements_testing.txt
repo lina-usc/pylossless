@@ -1,7 +1,11 @@
-pytest
-flake8
+black
 codespell
-pydocstyle
-coverage
 dash[testing]
+numpydoc
+pre-commit
+pytest
+pytest-cov
+pydocstyle
+ruff
 selenium
+tomli; python_version<'3.11'

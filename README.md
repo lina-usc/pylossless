@@ -2,10 +2,21 @@
 
 ![logo](./docs/source/_static/logo_white.png)
 
-![QCR Dashboard](./docs/source/_images/qc_screenshot.png)
 
-### **Note: This software has alpha status. This means that this package is young and will likely undergo frequent changes and improvements.
+## Introduction to the Lossless Pipeline
 
+This EEG processing pipeline is especially useful for the following scenarios:
+
+- You want to keep your EEG data in a continous state, allowing you the flexibility to epoch your data at a later stage.
+- You are part of a research team or community that shares a common dataset, and you want to ensure data processing happens only once, in a way that is useful to all collaborators.
+
+## Background and Purpose
+
+This project arose from a real-world use-case: We had a dataset of +1,500 infant EEG recordings from multiple studies. The event markers were inconsistent across recordings, and the EEG data were noisy. Multiple researchers needed to analyze the data, and we wanted to avoid a scenario where each person processed the data independently. We set out to orchestrate a single comprehensive effort to produce a clean version of the dataset, which each researcher could use for their own analysis. 
+
+## The gist of the Lossless pipeline 
+
+The Lossless pipeline was designed keep EEG recordings in their continuous nature. It _annotates_ bad channels, bad time periods, and artifactual independent components. The pipeline also provides a visual dashboard that displays the EEG recording, its respective ICA, and all the pipeline decisions. This allows the reviewer to quickly confirm that noisy sensors, time periods, and components were sufficiently identified by the pipeline on any given recording. With this tool, we were able to complete a thorough cleaning of the aforementioned 1,500 recording dataset. Individual researchers were then able purge the artifacts identified by the pipeline and epoch the data at the time of their own analysis.
 
 ## 📘 Installation and usage instructions
 
@@ -73,11 +84,38 @@ $ pip install --editable .[dash]
 ```
 
 ```bash
-$ python pylossless/dash/app.py
+$ pylossless_qc
 ```
 
-## Motivation
+## ▶️ Example HPC Environment Setup
 
-This project is a port of the MATLAB Lossless EEG Processing Pipeline ([Github repo](https://github.com/BUCANL/EEG-IP-L)) presented in [Desjardins et al (2021)](https://www.sciencedirect.com/science/article/pii/S0165027020303848). This port aims at 1) making this pipeline available to the Python community and 2) providing a version of the pipeline that is easier to deploy by outsiders.
+If you are a Canadian researcher working on an HPC system such as [Narval](https://docs.alliancecan.ca/wiki/Narval/en):
 
-This pipeline is built on the idea that sharing and pooling data across the scientific community is most efficient when sharing a standardized (e.g., in [BIDS](https://www.nature.com/articles/s41597-019-0104-8)) and "clean" version of a dataset. However, cleaning artifacts in a dataset generally results in a loss of data (i.e., the original recorded signals are generally not recoverable). This is particularly problematic given that preprocessing steps for a dataset are rarely perfect (i.e., future developments may offer methods that would perform better at removing some artifacts) and can be project-dependent. The Lossless pipeline addresses this issue by proposing a "lossless" process where data are annotated for artifacts in a non-destructive way, so that users have access to a readily clean dataset if they are comfortable with the existing annotations. Alternative, they can choose which annotations to use for preprocessing in a piecemeal fashion, or simply use the raw data without excluding any artifacts based on provided annotations. Artifacts are annotated for channels, epochs, and independent components; see  [Desjardins et al (2021)](https://www.sciencedirect.com/science/article/pii/S0165027020303848) for a more detailed presentation.
+```bash
+module load python/3.10
+
+# Build the virtualenv in your homedir
+virtualenv --no-download eeg-env
+source eeg-env/bin/activate
+
+pip install --no-index mne
+pip install --no-index pandas
+pip install --no-index xarray
+pip install --no-index pyyaml
+pip install --no-index sklearn
+pip install mne_bids
+
+# Clone down mne-iclabel and switch to the right version and install it locally
+git clone https://github.com/mne-tools/mne-icalabel.git
+cd mne-icalabel
+git checkout maint/0.4
+pip install .
+
+# Clone down pipeline and install without reading dependencies
+git clone git@github.com:lina-usc/pylossless.git
+cd pylossless
+pip install --no-deps .
+
+# Verify that the package has installed correct with an import
+python -c 'import pylossless'
+```

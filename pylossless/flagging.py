@@ -67,7 +67,7 @@ class FlaggedChs(dict):
         -------
         None
         """
-        logger.debug(f'NEW BAD CHANNELS {bad_ch_names}')
+        logger.debug(f"NEW BAD CHANNELS {bad_ch_names}")
         if isinstance(bad_ch_names, xr.DataArray):
             bad_ch_names = bad_ch_names.values
         self[kind] = bad_ch_names
@@ -92,13 +92,11 @@ class FlaggedChs(dict):
             :meth:`mne.io.Raw.set_eeg_reference` method.
         """
         # Concatenate and remove duplicates
-        bad_chs = list(set(self.ll.find_outlier_chs(inst) +
-                           self.get_flagged() +
-                           inst.info['bads']))
-        ref_chans = [ch for ch in inst.copy().pick("eeg").ch_names
-                     if ch not in bad_chs]
-        inst.set_eeg_reference(ref_channels=ref_chans,
-                               **kwargs)
+        bad_chs = list(
+            set(self.ll.find_outlier_chs(inst) + self.get_flagged() + inst.info["bads"])
+        )
+        ref_chans = [ch for ch in inst.copy().pick("eeg").ch_names if ch not in bad_chs]
+        inst.set_eeg_reference(ref_channels=ref_chans, **kwargs)
 
     def save_tsv(self, fname):
         """Save flagged channel annotations to a text file.
@@ -111,11 +109,11 @@ class FlaggedChs(dict):
         labels = []
         ch_names = []
         for key in self:
-            labels.extend([key]*len(self[key]))
+            labels.extend([key] * len(self[key]))
             ch_names.extend(self[key])
-        pd.DataFrame({"labels": labels,
-                      "ch_names": ch_names}).to_csv(fname,
-                                                    index=False, sep="\t")
+        pd.DataFrame({"labels": labels, "ch_names": ch_names}).to_csv(
+            fname, index=False, sep="\t"
+        )
 
     def load_tsv(self, fname):
         """Load serialized channel annotations.
@@ -126,7 +124,7 @@ class FlaggedChs(dict):
             Filename of the tsv file with the annotation information to be
             loaded.
         """
-        out_df = pd.read_csv(fname, sep='\t')
+        out_df = pd.read_csv(fname, sep="\t")
         for label, grp_df in out_df.groupby("labels"):
             self[label] = grp_df.ch_names.values
 
@@ -187,15 +185,15 @@ class FlaggedEpochs(dict):
 
     def load_from_raw(self, raw):
         """Load ``'bad_pylossless'`` annotations from raw object."""
-        sfreq = raw.info['sfreq']
+        sfreq = raw.info["sfreq"]
         for annot in raw.annotations:
-            if annot['description'].startswith('bad_pylossless'):
-                ind_onset = int(np.round(annot['onset'] * sfreq))
-                ind_dur = int(np.round(annot['duration'] * sfreq))
+            if annot["description"].startswith("bad_pylossless"):
+                ind_onset = int(np.round(annot["onset"] * sfreq))
+                ind_dur = int(np.round(annot["duration"] * sfreq))
                 inds = np.arange(ind_onset, ind_onset + ind_dur)
-                if annot['description'] not in self:
-                    self[annot['description']] = list()
-                self[annot['description']].append(inds)
+                if annot["description"] not in self:
+                    self[annot["description"]] = list()
+                self[annot["description"]].append(inds)
 
 
 class FlaggedICs(dict):
@@ -269,12 +267,12 @@ class FlaggedICs(dict):
             The output filename.
         """
         self.fname = fname
-        self.data_frame.to_csv(fname, sep='\t', index=False, na_rep='n/a')
+        self.data_frame.to_csv(fname, sep="\t", index=False, na_rep="n/a")
 
     # TODO: Add parameters.
     def load_tsv(self, fname, data_frame=None):
         """Load flagged ICs from file."""
         self.fname = fname
         if data_frame is None:
-            data_frame = pd.read_csv(fname, sep='\t')
+            data_frame = pd.read_csv(fname, sep="\t")
         self.data_frame = data_frame
