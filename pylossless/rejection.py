@@ -22,9 +22,9 @@ class RejectionPolicy:
             path to config file specifying the parameters to be used
             in for the rejection policy.
         """
-        self.ch_flags_to_reject = ['ch_sd', 'low_r', 'bridged']
+        self.ch_flags_to_reject = ["ch_sd", "low_r", "bridged"]
         self.epoch_flags_to_reject = []
-        self.ic_flags_to_reject = ['muscle', 'heart', 'ch_noise', 'eye']
+        self.ic_flags_to_reject = ["muscle", "heart", "ch_noise", "eye"]
 
         self.ic_rejection_threshold = 0.3
 
@@ -79,11 +79,11 @@ class RejectionPolicy:
         #       step that add select types of flags as bad_ annotations.
 
         # Clean the ics
-        ic_labels = pipeline.flags['ic'].data_frame
-        mask = np.array([False]*len(ic_labels['confidence']))
+        ic_labels = pipeline.flags["ic"].data_frame
+        mask = np.array([False] * len(ic_labels["confidence"]))
         for label in self.ic_flags_to_reject:
-            mask |= ic_labels['ic_type'] == label
-        mask &= ic_labels['confidence'] > self.ic_rejection_threshold
+            mask |= ic_labels["ic_type"] == label
+        mask &= ic_labels["confidence"] > self.ic_rejection_threshold
 
         flagged_ics = ic_labels.loc[mask]
         if not flagged_ics.empty:
