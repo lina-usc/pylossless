@@ -70,7 +70,7 @@ pipeline.save(pipeline.get_derivative_path(bids_path), overwrite=True)
 ## 👩‍💻 Dashboard Review
 [![Open in Colab](https://camo.githubusercontent.com/84f0493939e0c4de4e6dbe113251b4bfb5353e57134ffd9fcab6b8714514d4d1/68747470733a2f2f636f6c61622e72657365617263682e676f6f676c652e636f6d2f6173736574732f636f6c61622d62616467652e737667)](https://colab.research.google.com/github/lina-usc/pylossless/blob/main/notebooks/qc_example.ipynb)
 
-![QCR Dashboard](./docs/source/_images/qc_screenshot.png)
+![QCR Dashboard](https://raw.githubusercontent.com/scott-huberty/wip_pipeline-figures/main/dashboard.png)
 
 After running the Lossless pipeline, you can launch the Quality Control
 Review (QC) dashboard to review the pipeline's decisions on each file!
