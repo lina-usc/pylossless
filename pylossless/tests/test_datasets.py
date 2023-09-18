@@ -50,7 +50,7 @@ def load_openneuro_bids():
     while not bids_path.fpath.with_suffix(".bdf").exists():
         print(list(bids_path.fpath.glob("*")))
         sleep(1)
-    raw = mne_bids.read_raw_bids(bids_path)
+    raw = mne_bids.read_raw_bids(bids_path, verbose="ERROR")
     annots = mne.Annotations(
         onset=[1, 15], duration=[1, 1], description=["test_annot", "test_annot"]
     )
