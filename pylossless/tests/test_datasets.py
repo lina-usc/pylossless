@@ -9,6 +9,7 @@ import pylossless as ll
 
 
 def load_openneuro_bids():
+    """Load a BIDS dataset from OpenNeuro."""
     config = ll.config.Config()
     config.load_default()
     config["project"]["bids_montage"] = ""

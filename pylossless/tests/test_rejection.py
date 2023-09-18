@@ -6,7 +6,7 @@ from pylossless.tests.test_datasets import load_openneuro_bids
 
 
 def test_rejection_policy():
-    """testing the rejection policy."""
+    """Test the rejection policy."""
     raw, config, bids_root = load_openneuro_bids()
 
     config.save("test_config.yaml")
