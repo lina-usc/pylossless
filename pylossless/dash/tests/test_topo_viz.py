@@ -52,7 +52,7 @@ def test_GridTopoPlot():
     offset = 2
     nb_topo = 4
     plot_data = topo_data.topo_values.iloc[::-1].iloc[offset : offset + nb_topo]
-    plot_data = plot_data.values.tolist()
+    plot_data = list(plot_data.T.to_dict().values())
 
     GridTopoPlot(
         2,
