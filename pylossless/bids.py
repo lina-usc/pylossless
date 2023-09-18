@@ -10,9 +10,7 @@ from mne_bids import BIDSPath, write_raw_bids
 
 
 # TODO: Add parameters and return.
-def get_bids_path(bids_path_kwargs,
-                  datatype='eeg',
-                  bids_root='./bids_dataset'):
+def get_bids_path(bids_path_kwargs, datatype="eeg", bids_root="./bids_dataset"):
     """Get BIDS path from BIDS recording."""
     if "datatype" not in bids_path_kwargs:
         bids_path_kwargs["datatype"] = datatype
@@ -23,17 +21,23 @@ def get_bids_path(bids_path_kwargs,
 
 
 # TODO: Add parameters and return.
-def get_dataset_bids_path(bids_path_args,
-                          datatype='eeg',
-                          bids_root='./bids_dataset'):
+def get_dataset_bids_path(bids_path_args, datatype="eeg", bids_root="./bids_dataset"):
     """Getter method for BIDS path from BIDS dataset."""
-    return [get_bids_path(bids_path_kwargs, datatype, bids_root)
-            for bids_path_kwargs in bids_path_args]
+    return [
+        get_bids_path(bids_path_kwargs, datatype, bids_root)
+        for bids_path_kwargs in bids_path_args
+    ]
 
 
-def convert_recording_to_bids(import_func, import_kwargs, bids_path_kwargs,
-                              datatype='eeg', bids_root='./bids_dataset',
-                              import_events=True, **write_kwargs):
+def convert_recording_to_bids(
+    import_func,
+    import_kwargs,
+    bids_path_kwargs,
+    datatype="eeg",
+    bids_root="./bids_dataset",
+    import_events=True,
+    **write_kwargs
+):
     """Convert a dataset to BIDS.
 
     Parameters
@@ -54,6 +58,7 @@ def convert_recording_to_bids(import_func, import_kwargs, bids_path_kwargs,
        constructor of the `mne_bids.BIDSPath` class.
     import events: boolean
         Whether to import a provided events object
+
     Returns
     -------
     bids_paths : list of instance of `mne_bids.BIDSPath`
@@ -72,16 +77,22 @@ def convert_recording_to_bids(import_func, import_kwargs, bids_path_kwargs,
     if "allow_preload" not in write_kwargs:
         write_kwargs["allow_preload"] = True
 
-    write_raw_bids(raw, bids_path=bids_path,
-                   events_data=events, event_id=event_id,
-                   **write_kwargs)
+    write_raw_bids(
+        raw, bids_path=bids_path, events_data=events, event_id=event_id, **write_kwargs
+    )
 
     return bids_path
 
 
-def convert_dataset_to_bids(import_funcs, import_args, bids_path_args,
-                            datatype='eeg', bids_root='./bids_dataset',
-                            import_events=True, **write_kwargs):
+def convert_dataset_to_bids(
+    import_funcs,
+    import_args,
+    bids_path_args,
+    datatype="eeg",
+    bids_root="./bids_dataset",
+    import_events=True,
+    **write_kwargs
+):
     """Convert a dataset to BIDS.
 
     Parameters
@@ -109,28 +120,32 @@ def convert_dataset_to_bids(import_funcs, import_args, bids_path_args,
        as import_args.
     import events: boolean
         Whether to import a provided events object.
+
     Returns
     -------
     bids_paths : list of instance of `mne_bids.BIDSPath`
       `mne_bids.BIDSPath` for the different recordings
     """
-    assert (len(import_args) == len(bids_path_args))
+    assert len(import_args) == len(bids_path_args)
     if isinstance(import_funcs, list):
-        assert (len(import_args) == len(import_funcs))
+        assert len(import_args) == len(import_funcs)
     else:
-        import_funcs = [import_funcs]*len(import_args)
+        import_funcs = [import_funcs] * len(import_args)
 
     bids_paths = []
-    for import_kwargs, bids_path_kwargs, func in zip(import_args,
-                                                     bids_path_args,
-                                                     import_funcs):
+    for import_kwargs, bids_path_kwargs, func in zip(
+        import_args, bids_path_args, import_funcs
+    ):
         bids_paths.append(
-            convert_recording_to_bids(func,
-                                      import_kwargs,
-                                      bids_path_kwargs,
-                                      datatype=datatype,
-                                      bids_root=bids_root,
-                                      import_events=import_events,
-                                      **write_kwargs))
+            convert_recording_to_bids(
+                func,
+                import_kwargs,
+                bids_path_kwargs,
+                datatype=datatype,
+                bids_root=bids_root,
+                import_events=import_events,
+                **write_kwargs
+            )
+        )
 
     return bids_paths
