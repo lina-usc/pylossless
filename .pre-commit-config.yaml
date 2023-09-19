@@ -1,0 +1,24 @@
+repos:
+  - repo: https://github.com/psf/black
+    rev: 23.7.0
+    hooks:
+      - id: black
+        args: [--quiet]
+
+  # Ruff linter
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.0.286
+    hooks:
+      - id: ruff
+        name: ruff
+        files: ^pylossless/
+
+  # Codespell
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.5
+    hooks:
+      - id: codespell
+        additional_dependencies:
+          - tomli
+        files: ^pylossless/|^docs/
+        types_or: [python, bib, rst, inc]

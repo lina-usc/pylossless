@@ -4,15 +4,26 @@
 Installation
 ============
 
-****************************************
-Install via :code:`pip` or :code:`conda`
-****************************************
+To stay up to date with the latest version of pyLossless, we recommend that you install
+the package from the github repository. This will allow you to easily update to the
+latest version of pyLossless as we continue to develop it.
 
 .. hint::
     To use pyLossless you need to have the ``git`` command line tool installed.
     If you are not sure, see this
     `tutorial
-    <https://git-scm.com/book/en/v2/Getting-Started-Installing-Git>`__
+    <https://mne.tools/stable/install/contributing.html>`__
+
+
+Once you have git installed and configured, and before creating your local copy
+of the codebase, go to the `PyLossless GitHub <https://github.com/lina-usc/pylossless>`_
+page and create a
+`fork <https://docs.github.com/en/get-started/quickstart/fork-a-repo>`_ into your GitHub
+user account.
+
+****************************************
+Install via :code:`pip` or :code:`conda`
+****************************************
 
 Pylossless requires Python version |min_python_version| or higher. If you
 need to install Python, please see `MNE-Pythons guide to installing Python
@@ -64,3 +75,25 @@ or via :code:`conda`:
 
 
 That's it! You are now ready to use pyLossless.
+
+Additional Requirements for Development
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you plan on contributing to the development of pyLossless, you will need to install
+some additional dependencies so that you can run tests and build the documentation
+locally. The code below will install the additional dependencies as well as the
+pre-commit hooks that we use to ensure that all code is formatted correctly. Make sure
+that you have activated your ``pylossless`` environment and are inside the pylossless
+git repository directory, before running the code below:
+
+.. code-block:: console
+
+   $ pip install -r requirements_testing.txt
+   $ pip install -r docs/requirements_doc.txt
+   $ pre-commit run -a
+
+PyLossless uses `black <https://github.com/psf/black>`_ style formatting. If you are
+using Visual Studio Code, you can also install the black extension to automatically
+format your code. See the instructions at this
+`link 
+<https://dev.to/adamlombard/how-to-use-the-black-python-code-formatter-in-vscode-3lo0>`_
