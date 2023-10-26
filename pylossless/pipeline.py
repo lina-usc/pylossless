@@ -477,7 +477,37 @@ def warp_locs(self, raw):
 
 
 class LosslessPipeline:
-    """Class used to handle pipeline parameters."""
+    """Class used to handle pipeline parameters.
+
+    Parameters
+    ----------
+    config_fname : pathlib.Path
+        path to config file specifying the parameters to be used
+        in the pipeline.
+
+    Attributes
+    ----------
+    flags : dict
+        A dictionary of detailing the flagged channels, epochs, and ICs.
+        keys are ``'ch'``, ``'epoch'``, and ``'ic'``, and values are instances of
+        :class:`~pylossless.flagging.FlaggedChs`,
+        :class:`~pylossless.flagging.FlaggedEpochs`, and
+        :class:`~pylossless.flagging.FlaggedICs`, respectively.
+    config_fname : pathlib.Path
+        path to the config file specifying the parameters to be used in the
+        in the pipeline.
+    config : dict
+        A dictionary containing the pipeline parameters.
+    raw : mne.Raw
+        An instance of :class:`~mne.io.Raw` containing that will
+        be processed by the pipeline.
+    ica1 : mne.preprocessing.ICA
+        An instance of :class:`~mne.preprocessing.ICA`. The result of the initial ICA
+        run during the pipeline.
+    ica2 : mne.preprocessing.ICA
+        An instance of :class:`~mne.preprocessing.ICA`. The result of the final ICA run
+        during the pipeline.
+    """
 
     def __init__(self, config_fname=None):
         """Initialize class.
@@ -695,7 +725,7 @@ class LosslessPipeline:
 
     def find_outlier_chs(self, inst):
         """Detect outlier Channels to leave out of rereference."""
-        # TODO: Re-use _detect_outliers here.
+        # TODO: Reuse _detect_outliers here.
         logger.info("🔍 Detecting channels to leave out of reference.")
         if isinstance(inst, mne.Epochs):
             epochs = inst

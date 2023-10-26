@@ -24,7 +24,8 @@ class FlaggedChs(dict):
     Attributes
     ----------
     ll : LosslessPipeline
-        the LosslessPipeline object that is flagging artifactual channels.
+        the :class:`~pylossless.pipeline.LosslessPipeline` object that is flagging
+        artifactual channels.
 
     Methods
     -------
@@ -86,10 +87,10 @@ class FlaggedChs(dict):
         Parameters
         ----------
         inst : mne.io.Raw
-            An instance of :class:`mne.io.Raw` that contains EEG channels.
+            An instance of :class:`~mne.io.Raw` that contains EEG channels.
         kwargs : dict
             dictionary of valid keyword arguments for the
-            :meth:`mne.io.Raw.set_eeg_reference` method.
+            :meth:`~mne.io.Raw.set_eeg_reference` method.
         """
         # Concatenate and remove duplicates
         bad_chs = list(

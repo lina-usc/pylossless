@@ -69,7 +69,7 @@ add_ecg(raw_sim, random_state=rng)
 add_eog(raw_sim, random_state=rng)
 raw_sim.pick("eeg")
 
-# Save Info and Montage for later re-use
+# Save Info and Montage for later reuse
 montage = raw_sim.get_montage()
 info = mne.create_info(
     ch_names=raw_sim.ch_names,
