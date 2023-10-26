@@ -659,7 +659,6 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
         # of the channels are compatible between plot_data and the montage
         montage = pick_montage(self.montage, self.data.topo_values.columns)
         ch_names = montage.ch_names
-        assert len(ch_names) == len(self.data.topo_values.columns)
         plot_data = [
             OrderedDict(self.data.topo_values.loc[title, ch_names]) for title in titles
         ]
