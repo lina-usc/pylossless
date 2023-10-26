@@ -68,7 +68,9 @@ def test_GridTopoPlot():
 
 # chromedriver: https://chromedriver.storage.googleapis.com/
 #               index.html?path=114.0.5735.90/
-@pytest.mark.xfail(reason="an issue with chromedriver on GH CI to be debugged")
+@pytest.mark.skip(
+    reason="an issue with chromedriver causes failure, and test hangs for ~10 minutes"
+)
 def test_TopoViz(dash_duo):
     """Test TopoViz."""
     raw, ica = get_raw_ica()
