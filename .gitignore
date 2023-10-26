@@ -71,6 +71,7 @@ instance/
 # Sphinx documentation
 docs/_build/
 docs/build/
+docs/source/generated/auto_tutorials/
 
 # PyBuilder
 target/
@@ -131,6 +132,7 @@ dmypy.json
 
 # Demo thing to let people not pollute repos
 my_project_ll_config.yaml
+project_ll_config_face13_egi.yaml
 
 # VSCode ignore
 .vscode

@@ -1,5 +1,5 @@
 [tool.codespell]
-skip = "docs/source/generated"
+skip = "docs/source/generated,pylossless/assets"
 
 [tool.ruff]
 select = ["E", "F", "W", "D"] # pycodestle, pyflakes, Warning, Docstring

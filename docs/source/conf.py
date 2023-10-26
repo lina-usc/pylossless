@@ -67,14 +67,13 @@ intersphinx_mapping = {
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "pydata_sphinx_theme"
+html_theme = "shibuya"
 html_static_path = ["_static"]
-html_theme_options = {
-    "logo": {
-        "image_light": "logo-lightmode_color.png",
-        "image_dark": "logo_white.png",
-    }
-}
+# TODO: add a svg file for the logo
+# html_theme_options = {
+#    "light_logo": "logo-lightmode_color.png",
+#    "dark_logo": "logo_white.png",
+# }
 
 # user made CSS to customize look
 html_css_files = [
@@ -82,7 +81,7 @@ html_css_files = [
 ]
 
 # Custom sidebar templates, maps document names to template names.
-html_sidebars = {"index": ["search-field.html", "sidebar-nav-bs", "globaltoc.html"]}
+# html_sidebars = {"index": ["search-field.html", "sidebar-nav-bs", "globaltoc.html"]}
 
 # NumPyDoc configuration -----------------------------------------------------
 
