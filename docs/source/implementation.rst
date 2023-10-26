@@ -147,7 +147,7 @@ Step 13: Run final ICA
 ----------------------
 
 A final ICA will be run, excluding the epochs that were identified to contain
-large deviations across ICs. These time periods are exlcuded to improve the
+large deviations across ICs. These time periods are excluded to improve the
 final ICA's decomposition.
 
 MNE-ICAlabel will be run on this decomposition to classify the ICs as brain,
