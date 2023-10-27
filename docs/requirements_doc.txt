@@ -1,5 +1,5 @@
-sphinx!=4.1.0,<6
-pydata-sphinx-theme
+sphinx>=6
+shibuya
 sphinx-design
 sphinx-gallery
 sphinxemoji
