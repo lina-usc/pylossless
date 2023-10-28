@@ -1099,22 +1099,22 @@ class LosslessPipeline:
             logger.info("No notch filter arguments provided. Skipping")
 
     def make_cleaned_raw(self, rejection_config_path, return_ica=False):
-        """Apply the rejection policy to the output of the lossless run.
+        """Use a :class:`~pylossless.RejectionPolicy` to make a cleaned raw object.
 
         Parameters
         ----------
         rejection_config_path : pathlib.Path
-            A a path to a saved instance of :class:`~pylossless.RejectionPolicy` in
+            A path to a saved instance of :class:`~pylossless.RejectionPolicy` in
             YAML format, that specifies how to clean apply the pipeline flags and clean
             the data.
         return_ica : bool
             Whether to return the :class:`~mne.preprocessing.ICA` object that was
-            used to clean the data. Defaults to False.
+            used to clean the data. Defaults to ``False``.
 
         Returns
         -------
-        mne.Raw
-            An mne.Raw instance with the appropriate channels and ICs
+        mne.io.Raw
+            The :class:`~mne.io.Raw` instance with the appropriate channels and ICs
             rejected and the bad segments marked as bad annotations.
         """
         # get the config
