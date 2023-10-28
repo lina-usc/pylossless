@@ -1098,6 +1098,64 @@ class LosslessPipeline:
         else:
             logger.info("No notch filter arguments provided. Skipping")
 
+    def make_cleaned_raw(self, rejection_config_path, return_ica=False):
+        """Apply the rejection policy to the output of the lossless run.
+
+        Parameters
+        ----------
+        rejection_config : RejectionConfig
+            An instance of :class:`~pylossless.RejectionPolicy`, that specifies how to
+            clean apply the pipeline flags and clean the data
+        return_ica : bool
+            Whether to return the :class:``~mne.preprocessing.ICA`` object that was
+            used to clean the data. Defaults to False.
+
+        Returns
+        -------
+        mne.Raw
+            An mne.Raw instance with the appropriate channels and ICs
+            rejected and the bad segments marked as bad annotations.
+        """
+        # get the config
+        rejection_config = Config().read(rejection_config_path)
+        # Make a new raw object
+        raw = self.raw.copy()
+
+        # Add channels to be rejected as bads
+        for key in rejection_config["ch_flags_to_reject"]:
+            if key in self.flags["ch"]:
+                raw.info["bads"] += self.flags["ch"][key].tolist()
+
+        # Clean the channels
+        if rejection_config["ch_cleaning_mode"] == "drop":
+            raw.drop_channels(raw.info["bads"])
+        elif rejection_config["ch_cleaning_mode"] == "interpolate":
+            raw.interpolate_bads(**rejection_config["interpolate_bads_kwargs"])
+
+        # Clean the epochs
+        # TODO: Not sure where we landed on having these prefixed as bad_
+        #       or not by the pipeline. If not prefixed, this would be the
+        #       step that add select types of flags as bad_ annotations.
+
+        # Clean the ics
+        ic_labels = self.flags["ic"].data_frame
+        mask = np.array([False] * len(ic_labels["confidence"]))
+        for label in rejection_config["ic_flags_to_reject"]:
+            mask |= ic_labels["ic_type"] == label
+        mask &= ic_labels["confidence"] > rejection_config["ic_rejection_threshold"]
+
+        flagged_ics = ic_labels.loc[mask]
+        if not flagged_ics.empty:
+            flagged_ics = flagged_ics.index.tolist()
+            ica = self.ica2.copy()  # Our policy seems to be to NOT modify inplace
+            ica.exclude.extend(flagged_ics)
+        if rejection_config["remove_flagged_ics"]:
+            ica.apply(raw)
+
+        if return_ica:
+            return raw, ica
+        return raw
+
     def run(self, bids_path, save=True, overwrite=False):
         """Run the pylossless pipeline.
 

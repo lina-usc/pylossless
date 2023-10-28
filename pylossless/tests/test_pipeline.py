@@ -1,12 +1,10 @@
 from pathlib import Path
-from time import sleep
+
 import pytest
 
 import pylossless as ll
 
 import mne
-
-from pylossless.tests.test_datasets import load_openneuro_bids
 
 
 def test_pipeline_run(pipeline_fixture):

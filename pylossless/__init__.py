@@ -1,6 +1,3 @@
-"""Python port of EEG-IP-L pipeline for preprocessing EEG."""
-
-from . import pipeline, config, bids
+from . import pipeline, config, bids, datasets
 from .pipeline import LosslessPipeline
-from .rejection import RejectionPolicy
-from .config import Config
+from .config import Config, RejectionPolicy
