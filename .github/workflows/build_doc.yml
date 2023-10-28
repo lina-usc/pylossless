@@ -24,7 +24,7 @@ jobs:
         run: pip install -e .
 
       - name: install openneuro
-        run: pip install openneuro
+        run: pip install openneuro-py
 
       - name: Install doc dependencies
         run: pip install -r docs/requirements_doc.txt
