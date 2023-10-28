@@ -1103,11 +1103,12 @@ class LosslessPipeline:
 
         Parameters
         ----------
-        rejection_config : RejectionConfig
-            An instance of :class:`~pylossless.RejectionPolicy`, that specifies how to
-            clean apply the pipeline flags and clean the data
+        rejection_config_path : pathlib.Path
+            A a path to a saved instance of :class:`~pylossless.RejectionPolicy` in
+            YAML format, that specifies how to clean apply the pipeline flags and clean
+            the data.
         return_ica : bool
-            Whether to return the :class:``~mne.preprocessing.ICA`` object that was
+            Whether to return the :class:`~mne.preprocessing.ICA` object that was
             used to clean the data. Defaults to False.
 
         Returns
