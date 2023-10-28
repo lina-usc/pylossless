@@ -1,6 +1,6 @@
 """Dash based helper functions for Lossless QC procedure."""
 
-from mne_icalabel.config import ICALABEL_LABELS_TO_MNE
+from mne_icalabel.config import ICA_LABELS_TO_MNE
 
 IC_COLORS = [
     "#2c2c2c",
