@@ -33,6 +33,13 @@ yaxis = copy(axis)
 yaxis.update({"scaleanchor": "x", "scaleratio": 1})
 
 
+def pick_montage(montage, ch_names):
+    """Pick a subset of channels from a montage."""
+    digs = montage.remove_fiducials().dig
+    digs = [dig for dig, ch_name in zip(digs, montage.ch_names) if ch_name in ch_names]
+    return mne.channels.DigMontage(dig=digs, ch_names=ch_names)
+
+
 class TopoPlot:  # TODO: Fix/finish doc comments for this class.
     """Representation of a classic EEG topographic map as a plotly figure."""
 
@@ -47,7 +54,7 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
         res=64,
         width=None,
         height=None,
-        cmap="RdBu_r",
+        cmap=None,
         show_sensors=True,
         colorbar=False,
     ):
@@ -162,9 +169,11 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
         self.info = create_info(names, sfreq=256, ch_types="eeg")
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
+            # To update self.info with channels positions
             RawArray(
                 np.zeros((len(names), 1)), self.info, copy=None, verbose=False
             ).set_montage(self.montage)
+        assert np.all(np.array(names) == np.array(self.info.ch_names))
         self.set_head_pos_contours()
 
     # TODO: Finish/fix docstring
@@ -278,12 +287,24 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
         -------
             A plotly.graph_objects.Figure object.
         """
+        from .utils import _setup_vmin_vmax
+
         if self.__data is None:
             return
 
+        data = np.array(list(self.__data.values()))
+        norm = min(np.array(data)) >= 0
+        vmin, vmax = _setup_vmin_vmax(data, None, None, norm)
+        if self.cmap is None:
+            cmap = "Reds" if norm else "RdBu_r"
+        else:
+            cmap = self.cmap
+
         heatmap_trace = go.Heatmap(
             showscale=self.colorbar,
-            colorscale=self.cmap,
+            colorscale=cmap,
+            zmin=vmin,
+            zmax=vmax,
             **self.get_heatmap_data(**kwargs)
         )
 
@@ -341,9 +362,10 @@ class GridTopoPlot:
             See mne.channels.make_standard_montage(), and
             mne.channels.get_builtin_montages() for more information
             on making montage objects in MNE.
-        data : mne.preprocessing.ICA | None
-            The data to use for the topoplots. Can be an instance of
-            mne.preprocessing.ICA.
+        data : list | None
+            The data to use for the topoplots. Should be a list of
+            dictionaries, one per topomap. The dictionaries should
+            have the channel names as keys.
         figure : plotly.graph_objects.Figure | None
             Figure to use (if not None) for plotting.
         color : str
@@ -635,13 +657,11 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
 
         # The indexing with ch_names is to ensure the order
         # of the channels are compatible between plot_data and the montage
-        ch_names = [
-            ch_name
-            for ch_name in self.montage.ch_names
-            if ch_name in self.data.topo_values.columns
+        montage = pick_montage(self.montage, self.data.topo_values.columns)
+        ch_names = montage.ch_names
+        plot_data = [
+            OrderedDict(self.data.topo_values.loc[title, ch_names]) for title in titles
         ]
-        plot_data = self.data.topo_values.loc[titles, ch_names]
-        plot_data = list(plot_data.T.to_dict().values())
 
         if len(plot_data) < self.nb_sel_topo:
             nb_missing_topo = self.nb_sel_topo - len(plot_data)
@@ -650,7 +670,7 @@ class TopoViz:  # TODO: Fix/finish doc comments for this class.
         self.figure = GridTopoPlot(
             rows=self.rows,
             cols=self.cols,
-            montage=self.montage,
+            montage=montage,
             data=plot_data,
             color=colors,
             res=self.res,
@@ -807,16 +827,14 @@ class TopoVizICA(TopoViz):
             return None
 
         data = TopoData(
-            [
-                dict(zip(montage.ch_names, component))
-                for component in ica.get_components().T
-            ]
+            [dict(zip(ica.ch_names, component)) for component in ica.get_components().T]
         )
+        data.topo_values.index = ica._ica_names
+
         if ic_labels:
             self.head_contours_color = {
                 comp: ic_label_cmap[label] for comp, label in ic_labels.items()
             }
-            data.topo_values.index = list(ic_labels.keys())
         return data
 
     def load_recording(self, montage, ica, ic_labels):
