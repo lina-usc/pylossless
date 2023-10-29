@@ -15,7 +15,7 @@ from mne.utils import logger
 
 import mne_icalabel
 
-from ._utils import _icalabel_to_data_frame
+from .utils._utils import _icalabel_to_data_frame
 
 
 class FlaggedChs(dict):
@@ -51,6 +51,16 @@ class FlaggedChs(dict):
         """Initialize class."""
         super().__init__(*args, **kwargs)
         self.ll = ll
+
+    def __repr__(self):
+        """Return a string representation of the FlaggedChs object."""
+        return (
+            f"Flagged channels: |\n"
+            f"  Noisy: {self.get('ch_sd', None)}\n"
+            f"  Bridged: {self.get('bridge', None)}\n"
+            f"  Uncorrelated: {self.get('low_r', None)}\n"
+            f"  Rank: {self.get('rank', None)}\n"
+        )
 
     def add_flag_cat(self, kind, bad_ch_names, *args):
         """Store channel names that have been flagged by pipeline.
@@ -197,7 +207,7 @@ class FlaggedEpochs(dict):
                 self[annot["description"]].append(inds)
 
 
-class FlaggedICs(dict):
+class FlaggedICs(pd.DataFrame):
     """Object for handling IC classification in an mne ICA object.
 
     Attributes
@@ -239,7 +249,6 @@ class FlaggedICs(dict):
         """
         super().__init__(*args, **kwargs)
         self.fname = None
-        self.data_frame = None
 
     def label_components(self, epochs, ica):
         """Classify components using mne_icalabel.
@@ -257,7 +266,7 @@ class FlaggedICs(dict):
             :func:`mne_icalabel.label_components`. Must be one of: `'iclabel'`.
         """
         mne_icalabel.label_components(epochs, ica, method="iclabel")
-        self.data_frame = _icalabel_to_data_frame(ica)
+        self.__init__(_icalabel_to_data_frame(ica))
 
     def save_tsv(self, fname):
         """Save IC labels.
@@ -268,7 +277,7 @@ class FlaggedICs(dict):
             The output filename.
         """
         self.fname = fname
-        self.data_frame.to_csv(fname, sep="\t", index=False, na_rep="n/a")
+        self.to_csv(fname, sep="\t", index=False, na_rep="n/a")
 
     # TODO: Add parameters.
     def load_tsv(self, fname, data_frame=None):
@@ -276,4 +285,4 @@ class FlaggedICs(dict):
         self.fname = fname
         if data_frame is None:
             data_frame = pd.read_csv(fname, sep="\t")
-        self.data_frame = data_frame
+        self.__init__(data_frame)
