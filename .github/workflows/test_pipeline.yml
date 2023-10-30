@@ -25,6 +25,8 @@ jobs:
         run: pip install -r requirements_qc.txt
       - name: install openneuro
         run: pip install openneuro-py
+      - name: install pytorch
+        run: pip install torch
       - name: Test Pipeline
         run: |
           coverage run -m pytest

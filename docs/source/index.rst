@@ -11,7 +11,6 @@ PyLossless EEG Processing Pipeline
    :hidden:
 
    install
-   implementation
    API/API_index
    generated/index
    contributing
