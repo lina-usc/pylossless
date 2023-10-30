@@ -31,6 +31,7 @@ from mne_bids import get_bids_path_from_fname, BIDSPath
 from .config import Config
 from .flagging import FlaggedChs, FlaggedEpochs, FlaggedICs
 from ._logging import lossless_logger, lossless_time
+from .utils.html import _get_ics, _sum_flagged_times, _create_html_details
 
 
 def epochs_to_xr(epochs, kind="ch", ica=None):
@@ -529,6 +530,58 @@ class LosslessPipeline:
         self.raw = None
         self.ica1 = None
         self.ica2 = None
+
+    def _repr_html_(self):
+        ch_flags = self.flags.get("ch", None)
+        df = self.flags["ic"]
+
+        eog = _get_ics(df, "eog")
+        ecg = _get_ics(df, "ecg")
+        muscle = _get_ics(df, "muscle")
+        line_noise = _get_ics(df, "line_noise")
+        channel_noise = _get_ics(df, "channel_noise")
+
+        lossless_flags = [
+            "bad_pylossless_ch_sd",
+            "bad_pylossless_low_r",
+            "bad_pylossless_ic_sd1",
+        ]
+        flagged_times = _sum_flagged_times(self.raw, lossless_flags)
+
+        config_fname = self.config_fname
+        raw = self.raw.filenames if self.raw else "Not specified"
+
+        html = "<h3>LosslessPipeline</h3>"
+        html += "<table>"
+        html += f"<tr><td><strong>Raw</strong></td><td>{raw}</td></tr>"
+        html += f"<tr><td><strong>Config</strong></td><td>{config_fname}</td></tr>"
+        html += "</table>"
+
+        # Flagged Channels
+        flagged_channels_data = {
+            "Noisy": ch_flags.get("ch_sd", None),
+            "Bridged": ch_flags.get("bridge", None),
+            "Uncorrelated": ch_flags.get("low_r", None),
+        }
+        html += _create_html_details("Flagged Channels", flagged_channels_data)
+
+        # Flagged ICs
+        flagged_ics_data = {
+            "EOG (Eye)": eog,
+            "ECG (Heart)": ecg,
+            "Muscle": muscle,
+            "Line Noise": line_noise,
+            "Channel Noise": channel_noise,
+        }
+        html += _create_html_details("Flagged ICs", flagged_ics_data)
+
+        # Flagged Times
+        flagged_times_data = flagged_times
+        html += _create_html_details(
+            "Flagged Times (Total)", flagged_times_data, times=True
+        )
+
+        return html
 
     def load_config(self):
         """Load the config file."""

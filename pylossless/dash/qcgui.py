@@ -147,7 +147,7 @@ class QCGUI:
 
     def update_bad_ics(self, annotator="manual"):
         """Add IC name to raw.info['bads'] after selection by user in app."""
-        df = self.pipeline.flags["ic"].data_frame
+        df = self.pipeline.flags["ic"]
         manual_labels_df = pd.DataFrame(
             dict(
                 component=self.raw_ica.info["bads"],
@@ -157,7 +157,7 @@ class QCGUI:
             )
         )
         df = pd.concat((df[df.annotator != annotator], manual_labels_df))
-        self.pipeline.flags["ic"].data_frame = df
+        self.pipeline.flags["ic"].__init__(df)
 
     def set_layout(self, disable_buttons=False):
         """Create the app.layout for the app object.
@@ -272,7 +272,7 @@ class QCGUI:
             self.raw_ica = mne.io.RawArray(sources, info, verbose=verbose)
             self.raw_ica.set_meas_date(self.raw.info["meas_date"])
             self.raw_ica.set_annotations(self.raw.annotations)
-            df = self.pipeline.flags["ic"].data_frame
+            df = self.pipeline.flags["ic"]
 
             bads = [
                 ic_name
@@ -283,7 +283,7 @@ class QCGUI:
         else:
             self.raw_ica = None
 
-        df = self.pipeline.flags["ic"].data_frame
+        df = self.pipeline.flags["ic"]
         self.ic_types = df[df.annotator == "ic_label"]
         self.ic_types = self.ic_types.set_index("component")["ic_type"]
         self.ic_types = self.ic_types.to_dict()
