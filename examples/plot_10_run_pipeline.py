@@ -52,17 +52,24 @@ pipeline = ll.LosslessPipeline(config_path)
 # :meth:`~pylossless.LosslessPipeline.run_with_raw` method that takes a
 # :class:`~mne.io.Raw` object as input.
 # We will use the :class:`~mne.io.Raw` object that was returned by
-# :func:`~pylossless.datasets.load_openneuro_bids` with the pipeline.
+# :func:`~pylossless.datasets.datasets.load_openneuro_bids` with the pipeline.
 pipeline.run_with_raw(raw)
 
 # %%
 # View the results
 # ----------------
 #
-# The :class:`~pylossless.LosslessPipeline` object stores flagged channels and ICs in
+pipeline
+
+# %%
+# The :class:`~pylossless.LosslessPipeline` object stores flagged channels in
 # the :attr:`~pylossless.LosslessPipeline.flags` attribute:
-print(f"flagged channels: {pipeline.flags['ch']}")
-print(f"flagged ICs: {pipeline.flags['ic'].data_frame}")
+pipeline.flags["ch"]
+
+# %%
+# The independent components and their associated Labels (determined by the MNE-ICALabel
+# package) are also stored in the :attr:`~pylossless.LosslessPipeline.flags` attribute:
+pipeline.flags["ic"]
 
 # %%
 # Get the cleaned data
@@ -73,8 +80,8 @@ print(f"flagged ICs: {pipeline.flags['ic'].data_frame}")
 # or ICs are removed from the :class:`~mne.io.Raw` object yet. To get the cleaned
 # :class:`~mne.io.Raw` object, we need to call the
 # :meth:`~pylossless.LosslessPipeline.make_cleaned_raw` method. This method takes a
-# :class:`~pylossless.RejectionPolicy` as input, which specifies how to apply the flags
-# to generate a new :class:`~mne.io.Raw` object.
+# :class:`~pylossless.config.rejection.RejectionPolicy` as input, which specifies how
+# to apply the flags to generate a new :class:`~mne.io.Raw` object.
 rejection_policy = ll.RejectionPolicy()
 rejection_policy["ch_cleaning_mode"] = "interpolate"
 rejection_policy
@@ -82,8 +89,8 @@ rejection_policy
 # %%
 # We set the channel cleaning mode to ``"interpolate"``, which means that the flagged
 # channels will be interpolated. Similar to the :class:`~pylossless.config.Config`,
-# We need to save this :class:`~pylossless.RejectionPolicy` to disk, and pass the file
-# to return a new cleaned :class:`~mne.io.Raw` object:
+# We need to save this `~pylossless.config.rejection.RejectionPolicy` to disk, and pass
+# the file to return a new cleaned :class:`~mne.io.Raw` object:
 rejection_policy_path = Path("rejection_policy.yaml")
 rejection_policy.save(rejection_policy_path)
 cleaned_raw = pipeline.make_cleaned_raw(rejection_policy_path)
