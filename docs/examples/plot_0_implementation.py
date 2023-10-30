@@ -66,7 +66,7 @@ config = ll.config.Config()
 config.load_default()
 config.save("test_config.yaml")
 
-# Creaet a pipeline instance
+# Create a pipeline instance
 pipeline = ll.LosslessPipeline("test_config.yaml")
 pipeline.raw = raw
 raw.plot()
