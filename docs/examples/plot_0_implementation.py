@@ -5,7 +5,7 @@ PyLossless Calculations: Understanding each step
 ================================================
 
 This tutorial explains the calculations that PyLossless performs at each step of the
-pipeline. We will use example EEG data provided by MNE-Python to demonstrate the
+pipeline. We will use example EEG data to demonstrate the
 calculations.
 
 Notation 
@@ -59,21 +59,17 @@ from mne.datasets import sample
 import pylossless as ll
 
 # Load example mne data
-data_path = sample.data_path()
-meg_path = data_path / "MEG" / "sample"
-raw_fname = meg_path / "sample_audvis_raw.fif"
-raw = mne.io.read_raw_fif(raw_fname, preload=True)
-raw.info["bads"] = []  # reset bads
+raw = ll.datasets.load_simulated_raw()
 
 # Load a default configuration file
 config = ll.config.Config()
 config.load_default()
-config["ch_ch_sd"]["outlier_kwargs"] = {"k": 3}
 config.save("test_config.yaml")
 
 # Creaet a pipeline instance
 pipeline = ll.LosslessPipeline("test_config.yaml")
 pipeline.raw = raw
+raw.plot()
 
 # %%
 # Input Data
@@ -190,6 +186,6 @@ percent_outliers  # percent of epochs that sensor is an outlier
 # Next, we define a fractional threshold :math:`\tau^{p}` (:math:`p` for percentile;
 # default, ``.20``) as a cutoff point for determining if a sensor should be marked
 # artifactual. The sensor :math:`i` is flagged as noisy if
-# :math:`c^{\mu_e}_i > \tau^{p}`. In this case, no sensors were flagged as noisy.
+# :math:`c^{\mu_e}_i > \tau^{p}`.
 threshold = 0.2
 percent_outliers[percent_outliers > threshold]  # noisy sensors
