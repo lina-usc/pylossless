@@ -29,7 +29,7 @@ def test_rejection_policy(clean_ch_mode, pipeline_fixture):
         # so to make sure that the channel was interpolated, lets check it
         assert len(list(set(flagged_chs) - set(raw.info["bads"]))) == 3
 
-    df = pipeline_fixture.flags["ic"].data_frame
+    df = pipeline_fixture.flags["ic"]
     assert not df.loc[ica.exclude]["ic_type"].str.contains("brain").any()
     assert not df.loc[ica.exclude]["ic_type"].str.contains("other").any()
     assert df.loc[ica.exclude]["ic_type"].str.contains("muscle").any()

@@ -1192,7 +1192,7 @@ class LosslessPipeline:
         #       step that add select types of flags as bad_ annotations.
 
         # Clean the ics
-        ic_labels = self.flags["ic"].data_frame
+        ic_labels = self.flags["ic"]
         mask = np.array([False] * len(ic_labels["confidence"]))
         for label in rejection_config["ic_flags_to_reject"]:
             mask |= ic_labels["ic_type"] == label
