@@ -11,8 +11,11 @@ PyLossless EEG Processing Pipeline
    :hidden:
 
    install
+<<<<<<< HEAD
    implementation
    auto_examples/index.rst
+=======
+>>>>>>> aa2dffae6e2fb673614489672db7cd081ec5c84b
    API/API_index
    contributing
 
