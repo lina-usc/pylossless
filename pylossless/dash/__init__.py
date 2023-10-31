@@ -23,8 +23,4 @@ IC_COLORS = [
     "plum",
 ]
 
-<<<<<<< HEAD
 ic_label_cmap = dict(zip(iclabel_config.ICA_LABELS_TO_MNE.values(), IC_COLORS))
-=======
-ic_label_cmap = dict(zip(ICA_LABELS_TO_MNE.values(), IC_COLORS))
->>>>>>> upstream/main
