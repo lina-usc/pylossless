@@ -430,8 +430,8 @@ from pylossless.pipeline import chan_neighbour_r
 epochs = pipeline.get_epochs()
 
 # %%
-# a) Calculate Correlation Coefficents between each Sensor and its neighboring eighbors
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+# a) Calculate Correlation Coefficients between each Sensor and its neighboring eighbors
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 #
 # - For each good sensor $i$ in :math:`S_{\mathcal{G}}`, we select its :math:`N` nearest
 #   neighbors. I.e. the :math:`N` sensors that are closest to it.
