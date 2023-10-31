@@ -63,11 +63,8 @@ intersphinx_mapping = {
     "xarray": ("https://docs.xarray.dev/en/stable/", None),
     "mne": ("https://mne.tools/dev", None),
     "mne_icalabel": ("https://mne.tools/mne-icalabel/dev", None),
-<<<<<<< HEAD
     "mne_bids": ("https://mne.tools/mne-bids/dev", None),
-=======
     "pylossless": ("https://pylossless.readthedocs.io/en/latest/", None),
->>>>>>> aa2dffae6e2fb673614489672db7cd081ec5c84b
 }
 
 # -- Options for HTML output -------------------------------------------------
