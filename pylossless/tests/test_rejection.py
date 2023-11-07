@@ -15,7 +15,7 @@ def test_rejection_policy(clean_ch_mode, pipeline_fixture):
     rejection_config.save(rejection_config_path)
     assert rejection_config["ch_flags_to_reject"] == ["ch_sd", "low_r", "bridge"]
 
-    raw, ica = pipeline_fixture.make_cleaned_raw(rejection_config_path, return_ica=True)
+    raw, ica = rejection_config.apply(pipeline_fixture, return_ica=True)
     flagged_chs = []
     for key in rejection_config["ch_flags_to_reject"]:
         flagged_chs.extend(pipeline_fixture.flags["ch"][key].tolist())
@@ -29,7 +29,7 @@ def test_rejection_policy(clean_ch_mode, pipeline_fixture):
         # so to make sure that the channel was interpolated, lets check it
         assert len(list(set(flagged_chs) - set(raw.info["bads"]))) == 3
 
-    df = pipeline_fixture.flags["ic"].data_frame
+    df = pipeline_fixture.flags["ic"]
     assert not df.loc[ica.exclude]["ic_type"].str.contains("brain").any()
     assert not df.loc[ica.exclude]["ic_type"].str.contains("other").any()
     assert df.loc[ica.exclude]["ic_type"].str.contains("muscle").any()

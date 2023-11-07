@@ -62,7 +62,7 @@ pipeline.run_with_raw(raw)
 # The :class:`~pylossless.LosslessPipeline` object stores flagged channels and ICs in
 # the :attr:`~pylossless.LosslessPipeline.flags` attribute:
 print(f"flagged channels: {pipeline.flags['ch']}")
-print(f"flagged ICs: {pipeline.flags['ic'].data_frame}")
+print(f"flagged ICs: {pipeline.flags['ic']}")
 
 # %%
 # Get the cleaned data
@@ -72,21 +72,18 @@ print(f"flagged ICs: {pipeline.flags['ic'].data_frame}")
 # :class:`~mne.io.Raw` object that is passed to it, so none of the flagged channels
 # or ICs are removed from the :class:`~mne.io.Raw` object yet. To get the cleaned
 # :class:`~mne.io.Raw` object, we need to call the
-# :meth:`~pylossless.LosslessPipeline.make_cleaned_raw` method. This method takes a
-# :class:`~pylossless.RejectionPolicy` as input, which specifies how to apply the flags
+# :meth:`~pylossless.config.RejectionPolicy.apply` method. This method takes a
+# :class:`~pylossless.LosslessPipeline` as input, which specifies how to apply the flags
 # to generate a new :class:`~mne.io.Raw` object.
 rejection_policy = ll.RejectionPolicy()
-rejection_policy["ch_cleaning_mode"] = "interpolate"
 rejection_policy
 
 # %%
-# We set the channel cleaning mode to ``"interpolate"``, which means that the flagged
-# channels will be interpolated. Similar to the :class:`~pylossless.config.Config`,
-# We need to save this :class:`~pylossless.RejectionPolicy` to disk, and pass the file
-# to return a new cleaned :class:`~mne.io.Raw` object:
-rejection_policy_path = Path("rejection_policy.yaml")
-rejection_policy.save(rejection_policy_path)
-cleaned_raw = pipeline.make_cleaned_raw(rejection_policy_path)
+# Note that we are using the default  channel cleaning mode, which is ``None``, meaning
+# that that the flagged channels will simply be added to ``raw.info["bads"]``. We also
+# could have specified ``"interpolate"``, which means that the flagged
+# channels would be interpolated using :func:`~mne.io.Raw.interpolate_bads`.
+cleaned_raw = rejection_policy.apply(pipeline)
 cleaned_raw.plot()
 
 # %%
@@ -108,4 +105,3 @@ pipeline.save(derivatives_path)
 #
 shutil.rmtree(bids_path.root)
 config_path.unlink()
-rejection_policy_path.unlink()

@@ -3,6 +3,8 @@
 #
 # License: MIT
 
+import numpy as np
+
 from .config import ConfigMixin
 
 
@@ -98,3 +100,57 @@ class RejectionPolicy(ConfigMixin):
             f"  ch_cleaning_mode: {self['ch_cleaning_mode']}\n"
             f"  remove_flagged_ics: {self['remove_flagged_ics']}\n"
         )
+
+    def apply(self, pipeline, return_ica=False):
+        """Return a cleaned new raw object based on the rejection policy.
+
+        Parameters
+        ----------
+        pipeline : LosslessPipeline
+            An instance of LosslessPipeline with after the pipeline has
+            been ran.
+        return_ica : bool
+            If ``True``, returns the :class:`~mne.preprocessing.ica` object used to
+            clean the :class:`~mne.io.Raw` object. Defaults to ``False``.
+
+        Returns
+        -------
+        mne.io.Raw
+            An :class:`~mne.io.Raw` instance with the appropriate channels and ICs
+            added to mne bads, interpolated, or droppped.
+        """
+        # Get the raw object
+        raw = pipeline.raw.copy()
+
+        # Add channels to be rejected as bads
+        for key in self["ch_flags_to_reject"]:
+            if key in pipeline.flags["ch"]:
+                raw.info["bads"] += pipeline.flags["ch"][key].tolist()
+
+        # Clean the channels
+        if self["ch_cleaning_mode"] == "drop":
+            raw.drop_channels(raw.info["bads"])
+        elif self["ch_cleaning_mode"] == "interpolate":
+            raw.interpolate_bads(**self["interpolate_bads_kwargs"])
+
+        # Clean the epochs
+        # TODO: Not sure where we landed on having these prefixed as bad_
+        #       or not by the pipeline. If not prefixed, this would be the
+        #       step that add select types of flags as bad_ annotations.
+
+        # Clean the ics
+        ic_labels = pipeline.flags["ic"]
+        mask = np.array([False] * len(ic_labels["confidence"]))
+        for label in self["ic_flags_to_reject"]:
+            mask |= ic_labels["ic_type"] == label
+        mask &= ic_labels["confidence"] > self["ic_rejection_threshold"]
+
+        flagged_ics = ic_labels.loc[mask]
+        if not flagged_ics.empty:
+            flagged_ics = flagged_ics.index.tolist()
+            pipeline.ica2.exclude.extend(flagged_ics)
+            pipeline.ica2.apply(raw)
+
+        if return_ica:
+            return raw, pipeline.ica2
+        return raw
