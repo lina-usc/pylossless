@@ -23,6 +23,9 @@ jobs:
       - name: Install Pylossless
         run: pip install -e .
 
+      - name: install openneuro-py
+        run: pip install openneuro-py
+
       - name: Install doc dependencies
         run: pip install -r docs/requirements_doc.txt
 

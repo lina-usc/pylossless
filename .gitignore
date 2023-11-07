@@ -136,3 +136,6 @@ project_ll_config_face13_egi.yaml
 
 # VSCode ignore
 .vscode
+
+# sphinx gallery
+./docs/source/auto_examples/
