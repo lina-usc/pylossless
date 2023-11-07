@@ -19,4 +19,4 @@ jobs:
         run: ruff pylossless
       # Run Codespell
       - name: Run Codespell
-        run: codespell pylossless docs
+        run: codespell pylossless
