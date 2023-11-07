@@ -60,8 +60,10 @@ pipeline.run_with_raw(raw)
 #
 # The :class:`~pylossless.LosslessPipeline` object stores flagged channels and ICs in
 # the :attr:`~pylossless.LosslessPipeline.flags` attribute:
-print(f"flagged channels: {pipeline.flags['ch']}")
-print(f"flagged ICs: {pipeline.flags['ic']}")
+pipeline
+
+# %%
+pipeline.flags["ic"]
 
 # %%
 # Get the cleaned data

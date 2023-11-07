@@ -585,7 +585,7 @@ class LosslessPipeline:
         # it's end will coincide with the first sample of the
         # next epoch, causing it to erroneously be rejected.
         df["duration"] = 1 / epochs.info["sfreq"] * len(epochs.times[:-1])
-        df["description"] = f"bad_pylossless_{event_type}"
+        df["description"] = f"bad_{event_type}"
 
         # Merge close onsets to prevent a bunch of 1-second annotations of the same name
         # find onsets close enough to be considered the same

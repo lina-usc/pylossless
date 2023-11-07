@@ -18,7 +18,7 @@ ignore-decorators = [
 ]
 
 [tool.black]
-exclude = "(dist/)|(build/)|(.*\\.ipynb)" # Exclude build artifacts and notebooks
+exclude = "(dist/)|(build/)|(examples/)|(.*\\.ipynb)" # Exclude build artifacts and notebooks
 
 [tool.pytest.ini_options]
 filterwarnings = ["error", 
