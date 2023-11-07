@@ -645,14 +645,26 @@ class LosslessPipeline:
         """
         # Concatenate epoched data back to continuous data
         t_onset = epochs.events[inds, 0] / epochs.info["sfreq"]
+        df = pd.DataFrame(t_onset, columns=["onset"])
         # We exclude the last sample from the duration because
         # if the annot lasts the whole duration of the epoch
         # it's end will coincide with the first sample of the
         # next epoch, causing it to erroneously be rejected.
-        duration = np.ones_like(t_onset) / epochs.info["sfreq"] * len(epochs.times[:-1])
-        description = [f"bad_pylossless_{event_type}"] * len(t_onset)
+        df["duration"] = 1 / epochs.info["sfreq"] * len(epochs.times[:-1])
+        df["description"] = f"bad_pylossless_{event_type}"
+
+        # Merge close onsets to prevent a bunch of 1-second annotations of the same name
+        # find onsets close enough to be considered the same
+        df["close"] = df.sort_values("onset")["onset"].diff().le(1)
+        df["group"] = ~df["close"]
+        df["group"] = df["group"].cumsum()
+        # group the close onsets and merge them
+        df["onset"] = df.groupby("group")["onset"].transform("first")
+        df["duration"] = df.groupby("group")["duration"].transform("sum")
+        df = df.drop_duplicates(subset=["onset", "duration"])
+
         annotations = mne.Annotations(
-            t_onset, duration, description, orig_time=self.raw.annotations.orig_time
+            df["onset"], df["duration"], df["description"], orig_time=self.raw.annotations.orig_time
         )
         self.raw.set_annotations(self.raw.annotations + annotations)
 
