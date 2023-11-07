@@ -720,7 +720,7 @@ pipeline.run_ica("run1")
 #
 
 # %%
-pipeline.flag_epoch_ic_sd1()
+pipeline.flag_noisy_ics()
 
 # %%
 pipeline.raw.annotations.description
