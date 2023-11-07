@@ -117,7 +117,7 @@ class RejectionPolicy(ConfigMixin):
         -------
         mne.io.Raw
             An :class:`~mne.io.Raw` instance with the appropriate channels and ICs
-            added to mne bads, interpolated, or droppped.
+            added to mne bads, interpolated, or dropped.
         """
         # Get the raw object
         raw = pipeline.raw.copy()
