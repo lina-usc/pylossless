@@ -18,8 +18,8 @@ class RejectionPolicy(ConfigMixin):
         in for the rejection policy.
     ch_flags_to_reject : list of str
         List of channel flags to apply. "all" is the same as
-        ``["ch_sd", "low_r", "bridge"]``, meaning that any channels that
-        have been flagged ``"ch_sd"``, ``"low_r"``, or ``"bridge"`` will
+        ``["noisy", "uncorrelated", "bridged"]``, meaning that any channels that
+        have been flagged ``"noisy"``, ``"uncorrelated"``, or ``"bridged"`` will
         be applied. Defaults to "all".
     ic_flags_to_reject : list of str
         List of IC flags to apply. "all" is the same as
@@ -65,7 +65,7 @@ class RejectionPolicy(ConfigMixin):
         remove_flagged_ics=True,
     ):
         if ch_flags_to_reject == "all":
-            ch_flags_to_reject = ["ch_sd", "low_r", "bridge"]
+            ch_flags_to_reject = ["noisy", "uncorrelated", "bridged"]
         if ic_flags_to_reject == "all":
             ic_flags = ["muscle", "ecg", "eog", "channel_noise", "line_noise"]
             ic_flags_to_reject = ic_flags

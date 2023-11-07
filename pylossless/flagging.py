@@ -150,8 +150,8 @@ class FlaggedEpochs(dict):
         :class:`mne.Epochs`) to the ``'manual'`` dictionary key.
 
     load_from_raw:
-        Add any :class:`mne.Annotations` in a loaded :class:`mne.io.Raw` file
-        that start with ``'bad_pylossless'`` to the FlaggedEpochs class.
+        Add any pylossless :class:`mne.Annotations` in a loaded :class:`mne.io.Raw`
+        file to the FlaggedEpochs class.
 
     Notes
     -----
@@ -181,7 +181,7 @@ class FlaggedEpochs(dict):
         Parameters
         ----------
         kind : str
-            Should be one of ``'ch_sd'``, ``'low_r'``, ``'ic_sd1'``.
+            Should be one of ``'noisy'``, ``'uncorrelated'``, ``'noisy_ICs'``.
         bad_epochs_inds : list | tuple
             Indices for the epochs in an :class:`mne.Epochs` object. Will be
             the values for the ``kind`` dictionary key.
@@ -195,10 +195,11 @@ class FlaggedEpochs(dict):
         self.ll.add_pylossless_annotations(bad_epoch_inds, kind, epochs)
 
     def load_from_raw(self, raw):
-        """Load ``'bad_pylossless'`` annotations from raw object."""
+        """Load pylossless annotations from raw object."""
         sfreq = raw.info["sfreq"]
+        lossless_descriptions = ["bad_noisy", "bad_uncorrelated", "bad_noisy_ICs"]
         for annot in raw.annotations:
-            if annot["description"].startswith("bad_pylossless"):
+            if annot["description"] in lossless_descriptions:
                 ind_onset = int(np.round(annot["onset"] * sfreq))
                 ind_dur = int(np.round(annot["duration"] * sfreq))
                 inds = np.arange(ind_onset, ind_onset + ind_dur)

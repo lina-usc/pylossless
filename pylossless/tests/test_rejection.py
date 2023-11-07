@@ -13,7 +13,8 @@ def test_rejection_policy(clean_ch_mode, pipeline_fixture):
     rejection_config_path = Path("test_rejection_config.yaml")
     rejection_config = ll.RejectionPolicy(ch_cleaning_mode=clean_ch_mode)
     rejection_config.save(rejection_config_path)
-    assert rejection_config["ch_flags_to_reject"] == ["ch_sd", "low_r", "bridge"]
+    want_flags = ["noisy", "uncorrelated", "bridged"]
+    assert rejection_config["ch_flags_to_reject"] == want_flags
 
     raw, ica = rejection_config.apply(pipeline_fixture, return_ica=True)
     flagged_chs = []
