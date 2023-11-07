@@ -3,8 +3,7 @@
 Run pyLossless on a BIDS dataset.
 =================================
 
-In this notebook, we will run the pyLossless pipeline on a publicly available dataset
-that is already in BIDS format.
+In this notebook, we will run the pyLossless pipeline on a publicly available dataset.
 """
 
 # %%
