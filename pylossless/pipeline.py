@@ -974,7 +974,6 @@ class LosslessPipeline:
         logger.info(f"📋 LOSSLESS: Uncorrelated epochs: {bad_epoch_inds}")
         self.flags["epoch"].add_flag_cat("low_r", bad_epoch_inds, epochs)
 
-
     @lossless_logger
     def run_ica(self, run):
         """Run ICA.
