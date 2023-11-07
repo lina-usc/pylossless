@@ -1,3 +1,4 @@
+openneuro-py
 sphinx>=6
 shibuya
 sphinx-design

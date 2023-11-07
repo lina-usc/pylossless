@@ -346,72 +346,6 @@ def chan_neighbour_r(epochs, nneigbr, method):
     return m_neigbr_r.rename(ref_chan="ch")
 
 
-# TODO: check that annot type contains all unique flags
-def marks_flag_gap(
-    raw, min_gap_ms, included_annot_type=None, out_annot_name="bad_pylossless_gap"
-):
-    """Mark small gaps in time between pylossless annotations.
-
-    Parameters
-    ----------
-    raw : mne.Raw
-        An instance of mne.Raw
-    min_gap_ms : int
-        Time in milleseconds. If the time between two consecutive pylossless
-        annotations is less than this value, that time period will be
-        annotated.
-    included_annot_type : str (Default None)
-        Descriptions of the `mne.Annotations` in the `mne.Raw` to be included.
-        If `None`, includes ('bad_pylossless_ch_sd', 'bad_pylossless_low_r',
-        'bad_pylossless_ic_sd1', 'bad_pylossless_gap').
-    out_annot_name : str (default 'bad_pylossless_gap')
-        The description for the `mne.Annotation` That is created for any gaps.
-
-    Returns
-    -------
-    Annotations : `mne.Annotations`
-        An instance of `mne.Annotations`
-    """
-    if included_annot_type is None:
-        included_annot_type = (
-            "bad_pylossless_ch_sd",
-            "bad_pylossless_low_r",
-            "bad_pylossless_ic_sd1",
-            "bad_pylossless_gap",
-        )
-
-    if len(raw.annotations) == 0:
-        return mne.Annotations([], [], [], orig_time=raw.annotations.orig_time)
-
-    ret_val = np.array(
-        [
-            [annot["onset"], annot["duration"]]
-            for annot in raw.annotations
-            if annot["description"] in included_annot_type
-        ]
-    ).T
-
-    if len(ret_val) == 0:
-        return mne.Annotations([], [], [], orig_time=raw.annotations.orig_time)
-
-    onsets, durations = ret_val
-    offsets = onsets + durations
-    gaps = np.array(
-        [
-            min(onset - offsets[offsets < onset]) if np.sum(offsets < onset) else np.inf
-            for onset in onsets[1:]
-        ]
-    )
-    gap_mask = gaps < min_gap_ms / 1000
-
-    return mne.Annotations(
-        onset=onsets[1:][gap_mask] - gaps[gap_mask],
-        duration=gaps[gap_mask],
-        description=out_annot_name,
-        orig_time=raw.annotations.orig_time,
-    )
-
-
 def coregister(
     raw_edf,
     fiducials="estimated",  # get fiducials from fsaverage
@@ -542,9 +476,9 @@ class LosslessPipeline:
         channel_noise = _get_ics(df, "channel_noise")
 
         lossless_flags = [
-            "bad_pylossless_ch_sd",
-            "bad_pylossless_low_r",
-            "bad_pylossless_ic_sd1",
+            "bad_noisy",
+            "bad_uncorrelated",
+            "bad_noisy_ICs",
         ]
         flagged_times = _sum_flagged_times(self.raw, lossless_flags)
 
@@ -559,9 +493,9 @@ class LosslessPipeline:
 
         # Flagged Channels
         flagged_channels_data = {
-            "Noisy": ch_flags.get("ch_sd", None),
-            "Bridged": ch_flags.get("bridge", None),
-            "Uncorrelated": ch_flags.get("low_r", None),
+            "Noisy": ch_flags.get("noisy", None),
+            "Bridged": ch_flags.get("bridged", None),
+            "Uncorrelated": ch_flags.get("uncorrelated", None),
         }
         html += _create_html_details("Flagged Channels", flagged_channels_data)
 
@@ -645,14 +579,29 @@ class LosslessPipeline:
         """
         # Concatenate epoched data back to continuous data
         t_onset = epochs.events[inds, 0] / epochs.info["sfreq"]
+        df = pd.DataFrame(t_onset, columns=["onset"])
         # We exclude the last sample from the duration because
         # if the annot lasts the whole duration of the epoch
         # it's end will coincide with the first sample of the
         # next epoch, causing it to erroneously be rejected.
-        duration = np.ones_like(t_onset) / epochs.info["sfreq"] * len(epochs.times[:-1])
-        description = [f"bad_pylossless_{event_type}"] * len(t_onset)
+        df["duration"] = 1 / epochs.info["sfreq"] * len(epochs.times[:-1])
+        df["description"] = f"bad_pylossless_{event_type}"
+
+        # Merge close onsets to prevent a bunch of 1-second annotations of the same name
+        # find onsets close enough to be considered the same
+        df["close"] = df.sort_values("onset")["onset"].diff().le(1)
+        df["group"] = ~df["close"]
+        df["group"] = df["group"].cumsum()
+        # group the close onsets and merge them
+        df["onset"] = df.groupby("group")["onset"].transform("first")
+        df["duration"] = df.groupby("group")["duration"].transform("sum")
+        df = df.drop_duplicates(subset=["onset", "duration"])
+
         annotations = mne.Annotations(
-            t_onset, duration, description, orig_time=self.raw.annotations.orig_time
+            df["onset"],
+            df["duration"],
+            df["description"],
+            orig_time=self.raw.annotations.orig_time,
         )
         self.raw.set_annotations(self.raw.annotations + annotations)
 
@@ -872,7 +821,7 @@ class LosslessPipeline:
         self._flag_volt_std(flag_dim="epoch", threshold=threshold)
 
     @lossless_logger
-    def flag_ch_sd_ch(self):
+    def flag_noisy_channels(self):
         """Flag channels with outlying standard deviation.
 
         Calculates the standard deviation of the voltage-variance for
@@ -889,26 +838,25 @@ class LosslessPipeline:
         epochs_xr = epochs_to_xr(self.get_epochs(), kind="ch")
         data_sd = epochs_xr.std("time")
 
-        # flag channels for ch_sd
+        # flag noisy channels
         bad_ch_names = _detect_outliers(
-            data_sd, flag_dim="ch", init_dir="pos", **self.config["ch_ch_sd"]
+            data_sd, flag_dim="ch", init_dir="pos", **self.config["noisy_channels"]
         )
         logger.info(f"📋 LOSSLESS: Noisy channels: {bad_ch_names}")
 
-        self.flags["ch"].add_flag_cat(kind="ch_sd", bad_ch_names=bad_ch_names)
+        self.flags["ch"].add_flag_cat(kind="noisy", bad_ch_names=bad_ch_names)
 
     @lossless_logger
-    def flag_ch_sd_epoch(self):
+    def flag_noisy_epochs(self):
         """Flag epochs with outlying standard deviation."""
-        # TODO: flag "ch_sd" should be renamed "time_sd"
         outlier_methods = ("quantile", "trimmed", "fixed")
         epochs = self.get_epochs()
         epochs_xr = epochs_to_xr(epochs, kind="ch")
         data_sd = epochs_xr.std("time")
 
-        # flag epochs for ch_sd
-        if "epoch_ch_sd" in self.config:
-            config_epoch = self.config["epoch_ch_sd"]
+        # flag noisy epochs
+        if "noisy_epochs" in self.config:
+            config_epoch = self.config["noisy_epochs"]
             if "outlier_method" in config_epoch:
                 if config_epoch["outlier_method"] is None:
                     del config_epoch["outlier_method"]
@@ -918,7 +866,7 @@ class LosslessPipeline:
             data_sd, flag_dim="epoch", init_dir="pos", **config_epoch
         )
         logger.info(f"📋 LOSSLESS: Noisy epochs: {bad_epoch_inds}")
-        self.flags["epoch"].add_flag_cat("ch_sd", bad_epoch_inds, epochs)
+        self.flags["epoch"].add_flag_cat("noisy", bad_epoch_inds, epochs)
 
     def get_n_nbr(self):
         """Calculate nearest neighbour correlation for channels."""
@@ -929,7 +877,7 @@ class LosslessPipeline:
         return chan_neighbour_r(epochs, n_nbr_ch, "max"), epochs
 
     @lossless_logger
-    def flag_ch_low_r(self):
+    def flag_uncorrelated_channels(self):
         """Check neighboring channels for too high or low of a correlation.
 
         Returns
@@ -943,15 +891,18 @@ class LosslessPipeline:
 
         # Create the window criteria vector for flagging low_r chan_info...
         bad_ch_names = _detect_outliers(
-            data_r_ch, flag_dim="ch", init_dir="neg", **self.config["ch_low_r"]
+            data_r_ch,
+            flag_dim="ch",
+            init_dir="neg",
+            **self.config["uncorrelated_channels"],
         )
         logger.info(f"📋 LOSSLESS: Uncorrelated channels: {bad_ch_names}")
         # Edit the channel flag info structure
-        self.flags["ch"].add_flag_cat(kind="low_r", bad_ch_names=bad_ch_names)
+        self.flags["ch"].add_flag_cat(kind="uncorrelated", bad_ch_names=bad_ch_names)
         return data_r_ch
 
     @lossless_logger
-    def flag_ch_bridge(self, data_r_ch):
+    def flag_bridged_channels(self, data_r_ch):
         """Flag bridged channels.
 
         Parameters
@@ -964,7 +915,7 @@ class LosslessPipeline:
 
         msr = data_r_ch.median("epoch") / data_r_ch.reduce(scipy.stats.iqr, dim="epoch")
 
-        trim = self.config["bridge"]["bridge_trim"]
+        trim = self.config["bridged_channels"]["bridge_trim"]
         if trim >= 1:
             trim /= 100
         trim /= 2
@@ -972,17 +923,17 @@ class LosslessPipeline:
         trim_mean = partial(scipy.stats.mstats.trimmed_mean, limits=(trim, trim))
         trim_std = partial(scipy.stats.mstats.trimmed_std, limits=(trim, trim))
 
-        z_val = self.config["bridge"]["bridge_z"]
+        z_val = self.config["bridged_channels"]["bridge_z"]
         mask = msr > msr.reduce(trim_mean, dim="ch") + z_val * msr.reduce(
             trim_std, dim="ch"
         )
 
         bad_ch_names = data_r_ch.ch.values[mask]
         logger.info(f"📋 LOSSLESS: Bridged channels: {bad_ch_names}")
-        self.flags["ch"].add_flag_cat(kind="bridge", bad_ch_names=bad_ch_names)
+        self.flags["ch"].add_flag_cat(kind="bridged", bad_ch_names=bad_ch_names)
 
     @lossless_logger
-    def flag_ch_rank(self, data_r_ch):
+    def flag_rank_channel(self, data_r_ch):
         """Flag the channel that is the least unique.
 
         Flags the channel that is the least unique, the channel to remove prior
@@ -1006,8 +957,8 @@ class LosslessPipeline:
         self.flags["ch"].add_flag_cat(kind="rank", bad_ch_names=bad_ch_names)
 
     @lossless_logger
-    def flag_epoch_low_r(self):
-        """Flag epochs where too many channels are bridged.
+    def flag_uncorrelated_epochs(self):
+        """Flag epochs where too many channels are uncorrelated.
 
         Notes
         -----
@@ -1020,15 +971,13 @@ class LosslessPipeline:
         data_r_ch, epochs = self.get_n_nbr()
 
         bad_epoch_inds = _detect_outliers(
-            data_r_ch, flag_dim="epoch", init_dir="neg", **self.config["epoch_low_r"]
+            data_r_ch,
+            flag_dim="epoch",
+            init_dir="neg",
+            **self.config["uncorrelated_epochs"],
         )
         logger.info(f"📋 LOSSLESS: Uncorrelated epochs: {bad_epoch_inds}")
-        self.flags["epoch"].add_flag_cat("low_r", bad_epoch_inds, epochs)
-
-    def flag_epoch_gap(self):
-        """Flag small time periods between pylossless annotations."""
-        annots = marks_flag_gap(self.raw, self.config["epoch_gap"]["min_gap_ms"])
-        self.raw.set_annotations(self.raw.annotations + annots)
+        self.flags["epoch"].add_flag_cat("uncorrelated", bad_epoch_inds, epochs)
 
     @lossless_logger
     def run_ica(self, run):
@@ -1060,10 +1009,10 @@ class LosslessPipeline:
             raise ValueError("The `run` argument must be 'run1' or 'run2'")
 
     @lossless_logger
-    def flag_epoch_ic_sd1(self):
+    def flag_noisy_ics(self):
         """Calculate the IC standard Deviation by epoch window.
 
-        Flags windows with too much standard deviation.
+        Flags windows with too many ICs with outlying standard deviations.
         """
         # Calculate IC sd by window
         epochs = self.get_epochs()
@@ -1071,10 +1020,10 @@ class LosslessPipeline:
         data_sd = epochs_xr.std("time")
 
         # Create the windowing sd criteria
-        kwargs = self.config["ica"]["ic_ic_sd"]
+        kwargs = self.config["ica"]["noisy_ic_epochs"]
         bad_epoch_inds = _detect_outliers(data_sd, flag_dim="epoch", **kwargs)
 
-        self.flags["epoch"].add_flag_cat("ic_sd1", bad_epoch_inds, epochs)
+        self.flags["epoch"].add_flag_cat("noisy_ICs", bad_epoch_inds, epochs)
 
         # icsd_epoch_flags=padflags(raw, icsd_epoch_flags,1,'value',.5);
 
@@ -1198,40 +1147,35 @@ class LosslessPipeline:
         self.flag_channels_fixed_threshold()
 
         # 3.flag channels based on large Stdev. across time
-        self.flag_ch_sd_ch(message="Flagging Noisy Channels")
+        self.flag_noisy_channels(message="Flagging Noisy Channels")
 
         # 4.flag epochs based on large Channel Stdev. across time
-        self.flag_ch_sd_epoch(message="Flagging Noisy Time periods")
+        self.flag_noisy_epochs(message="Flagging Noisy Time periods")
 
         # 5. Filtering
         self.filter(message="Filtering")
 
         # 6. calculate nearest neighbort r values
-        data_r_ch = self.flag_ch_low_r(message="Flagging uncorrelated" " channels")
+        msg = "Flagging uncorrelated channels"
+        data_r_ch = self.flag_uncorrelated_channels(message=msg)
 
         # 7. Identify bridged channels
-        self.flag_ch_bridge(data_r_ch, message="Flagging Bridged channels")
+        self.flag_bridged_channels(data_r_ch, message="Flagging Bridged channels")
 
         # 8. Flag rank channels
-        self.flag_ch_rank(data_r_ch, message="Flagging the rank channel")
+        self.flag_rank_channel(data_r_ch, message="Flagging the rank channel")
 
         # 9. Calculate nearest neighbour R values for epochs
-        self.flag_epoch_low_r(message="Flagging Uncorrelated epochs")
+        self.flag_uncorrelated_epochs(message="Flagging Uncorrelated epochs")
 
-        # 10. Flag very small time periods between flagged time
-        self.flag_epoch_gap()
-
-        # 11. Run ICA
+        # 10. Run ICA
         self.run_ica("run1", message="Running Initial ICA")
 
-        # 12. Calculate IC SD
-        self.flag_epoch_ic_sd1(message="Flagging time periods with noisy" " IC's.")
+        # 11. Calculate IC SD
+        self.flag_noisy_ics(message="Flagging time periods with noisy IC's.")
 
-        # 13. TODO: integrate labels from IClabels to self.flags["ic"]
+        # 12. TODO: integrate labels from IClabels to self.flags["ic"]
         self.run_ica("run2", message="Running Final ICA.")
-
-        # 14. Flag very small time periods between flagged time
-        self.flag_epoch_gap()
 
     def run_dataset(self, paths):
         """Run a full dataset.
