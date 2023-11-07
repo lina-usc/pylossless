@@ -32,8 +32,9 @@ sys.path.insert(0, os.path.abspath("../.."))
 extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.autodoc",
-    "numpydoc",
+    "sphinx.ext.mathjax",
     "sphinx.ext.todo",
+    "numpydoc",
     "sphinx_gallery.gen_gallery",
     "sphinxemoji.sphinxemoji",
     "sphinx_design",
@@ -63,6 +64,7 @@ intersphinx_mapping = {
     "mne": ("https://mne.tools/dev", None),
     "mne_icalabel": ("https://mne.tools/mne-icalabel/dev", None),
     "mne_bids": ("https://mne.tools/mne-bids/dev", None),
+    "pylossless": ("https://pylossless.readthedocs.io/en/latest/", None),
 }
 
 # -- Options for HTML output -------------------------------------------------
