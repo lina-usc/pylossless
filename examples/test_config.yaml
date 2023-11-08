@@ -1,37 +1,7 @@
 aref_trim: 30
-bridge:
+bridged_channels:
     bridge_trim: 40
     bridge_z: 6
-ch_ch_sd:
-    flag_crit: 0.3
-    outlier_method: quantile
-    outliers_kwargs:
-        k: 16
-        lower: 0.25
-        upper: 0.75
-ch_low_r:
-    flag_crit: 0.2
-    outlier_method: quantile
-    outliers_kwargs:
-        k: 16
-        lower: 0.3
-        upper: 0.7
-epoch_ch_sd:
-    flag_crit: 0.2
-    outlier_method: quantile
-    outliers_kwargs:
-        k: 16
-        lower: 0.3
-        upper: 0.7
-epoch_gap:
-    min_gap_ms: 2000
-epoch_low_r:
-    flag_crit: 0.2
-    outlier_method: quantile
-    outliers_kwargs:
-        k: 16
-        lower: 0.3
-        upper: 0.7
 epoching:
     epochs_args:
         baseline: null
@@ -46,13 +16,6 @@ filtering:
         freqs: []
 find_breaks: null
 ica:
-    ic_ic_sd:
-        flag_crit: 0.2
-        outlier_method: quantile
-        outliers_kwargs:
-            k: 6
-            lower: 0.3
-            upper: 0.7
     ica_args:
         run1:
             method: fastica
@@ -60,6 +23,13 @@ ica:
             fit_params:
                 extended: true
             method: infomax
+    noisy_ic_epochs:
+        flag_crit: 0.2
+        outlier_method: quantile
+        outliers_kwargs:
+            k: 6
+            lower: 0.3
+            upper: 0.7
 in_path: []
 montage_info:
 - 0.0
@@ -74,6 +44,20 @@ montage_info:
 nearest_neighbors:
     n_nbr_ch: 3
     n_nbr_epoch: 3
+noisy_channels:
+    flag_crit: 0.3
+    outlier_method: quantile
+    outliers_kwargs:
+        k: 16
+        lower: 0.25
+        upper: 0.75
+noisy_epochs:
+    flag_crit: 0.2
+    outlier_method: quantile
+    outliers_kwargs:
+        k: 16
+        lower: 0.3
+        upper: 0.7
 order: 1
 out_path: derivatives/EEG-IP-L
 project:
@@ -117,3 +101,17 @@ slurm_options:
     program_options: []
     threads_per_task: []
     time_limit: 2h
+uncorrelated_channels:
+    flag_crit: 0.2
+    outlier_method: quantile
+    outliers_kwargs:
+        k: 16
+        lower: 0.3
+        upper: 0.7
+uncorrelated_epochs:
+    flag_crit: 0.2
+    outlier_method: quantile
+    outliers_kwargs:
+        k: 16
+        lower: 0.3
+        upper: 0.7
