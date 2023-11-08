@@ -2,21 +2,20 @@
 
 [![Documentation Status](https://readthedocs.org/projects/pylossless/badge/?version=latest)](https://pylossless.readthedocs.io/en/latest/?badge=latest)
 
-![logo](./docs/source/_static/logo_white.png)
+![logo](https://github.com/scott-huberty/wip_pipeline-figures/blob/main/logo/Logo_neutral.png)
 
 
 ## Introduction to the Lossless Pipeline
 
 This EEG processing pipeline is especially useful for the following scenarios:
 
-- You want to keep your EEG data in a continous state, allowing you the flexibility to epoch your data at a later stage.
-- You are part of a research team or community that shares a common dataset, and you want to process the data once in a way that can be used for multiple analyses.
-
-## Background and Purpose
-
-This project arose from the Elsabbagh Lab at McGill University. While working on a study of +1,500 infant EEG recordings from multiple studies, with inconsistent event markers across recordings, we needed a robust method to isolate artifacts in the EEG data, that could be applied once and re-used by all research team members.
-
-The Lossless pipeline was designed keep EEG recordings in their continuous state. It _annotates_ bad channels, bad time periods, and artifactual independent components. The pipeline also provides a visual dashboard that displays the EEG recording, its respective ICA, and all the pipeline decisions. This allowed the team to quickly confirm that noisy channels, time periods, and components were sufficiently identified by the pipeline on any given recording. Since the artifacts were annotated directly on the raw data, researchers could later apply these annotations and epoch/segment/filter their data as needed, at the time of their respective analysis (i.e. one researcher could create 10-second long epochs, and another could create 1-second long epochs, without needing to re-process the whole dataset).
+- You want to keep your EEG data in a continuous state, allowing you the flexibility to
+  epoch your data at a later stage.
+- You are part of a research team or community that shares a common dataset, and you
+  want to process the data once in a way that can be used for multiple analyses (i.e.,
+  one analysis can segment the cleaned data into 10-second epochs and filter the data
+  betweeen 1-30Hz, while another analysis can use 1-second epochs with no filter, etc.)
+- You want to be able to do a hands on review of the pre-processing results for each file.
 
 ## 📘 Installation and usage instructions
 

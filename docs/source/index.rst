@@ -61,6 +61,6 @@ PyLossless EEG Processing Pipeline
       you Review the pipeline output and make
       informed decisions about your data
       
-.. image:: ./_images/qc_screenshot.png
+.. image:: https://raw.githubusercontent.com/scott-huberty/wip_pipeline-figures/main/dashboard.png
    :alt: pylossless-qc-dashboard-screenshot
    :align: center
