@@ -9,3 +9,4 @@ mne_icalabel
 pyyaml
 scikit-learn
 openneuro-py
+torch
