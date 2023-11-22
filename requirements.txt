@@ -8,3 +8,4 @@ scipy>=1.2.1
 mne_icalabel
 pyyaml
 scikit-learn
+openneuro-py
