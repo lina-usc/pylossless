@@ -1,0 +1,28 @@
+[tool.codespell]
+skip = "docs/source/generated,pylossless/assets"
+
+[tool.ruff]
+select = ["E", "F", "W", "D"] # pycodestle, pyflakes, Warning, Docstring
+exclude = ["__init__.py"]
+ignore = [
+    "D100", # Missing docstring in public module
+    "D104", # Missing docstring in public package
+    "D413", # Missing blank line after last section
+]
+
+[tool.ruff.pydocstyle]
+convention = "numpy"
+ignore-decorators = [
+    "property",
+    "setter",
+]
+
+[tool.black]
+exclude = "(dist/)|(build/)|(examples/)|(.*\\.ipynb)" # Exclude build artifacts and notebooks
+
+[tool.pytest.ini_options]
+filterwarnings = ["error", 
+# error on warning except the non-int sample freq warning, which we want to be raised
+'ignore:The Raw sampling frequency is',
+ # deprecation in dash-testing that needs to be reported
+"ignore::DeprecationWarning",]

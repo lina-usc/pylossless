@@ -8,10 +8,9 @@ sd_t_pad: 1
 in_path: []
 montage_info: [0.0, -16.0, 0.0, -0.02, 0.0, -1.58, 10.7, 11.5, 11.5]
 
-
 ################## General info about the project ####################
 project:
-  readme: '# Q1K ACAR Dataset'
+  readme: "# Q1K ACAR Dataset"
 
   # Montage use to make file BIDS compliant.
   # Can be path to digitized montage OR a string of one of mne's built in
@@ -23,14 +22,14 @@ project:
   # if empty, the pipeline will use the electrodes.tsv sidecar file, if created
   # during the BIDS conversion.
   # If specified, needs to be a string of one of mne's built in standard montages.
-  analysis_montage: ''
-  
+  analysis_montage: ""
+
   set_montage_kwargs: {}
 
   coordsys:
     EEGCoordinateSystem: Other
     EEGCoordinateUnits: metres
-    
+
   general_info:
     authors: [Q1K Neuroimaging group]
     institution_Name: McGill University
@@ -38,7 +37,7 @@ project:
     dataset_doi: []
     funding: Azrieli Foundationt
     how_to_acknowledge: tba
-    license: ''
+    license: ""
     name: Q1K Mismatched Negativity
     references_and_links: []
 
@@ -52,7 +51,7 @@ project:
     power_line_frequency: 60
     software_filters: n/a
     software_versions: NetStation V4.5
-    
+
 ######################## Task break detection ########################
 # See arguments definition from mne.preprocessing.annotate_breaks
 find_breaks:
@@ -60,13 +59,12 @@ find_breaks:
 ############################## epoching ##############################
 epoching:
   overlap: 0
-  
+
   # See arguments definition from mne.Epochs
   epochs_args:
     baseline: null
     tmax: 1
     tmin: 0
-
 
 ########################### EEG filtering ############################
 # See arguments definition from mne.io.Raw.filter & mne.io.Raw.notch_filter
@@ -76,7 +74,6 @@ filtering:
     l_freq: 1
   notch_filter_args:
     freqs: []
-
 
 ############################## SLURM #################################
 # Options for running the pipeline on a cluster
@@ -95,14 +92,13 @@ slurm_options:
 nearest_neighbors:
   n_nbr_ch: 3
   n_nbr_epoch: 3
-  
 
 ####################### Pipeline steps config ########################
-bridge:
+bridged_channels:
   bridge_trim: 40
   bridge_z: 6
 
-ch_ch_sd:
+noisy_channels:
   flag_crit: 0.2
   outlier_method: quantile
   outliers_kwargs:
@@ -110,7 +106,7 @@ ch_ch_sd:
     lower: 0.3
     upper: 0.7
 
-ch_low_r:
+uncorrelated_channels:
   flag_crit: 0.2
   outlier_method: quantile
   outliers_kwargs:
@@ -118,7 +114,7 @@ ch_low_r:
     lower: 0.3
     upper: 0.7
 
-epoch_ch_sd:
+noisy_epochs:
   flag_crit: 0.2
   outlier_method: quantile
   outliers_kwargs:
@@ -126,10 +122,7 @@ epoch_ch_sd:
     lower: 0.3
     upper: 0.7
 
-epoch_gap:
-  min_gap_ms: 2000
-
-epoch_low_r:
+uncorrelated_epochs:
   flag_crit: 0.2
   outlier_method: quantile
   outliers_kwargs:
@@ -139,7 +132,7 @@ epoch_low_r:
 
 ################################ ICA #################################
 ica:
-  ic_ic_sd:
+  noisy_ic_epochs:
     flag_crit: 0.2
     outlier_method: quantile
     outliers_kwargs:

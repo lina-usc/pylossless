@@ -15,7 +15,7 @@ from mne.utils import logger
 
 import mne_icalabel
 
-from ._utils import _icalabel_to_data_frame
+from .utils._utils import _icalabel_to_data_frame
 
 
 class FlaggedChs(dict):
@@ -24,7 +24,8 @@ class FlaggedChs(dict):
     Attributes
     ----------
     ll : LosslessPipeline
-        the LosslessPipeline object that is flagging artifactual channels.
+        the :class:`~pylossless.pipeline.LosslessPipeline` object that is flagging
+        artifactual channels.
 
     Methods
     -------
@@ -51,6 +52,16 @@ class FlaggedChs(dict):
         super().__init__(*args, **kwargs)
         self.ll = ll
 
+    def __repr__(self):
+        """Return a string representation of the FlaggedChs object."""
+        return (
+            f"Flagged channels: |\n"
+            f"  Noisy: {self.get('ch_sd', None)}\n"
+            f"  Bridged: {self.get('bridge', None)}\n"
+            f"  Uncorrelated: {self.get('low_r', None)}\n"
+            f"  Rank: {self.get('rank', None)}\n"
+        )
+
     def add_flag_cat(self, kind, bad_ch_names, *args):
         """Store channel names that have been flagged by pipeline.
 
@@ -67,7 +78,7 @@ class FlaggedChs(dict):
         -------
         None
         """
-        logger.debug(f'NEW BAD CHANNELS {bad_ch_names}')
+        logger.debug(f"NEW BAD CHANNELS {bad_ch_names}")
         if isinstance(bad_ch_names, xr.DataArray):
             bad_ch_names = bad_ch_names.values
         self[kind] = bad_ch_names
@@ -86,19 +97,17 @@ class FlaggedChs(dict):
         Parameters
         ----------
         inst : mne.io.Raw
-            An instance of :class:`mne.io.Raw` that contains EEG channels.
+            An instance of :class:`~mne.io.Raw` that contains EEG channels.
         kwargs : dict
             dictionary of valid keyword arguments for the
-            :meth:`mne.io.Raw.set_eeg_reference` method.
+            :meth:`~mne.io.Raw.set_eeg_reference` method.
         """
         # Concatenate and remove duplicates
-        bad_chs = list(set(self.ll.find_outlier_chs(inst) +
-                           self.get_flagged() +
-                           inst.info['bads']))
-        ref_chans = [ch for ch in inst.copy().pick("eeg").ch_names
-                     if ch not in bad_chs]
-        inst.set_eeg_reference(ref_channels=ref_chans,
-                               **kwargs)
+        bad_chs = list(
+            set(self.ll.find_outlier_chs(inst) + self.get_flagged() + inst.info["bads"])
+        )
+        ref_chans = [ch for ch in inst.copy().pick("eeg").ch_names if ch not in bad_chs]
+        inst.set_eeg_reference(ref_channels=ref_chans, **kwargs)
 
     def save_tsv(self, fname):
         """Save flagged channel annotations to a text file.
@@ -111,11 +120,11 @@ class FlaggedChs(dict):
         labels = []
         ch_names = []
         for key in self:
-            labels.extend([key]*len(self[key]))
+            labels.extend([key] * len(self[key]))
             ch_names.extend(self[key])
-        pd.DataFrame({"labels": labels,
-                      "ch_names": ch_names}).to_csv(fname,
-                                                    index=False, sep="\t")
+        pd.DataFrame({"labels": labels, "ch_names": ch_names}).to_csv(
+            fname, index=False, sep="\t"
+        )
 
     def load_tsv(self, fname):
         """Load serialized channel annotations.
@@ -126,7 +135,7 @@ class FlaggedChs(dict):
             Filename of the tsv file with the annotation information to be
             loaded.
         """
-        out_df = pd.read_csv(fname, sep='\t')
+        out_df = pd.read_csv(fname, sep="\t")
         for label, grp_df in out_df.groupby("labels"):
             self[label] = grp_df.ch_names.values
 
@@ -141,8 +150,8 @@ class FlaggedEpochs(dict):
         :class:`mne.Epochs`) to the ``'manual'`` dictionary key.
 
     load_from_raw:
-        Add any :class:`mne.Annotations` in a loaded :class:`mne.io.Raw` file
-        that start with ``'bad_pylossless'`` to the FlaggedEpochs class.
+        Add any pylossless :class:`mne.Annotations` in a loaded :class:`mne.io.Raw`
+        file to the FlaggedEpochs class.
 
     Notes
     -----
@@ -172,7 +181,7 @@ class FlaggedEpochs(dict):
         Parameters
         ----------
         kind : str
-            Should be one of ``'ch_sd'``, ``'low_r'``, ``'ic_sd1'``.
+            Should be one of ``'noisy'``, ``'uncorrelated'``, ``'noisy_ICs'``.
         bad_epochs_inds : list | tuple
             Indices for the epochs in an :class:`mne.Epochs` object. Will be
             the values for the ``kind`` dictionary key.
@@ -186,19 +195,20 @@ class FlaggedEpochs(dict):
         self.ll.add_pylossless_annotations(bad_epoch_inds, kind, epochs)
 
     def load_from_raw(self, raw):
-        """Load ``'bad_pylossless'`` annotations from raw object."""
-        sfreq = raw.info['sfreq']
+        """Load pylossless annotations from raw object."""
+        sfreq = raw.info["sfreq"]
+        lossless_descriptions = ["bad_noisy", "bad_uncorrelated", "bad_noisy_ICs"]
         for annot in raw.annotations:
-            if annot['description'].startswith('bad_pylossless'):
-                ind_onset = int(np.round(annot['onset'] * sfreq))
-                ind_dur = int(np.round(annot['duration'] * sfreq))
+            if annot["description"] in lossless_descriptions:
+                ind_onset = int(np.round(annot["onset"] * sfreq))
+                ind_dur = int(np.round(annot["duration"] * sfreq))
                 inds = np.arange(ind_onset, ind_onset + ind_dur)
-                if annot['description'] not in self:
-                    self[annot['description']] = list()
-                self[annot['description']].append(inds)
+                if annot["description"] not in self:
+                    self[annot["description"]] = list()
+                self[annot["description"]].append(inds)
 
 
-class FlaggedICs(dict):
+class FlaggedICs(pd.DataFrame):
     """Object for handling IC classification in an mne ICA object.
 
     Attributes
@@ -240,7 +250,6 @@ class FlaggedICs(dict):
         """
         super().__init__(*args, **kwargs)
         self.fname = None
-        self.data_frame = None
 
     def label_components(self, epochs, ica):
         """Classify components using mne_icalabel.
@@ -258,7 +267,7 @@ class FlaggedICs(dict):
             :func:`mne_icalabel.label_components`. Must be one of: `'iclabel'`.
         """
         mne_icalabel.label_components(epochs, ica, method="iclabel")
-        self.data_frame = _icalabel_to_data_frame(ica)
+        self.__init__(_icalabel_to_data_frame(ica))
 
     def save_tsv(self, fname):
         """Save IC labels.
@@ -269,12 +278,12 @@ class FlaggedICs(dict):
             The output filename.
         """
         self.fname = fname
-        self.data_frame.to_csv(fname, sep='\t', index=False, na_rep='n/a')
+        self.to_csv(fname, sep="\t", index=False, na_rep="n/a")
 
     # TODO: Add parameters.
     def load_tsv(self, fname, data_frame=None):
         """Load flagged ICs from file."""
         self.fname = fname
         if data_frame is None:
-            data_frame = pd.read_csv(fname, sep='\t')
-        self.data_frame = data_frame
+            data_frame = pd.read_csv(fname, sep="\t")
+        self.__init__(data_frame)

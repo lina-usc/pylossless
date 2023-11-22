@@ -9,8 +9,8 @@ Building and Contributing to the Docs
 pyLossless uses `Sphinx <https://www.sphinx-doc.org/en/master/>`__ for building
 documentation. Specifically, we use the `PyData-sphinx-theme 
 <https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html>`__ as a
-design template for our page. We also use the `Napolean 
-<https://sphinxcontrib-napoleon.readthedocs.io/en/latest/index.html>`__
+design template for our page. We also use the `Numpydoc 
+<https://numpydoc.readthedocs.io/en/latest/index.html>`__
 and
 `autodoc <https://www.sphinx-doc.org/en/master/usage/extensions/autodoc.html>`__
 sphinx extensions to build API documentation directly from the pyLossless
@@ -113,7 +113,7 @@ Viewing the docs locally
 
 The built documentation is placed in ``docs/build``. You should not
 change any files in this directory. If you want to view the documentation
-locally, simply click on the ``docs/build/html/index.rst`` file from your
+locally, simply click on the ``docs/build/html/index.html`` file from your
 file browser or open it with the command line:
 
 If you are in the ``docs`` directory:

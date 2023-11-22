@@ -45,10 +45,9 @@ def open_folder_dialog():
 class QCGUI:
     """Class that stores the visualizer-plots that are used in the qcr app."""
 
-    def __init__(self, app,
-                 fpath=None, project_root=None,
-                 disable_buttons=False,
-                 verbose=False):
+    def __init__(
+        self, app, fpath=None, project_root=None, disable_buttons=False, verbose=False
+    ):
         """Initialize class.
 
         Parameters
@@ -69,7 +68,7 @@ class QCGUI:
         # TODO: Fix this pathing indexing, can likely cause errors.
         if project_root is None:
             project_root = Path(__file__).parent.parent
-            project_root = project_root / 'assets' / 'test_data'
+            project_root = project_root / "assets" / "test_data"
         self.project_root = Path(project_root)
 
         self.pipeline = LosslessPipeline()
@@ -92,65 +91,73 @@ class QCGUI:
         """Create EEG/ICA time-series dcc.graphs and topomap dcc.graphs."""
         # Setting time-series and topomap visualizers
         if self.ic_types:
-            cmap = {ic: ic_label_cmap[ic_type]
-                    for ic, ic_type in self.ic_types.items()}
+            cmap = {ic: ic_label_cmap[ic_type] for ic, ic_type in self.ic_types.items()}
         else:
             cmap = None
 
         # Using the output of the callback being triggered by
         # a selection of a new file, so that the two callbacks
         # are executed sequentially.
-        refresh_inputs = [Input('file-dropdown', 'placeholder')]
+        refresh_inputs = [Input("file-dropdown", "placeholder")]
         self.ica_visualizer = ICVisualizer(
-            self.app, self.raw_ica,
-            dash_id_suffix='ica',
+            self.app,
+            self.raw_ica,
+            dash_id_suffix="ica",
             cmap=cmap,
             ic_types=self.ic_types,
             refresh_inputs=refresh_inputs,
-            set_callbacks=False)
+            set_callbacks=False,
+        )
 
         self.eeg_visualizer = MNEVisualizer(
             self.app,
             self.raw,
             refresh_inputs=refresh_inputs.copy(),
             show_time_slider=False,
-            set_callbacks=False)
+            set_callbacks=False,
+        )
 
-        input_ = Input(self.eeg_visualizer.dash_ids['graph'], "relayoutData")
+        input_ = Input(self.eeg_visualizer.dash_ids["graph"], "relayoutData")
         self.ica_visualizer.refresh_inputs.append(input_)
-        input_ = Input(self.ica_visualizer.dash_ids['graph'], "relayoutData")
+        input_ = Input(self.ica_visualizer.dash_ids["graph"], "relayoutData")
         self.eeg_visualizer.refresh_inputs.append(input_)
 
         self.ica_visualizer.set_callback()
         self.eeg_visualizer.set_callback()
 
         self.ica_visualizer.mne_annots = self.eeg_visualizer.mne_annots
-        self.ica_visualizer.dash_ids['mne-annotations'] = \
-            self.eeg_visualizer.dash_ids['mne-annotations']
+        self.ica_visualizer.dash_ids["mne-annotations"] = self.eeg_visualizer.dash_ids[
+            "mne-annotations"
+        ]
 
         montage = self.raw.get_montage() if self.raw else None
-        self.ica_topo = TopoVizICA(self.app, montage, self.ica, self.ic_types,
-                                   show_sensors=True,
-                                   refresh_inputs=refresh_inputs)
+        self.ica_topo = TopoVizICA(
+            self.app,
+            montage,
+            self.ica,
+            self.ic_types,
+            show_sensors=True,
+            refresh_inputs=refresh_inputs,
+        )
 
-        self.ica_visualizer.new_annot_desc = 'bad_manual'
-        self.eeg_visualizer.new_annot_desc = 'bad_manual'
+        self.ica_visualizer.new_annot_desc = "bad_manual"
+        self.eeg_visualizer.new_annot_desc = "bad_manual"
 
         self.ica_visualizer.update_layout()
 
     def update_bad_ics(self, annotator="manual"):
         """Add IC name to raw.info['bads'] after selection by user in app."""
-        df = self.pipeline.flags['ic'].data_frame
+        df = self.pipeline.flags["ic"]
         manual_labels_df = pd.DataFrame(
             dict(
-                component=self.raw_ica.info['bads'],
-                annotater=[annotator] * len(self.raw_ica.info['bads']),
-                ic_type=["manual"] * len(self.raw_ica.info['bads']),
-                confidence=[1.0] * len(self.raw_ica.info['bads'])
-                )
+                component=self.raw_ica.info["bads"],
+                annotater=[annotator] * len(self.raw_ica.info["bads"]),
+                ic_type=["manual"] * len(self.raw_ica.info["bads"]),
+                confidence=[1.0] * len(self.raw_ica.info["bads"]),
+            )
         )
         df = pd.concat((df[df.annotator != annotator], manual_labels_df))
-        self.pipeline.flags['ic'].data_frame = df
+        self.pipeline.flags["ic"].__init__(df)
 
     def set_layout(self, disable_buttons=False):
         """Create the app.layout for the app object.
@@ -169,58 +176,73 @@ class QCGUI:
         # Layout for file control row
         # derivatives_dir = self.project_root / 'derivatives'
         files_list = []
-        files_list = [{'label': str(file.name), 'value': str(file)}
-                      for file
-                      in sorted(self.project_root.rglob("*.edf"))]
+        files_list = [
+            {"label": str(file.name), "value": str(file)}
+            for file in sorted(self.project_root.rglob("*.edf"))
+        ]
 
-        dropdown_text = f'current folder: {self.project_root.resolve()}'
-        logo_fpath = '../assets/logo.png'
-        folder_button = dbc.Button('Folder', id='folder-selector',
-                                   color='primary',
-                                   outline=True,
-                                   className=CSS['button'],
-                                   title=dropdown_text,
-                                   disabled=disable_buttons)
-        save_button = dbc.Button('Save', id='save-button',
-                                 color='info',
-                                 outline=True,
-                                 className=CSS['button'],
-                                 disabled=disable_buttons)
-        self.drop_down = dcc.Dropdown(id='file-dropdown',
-                                      className=CSS['dropdown'],
-                                      placeholder="Select a file",
-                                      options=files_list)
-        control_header_row = dbc.Row([
-                                    dbc.Col([folder_button, save_button],
-                                            width={'size': 2}),
-                                    dbc.Col([self.drop_down,
-                                             html.P(id='dropdown-output')],
-                                            width={'size': 6}),
-                                    dbc.Col(
-                                        html.Img(src=logo_fpath,
-                                                 height='40px',
-                                                 className=CSS['logo']),
-                                        width={'size': 2, 'offset': 2}),
-                                      ],
-                                     className=CSS['file-row'],
-                                     align='center',
-                                     )
+        dropdown_text = f"current folder: {self.project_root.resolve()}"
+        logo_fpath = "../assets/logo.png"
+        folder_button = dbc.Button(
+            "Folder",
+            id="folder-selector",
+            color="primary",
+            outline=True,
+            className=CSS["button"],
+            title=dropdown_text,
+            disabled=disable_buttons,
+        )
+        save_button = dbc.Button(
+            "Save",
+            id="save-button",
+            color="info",
+            outline=True,
+            className=CSS["button"],
+            disabled=disable_buttons,
+        )
+        self.drop_down = dcc.Dropdown(
+            id="file-dropdown",
+            className=CSS["dropdown"],
+            placeholder="Select a file",
+            options=files_list,
+        )
+        control_header_row = dbc.Row(
+            [
+                dbc.Col([folder_button, save_button], width={"size": 2}),
+                dbc.Col(
+                    [self.drop_down, html.P(id="dropdown-output")], width={"size": 6}
+                ),
+                dbc.Col(
+                    html.Img(src=logo_fpath, height="40px", className=CSS["logo"]),
+                    width={"size": 2, "offset": 2},
+                ),
+            ],
+            className=CSS["file-row"],
+            align="center",
+        )
 
         # Layout for EEG/ICA and Topo plots row
-        timeseries_div = html.Div([self.eeg_visualizer.container_plot,
-                                   self.ica_visualizer.container_plot],
-                                  id='channel-and-icsources-div',
-                                  className=CSS['timeseries-col'])
-        visualizers_row = dbc.Row([dbc.Col([timeseries_div], width=8),
-                                   dbc.Col(self.ica_topo.container_plot,
-                                           className=CSS['topo-col'],
-                                           width=4)],
-                                  style=STYLE['plots-row'],
-                                  className=CSS['plots-row']
-                                  )
+        timeseries_div = html.Div(
+            [self.eeg_visualizer.container_plot, self.ica_visualizer.container_plot],
+            id="channel-and-icsources-div",
+            className=CSS["timeseries-col"],
+        )
+        visualizers_row = dbc.Row(
+            [
+                dbc.Col([timeseries_div], width=8),
+                dbc.Col(
+                    self.ica_topo.container_plot, className=CSS["topo-col"], width=4
+                ),
+            ],
+            style=STYLE["plots-row"],
+            className=CSS["plots-row"],
+        )
         # Final Layout
-        qc_app_layout = dbc.Container([control_header_row, visualizers_row],
-                                      fluid=True, style=STYLE['qc-container'])
+        qc_app_layout = dbc.Container(
+            [control_header_row, visualizers_row],
+            fluid=True,
+            style=STYLE["qc-container"],
+        )
         self.app.layout.children.append(qc_app_layout)
 
     def load_recording(self, fpath, verbose=False):
@@ -240,43 +262,46 @@ class QCGUI:
         self.raw = self.pipeline.raw
         self.ica = self.pipeline.ica2
         if self.raw:
-            info = mne.create_info(self.ica._ica_names,
-                                   sfreq=self.raw.info['sfreq'],
-                                   ch_types=['eeg'] * self.ica.n_components_,
-                                   verbose=verbose)
+            info = mne.create_info(
+                self.ica._ica_names,
+                sfreq=self.raw.info["sfreq"],
+                ch_types=["eeg"] * self.ica.n_components_,
+                verbose=verbose,
+            )
             sources = self.ica.get_sources(self.raw).get_data()
             self.raw_ica = mne.io.RawArray(sources, info, verbose=verbose)
-            self.raw_ica.set_meas_date(self.raw.info['meas_date'])
+            self.raw_ica.set_meas_date(self.raw.info["meas_date"])
             self.raw_ica.set_annotations(self.raw.annotations)
-            df = self.pipeline.flags['ic'].data_frame
+            df = self.pipeline.flags["ic"]
 
-            bads = [ic_name
-                    for ic_name, ic_type
-                    in df[["component", "ic_type"]].values
-                    if ic_type == "manual"]
+            bads = [
+                ic_name
+                for ic_name, ic_type in df[["component", "ic_type"]].values
+                if ic_type == "manual"
+            ]
             self.raw_ica.info["bads"] = bads
         else:
             self.raw_ica = None
 
-        df = self.pipeline.flags['ic'].data_frame
+        df = self.pipeline.flags["ic"]
         self.ic_types = df[df.annotator == "ic_label"]
-        self.ic_types = self.ic_types.set_index('component')['ic_type']
+        self.ic_types = self.ic_types.set_index("component")["ic_type"]
         self.ic_types = self.ic_types.to_dict()
-        cmap = {ic: ic_label_cmap[ic_type]
-                for ic, ic_type in self.ic_types.items()}
-        self.ica_visualizer.load_recording(self.raw_ica, cmap=cmap,
-                                           ic_types=self.ic_types)
+        cmap = {ic: ic_label_cmap[ic_type] for ic, ic_type in self.ic_types.items()}
+        self.ica_visualizer.load_recording(
+            self.raw_ica, cmap=cmap, ic_types=self.ic_types
+        )
         self.eeg_visualizer.load_recording(self.raw)
-        self.ica_topo.load_recording(self.raw.get_montage(),
-                                     self.ica, self.ic_types)
+        self.ica_topo.load_recording(self.raw.get_montage(), self.ica, self.ic_types)
 
     def set_callbacks(self):
         """Define additional callbacks that will be used by the qcr app."""
+
         # TODO: delete this folder selection callback
         @self.app.callback(
-            Output('file-dropdown', 'options'),
-            Input('folder-selector', 'n_clicks'),
-            prevent_initial_call=True
+            Output("file-dropdown", "options"),
+            Input("folder-selector", "n_clicks"),
+            prevent_initial_call=True,
         )
         def folder_button_clicked(n_clicks):
             if n_clicks:
@@ -284,17 +309,18 @@ class QCGUI:
                     folder_path = pool.apply(open_folder_dialog)
                     self.project_root = Path(folder_path)
 
-                files_list = [{'label': str(file.name), 'value': str(file)}
-                              for file
-                              in sorted(self.project_root.rglob("*.edf"))]
+                files_list = [
+                    {"label": str(file.name), "value": str(file)}
+                    for file in sorted(self.project_root.rglob("*.edf"))
+                ]
                 return files_list
             return dash.no_update
 
         @self.app.callback(
-            Output('file-dropdown', 'placeholder'),
-            Output(self.eeg_visualizer.dash_ids['loading-output'], "children"),
-            Input('file-dropdown', 'value'),
-            prevent_initial_call=False
+            Output("file-dropdown", "placeholder"),
+            Output(self.eeg_visualizer.dash_ids["loading-output"], "children"),
+            Input("file-dropdown", "value"),
+            prevent_initial_call=False,
         )
         def file_selected(value):
             if value:  # on selection of dropdown item
@@ -304,33 +330,32 @@ class QCGUI:
             if self.fpath:
                 self.load_recording(self.fpath)
                 return str(self.fpath.name), []
-            return '', []
+            return "", []
 
         @self.app.callback(
-            Output('dropdown-output', 'children'),
-            Input('save-button', 'n_clicks'),
-            prevent_initial_call=True
+            Output("dropdown-output", "children"),
+            Input("save-button", "n_clicks"),
+            prevent_initial_call=True,
         )
         def save_file(n_clicks):
             self.update_bad_ics()
             self.eeg_visualizer.update_inst_annnotations()
-            self.pipeline.save(get_bids_path_from_fname(self.fpath),
-                               overwrite=True)
-            logger.info('file saved!')
+            self.pipeline.save(get_bids_path_from_fname(self.fpath), overwrite=True)
+            logger.info("file saved!")
             return dash.no_update
 
         properties = ["value", "min", "max", "marks"]
-        slider_ids = [self.eeg_visualizer.dash_ids['time-slider'],
-                      self.ica_visualizer.dash_ids['time-slider']]
-        sliders = [self.ica_visualizer.time_slider,
-                   self.eeg_visualizer.time_slider]
+        slider_ids = [
+            self.eeg_visualizer.dash_ids["time-slider"],
+            self.ica_visualizer.dash_ids["time-slider"],
+        ]
+        sliders = [self.ica_visualizer.time_slider, self.eeg_visualizer.time_slider]
         decorator_args = []
         for slider_id in slider_ids:
-            decorator_args += [Output(slider_id, property)
-                               for property in properties]
+            decorator_args += [Output(slider_id, property) for property in properties]
         for slider_id in slider_ids:
-            decorator_args += [Input(slider_id, 'value')]
-        decorator_args += [Input('file-dropdown', 'placeholder')]
+            decorator_args += [Input(slider_id, "value")]
+        decorator_args += [Input("file-dropdown", "placeholder")]
 
         @self.app.callback(*decorator_args, prevent_initial_call=True)
         def sync_time_sliders(*args):
@@ -346,6 +371,7 @@ class QCGUI:
                 The file-dropdown dash component. The placeholder component
                 property of this dash-component is used to refresh the time
                 sliders when loading a new file.
+
             Returns
             -------
             For the following component_properties of the EEG time slider and
@@ -371,54 +397,61 @@ class QCGUI:
             if ctx.triggered:
                 trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
                 if trigger_id == slider_ids[0]:
-                    return ([no_update]*len(properties) + [args[0]] +
-                            [no_update]*(len(properties)-1))
+                    return (
+                        [no_update] * len(properties)
+                        + [args[0]]
+                        + [no_update] * (len(properties) - 1)
+                    )
                 if trigger_id == slider_ids[1]:
-                    return [args[1]] + [no_update]*(len(properties)*2-1)
-                if trigger_id == 'file-dropdown':
+                    return [args[1]] + [no_update] * (len(properties) * 2 - 1)
+                if trigger_id == "file-dropdown":
                     args = []
                     for slider in sliders[::-1]:
-                        args += [getattr(slider, property)
-                                 for property in properties]
+                        args += [getattr(slider, property) for property in properties]
                     return args
 
         @self.app.callback(
-                Output(self.ica_visualizer.dash_ids['ch-slider'],
-                       'value'),
-                Output('topo-slider',  'value'),
-                Output(self.ica_visualizer.dash_ids['ch-slider'],
-                       component_property='min'),
-                Output(self.ica_visualizer.dash_ids['ch-slider'],
-                       component_property='max'),
-                Output('topo-slider',
-                       component_property='min'),
-                Output('topo-slider',
-                       component_property='max'),
-                Input(self.ica_visualizer.dash_ids['ch-slider'],
-                      'value'),
-                Input('topo-slider', 'value'),
-                Input('file-dropdown', 'placeholder'),
-                prevent_initial_call=True)
+            Output(self.ica_visualizer.dash_ids["ch-slider"], "value"),
+            Output("topo-slider", "value"),
+            Output(self.ica_visualizer.dash_ids["ch-slider"], component_property="min"),
+            Output(self.ica_visualizer.dash_ids["ch-slider"], component_property="max"),
+            Output("topo-slider", component_property="min"),
+            Output("topo-slider", component_property="max"),
+            Input(self.ica_visualizer.dash_ids["ch-slider"], "value"),
+            Input("topo-slider", "value"),
+            Input("file-dropdown", "placeholder"),
+            prevent_initial_call=True,
+        )
         def sync_ica_sliders(ica_ch_slider, ica_topo_slider, selected_file):
             """Sync ICA-Raw and ICA-topo sliders and refresh upon new file."""
             ctx = dash.callback_context
             if ctx.triggered:
                 trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-                if trigger_id == self.ica_visualizer.dash_ids['ch-slider']:
+                if trigger_id == self.ica_visualizer.dash_ids["ch-slider"]:
                     # If user dragged the ica-raw ch-slider
                     value = ica_ch_slider
                     # only update the ica-topo slider val.
-                    return (no_update, value,
-                            no_update, no_update,  # min max 4 ica-raw slider.
-                            no_update, no_update)  # min max 4 topo-slider
-                if trigger_id == 'topo-slider':
+                    return (
+                        no_update,
+                        value,
+                        no_update,
+                        no_update,  # min max 4 ica-raw slider.
+                        no_update,
+                        no_update,
+                    )  # min max 4 topo-slider
+                if trigger_id == "topo-slider":
                     # If the user dragged the topoplot slider
                     value = ica_topo_slider
                     # only update the ica-raw ch-slider val
-                    return (value, no_update,
-                            no_update, no_update,  # min max 4 ica-raw slider
-                            no_update, no_update)  # min max 4 topo-slider
-                if trigger_id == 'file-dropdown':
+                    return (
+                        value,
+                        no_update,
+                        no_update,
+                        no_update,  # min max 4 ica-raw slider
+                        no_update,
+                        no_update,
+                    )  # min max 4 topo-slider
+                if trigger_id == "file-dropdown":
                     # If the user selected a new file
                     value = self.ica_visualizer.channel_slider.value
                     min_ = self.ica_visualizer.channel_slider.min
@@ -428,20 +461,18 @@ class QCGUI:
                     return value, value, min_, max_, min_, max_
 
         @self.app.callback(
-                Output(self.eeg_visualizer.dash_ids['ch-slider'],
-                       'value'),
-                Output(self.eeg_visualizer.dash_ids['ch-slider'],
-                       component_property='min'),
-                Output(self.eeg_visualizer.dash_ids['ch-slider'],
-                       component_property='max'),
-                Input('file-dropdown', 'placeholder'),
-                prevent_initial_call=True)
+            Output(self.eeg_visualizer.dash_ids["ch-slider"], "value"),
+            Output(self.eeg_visualizer.dash_ids["ch-slider"], component_property="min"),
+            Output(self.eeg_visualizer.dash_ids["ch-slider"], component_property="max"),
+            Input("file-dropdown", "placeholder"),
+            prevent_initial_call=True,
+        )
         def refresh_eeg_ch_slider(selected_file):
             """Refresh eeg graph ch-slider upon new file selection."""
             ctx = dash.callback_context
             if ctx.triggered:
                 trigger_id = ctx.triggered[0]["prop_id"].split(".")[0]
-                if trigger_id == 'file-dropdown':
+                if trigger_id == "file-dropdown":
                     # If the user selected a new file
                     value = self.eeg_visualizer.channel_slider.value
                     min_ = self.eeg_visualizer.channel_slider.min

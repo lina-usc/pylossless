@@ -1,24 +1,30 @@
 [![codecov](https://codecov.io/github/lina-usc/pylossless/branch/main/graph/badge.svg?token=SVAD8HTJNG)](https://codecov.io/github/lina-usc/pylossless)
 
-![logo](./docs/source/_static/logo_white.png)
+[![Documentation Status](https://readthedocs.org/projects/pylossless/badge/?version=latest)](https://pylossless.readthedocs.io/en/latest/?badge=latest)
 
-![QCR Dashboard](./docs/source/_images/qc_screenshot.png)
+![logo](https://github.com/scott-huberty/wip_pipeline-figures/blob/main/logo/Logo_neutral.png)
 
-### **Note: This software has alpha status. This means that this package is young and will likely undergo frequent changes and improvements.
 
+## Introduction to the Lossless Pipeline
+
+This EEG processing pipeline is especially useful for the following scenarios:
+
+- You want to keep your EEG data in a continuous state, allowing you the flexibility to
+  epoch your data at a later stage.
+- You are part of a research team or community that shares a common dataset, and you
+  want to process the data once in a way that can be used for multiple analyses (i.e.,
+  one analysis can segment the cleaned data into 10-second epochs and filter the data
+  betweeen 1-30Hz, while another analysis can use 1-second epochs with no filter, etc.)
+- You want to be able to do a hands on review of the pre-processing results for each file.
 
 ## 📘 Installation and usage instructions
-
-This package can be install from PyPI with
-```bash
-$ pip install pylossless
-```
 
 The development version can be installed from GitHub with
 ```bash
 $ git clone git@github.com:lina-usc/pylossless.git
 $ pip install --editable ./pylossless
 ```
+
 for an editable installation, or simply with 
 ```bash
 $ pip install git+https://github.com/lina-usc/pylossless.git
@@ -56,9 +62,29 @@ Once you are ready, you can save your file:
 pipeline.save(pipeline.get_derivative_path(bids_path), overwrite=True)
 ```
 
+## 👩‍💻 Dashboard Review
+[![Open in Colab](https://camo.githubusercontent.com/84f0493939e0c4de4e6dbe113251b4bfb5353e57134ffd9fcab6b8714514d4d1/68747470733a2f2f636f6c61622e72657365617263682e676f6f676c652e636f6d2f6173736574732f636f6c61622d62616467652e737667)](https://colab.research.google.com/github/lina-usc/pylossless/blob/main/notebooks/qc_example.ipynb)
+
+![QCR Dashboard](https://raw.githubusercontent.com/scott-huberty/wip_pipeline-figures/main/dashboard.png)
+
+After running the Lossless pipeline, you can launch the Quality Control
+Review (QC) dashboard to review the pipeline's decisions on each file!
+You can flag additional channels, times and components, and edit flags
+made by the pipeline.
+
+First install the dashboard requirements
+```bash
+$ cd ./path/to/pylossless/on/your/computer
+$ pip install --editable .[dash]
+```
+
+```bash
+$ pylossless_qc
+```
+
 ## ▶️ Example HPC Environment Setup
 
-Assuming you are on a system such as [Narval](https://docs.alliancecan.ca/wiki/Narval/en):
+If you are a Canadian researcher working on an HPC system such as [Narval](https://docs.alliancecan.ca/wiki/Narval/en):
 
 ```bash
 module load python/3.10
@@ -88,29 +114,3 @@ pip install --no-deps .
 # Verify that the package has installed correct with an import
 python -c 'import pylossless'
 ```
-
-## 👩‍💻 Dashboard Review
-[![Open in Colab](https://camo.githubusercontent.com/84f0493939e0c4de4e6dbe113251b4bfb5353e57134ffd9fcab6b8714514d4d1/68747470733a2f2f636f6c61622e72657365617263682e676f6f676c652e636f6d2f6173736574732f636f6c61622d62616467652e737667)](https://colab.research.google.com/github/lina-usc/pylossless/blob/main/notebooks/qc_example.ipynb)
-
-![QCR Dashboard](./docs/source/_images/qc_screenshot.png)
-
-After running the Lossless pipeline, you can launch the Quality Control
-Review (QC) dashboard to review the pipeline's decisions on each file!
-You can flag additional channels, times and components, and edit flags
-made by the pipeline.
-
-First install the dashboard requirements
-```bash
-$ cd ./path/to/pylossless/on/your/computer
-$ pip install --editable .[dash]
-```
-
-```bash
-$ python pylossless/dash/app.py
-```
-
-## Motivation
-
-This project is a port of the MATLAB Lossless EEG Processing Pipeline ([Github repo](https://github.com/BUCANL/EEG-IP-L)) presented in [Desjardins et al (2021)](https://www.sciencedirect.com/science/article/pii/S0165027020303848). This port aims at 1) making this pipeline available to the Python community and 2) providing a version of the pipeline that is easier to deploy by outsiders.
-
-This pipeline is built on the idea that sharing and pooling data across the scientific community is most efficient when sharing a standardized (e.g., in [BIDS](https://www.nature.com/articles/s41597-019-0104-8)) and "clean" version of a dataset. However, cleaning artifacts in a dataset generally results in a loss of data (i.e., the original recorded signals are generally not recoverable). This is particularly problematic given that preprocessing steps for a dataset are rarely perfect (i.e., future developments may offer methods that would perform better at removing some artifacts) and can be project-dependent. The Lossless pipeline addresses this issue by proposing a "lossless" process where data are annotated for artifacts in a non-destructive way, so that users have access to a readily clean dataset if they are comfortable with the existing annotations. Alternative, they can choose which annotations to use for preprocessing in a piecemeal fashion, or simply use the raw data without excluding any artifacts based on provided annotations. Artifacts are annotated for channels, epochs, and independent components; see  [Desjardins et al (2021)](https://www.sciencedirect.com/science/article/pii/S0165027020303848) for a more detailed presentation.

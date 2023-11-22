@@ -1,28 +1,36 @@
 name: Test pipeline
 
-on: pull_request
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Set up Python 3.x
-      uses: actions/setup-python@v4
-      with:
-        python-version: "3.x"
-    - name: Install Pylossless & Deps
-      run: pip install -e .
-    - name: Install testing dependencies
-      run: pip install -r requirements_testing.txt
-    - name: Install QC depedencies
-      run: pip install -r requirements_qc.txt      
-    - name: install openneuro
-      run: pip install openneuro-py
-    - name: Test Pipeline
-      run: | 
-        coverage run -m pytest
-    - name: Upload coverage to codecov
-      uses: codecov/codecov-action@v3
-      with:
+      - uses: actions/checkout@v3
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+      - name: Install Pylossless & Deps
+        run: pip install -e .
+      - name: Install testing dependencies
+        run: pip install -r requirements_testing.txt
+      - name: Install QC depedencies
+        run: pip install -r requirements_qc.txt
+      - name: install openneuro
+        run: pip install openneuro-py
+      - name: install pytorch
+        run: pip install torch
+      - name: Test Pipeline
+        run: |
+          coverage run -m pytest
+      - name: Upload coverage to codecov
+        uses: codecov/codecov-action@v3
+        with:
           token: ${{secrets.CODECOV_TOKEN}}
