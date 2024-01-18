@@ -10,6 +10,8 @@ def _get_ics(df, ic_type):
 def _sum_flagged_times(raw, flags):
     """Sum the total time flagged for various flags like noisy etc."""
     flag_dict = {}
+    if isinstance(flags, str):
+        flags = [flags]
     for flag in flags:
         flag_dict[flag] = []
         if raw:

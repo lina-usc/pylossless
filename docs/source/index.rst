@@ -1,11 +1,43 @@
-.. pyLossless documentation master file, created by
-   sphinx-quickstart on Fri Jan  6 12:24:18 2023.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+:layout: landing
+:description: Shibuya is a modern, responsive, customizable theme for Sphinx.
 
-PyLossless EEG Processing Pipeline
-==================================
-   
+PyLossless :octicon:`pulse`
+===========================
+
+.. rst-class:: lead
+
+    EEG Processing Pipeline that is non-destructive, automated, and built on Python.
+
+.. container:: buttons
+
+    `Docs <install.html>`_
+    `GitHub <https://github.com/lina-usc/pylossless>`_
+
+
+.. grid:: 1 1 2 3
+    :gutter: 2
+    :padding: 0
+    :class-row: surface
+
+    .. grid-item-card:: :octicon:`zap` Automated
+
+        Fast, Open-source, and built on python.
+
+    .. grid-item-card:: :octicon:`pin` Non-destructive
+
+        Keeps EEG continuous, noting bad channels, times, and independent components
+        so you can reject them and epoch your data however and whenever you want to.
+
+    .. grid-item-card:: :octicon:`telescope-fill` Streamlined Review
+
+         Web dashboard built with helps you review the output and make
+         informed decisions about your data.
+
+.. image:: https://raw.githubusercontent.com/scott-huberty/wip_pipeline-figures/main/dashboard.png
+   :alt: pylossless-qc-dashboard-screenshot
+   :align: center
+
+
 .. toctree::
    :maxdepth: 1
    :hidden:
@@ -14,53 +46,4 @@ PyLossless EEG Processing Pipeline
    auto_examples/index.rst
    API/API_index
    contributing
-
-
-
-.. grid::
-   
-   .. grid-item-card::
-
-      |:mechanical_arm:| Automated
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      Automatic Processing Pipeline
-      cleans your EEG data. |:broom:|
-
-
-   .. grid-item-card::
-
-      |:snake:| Built on Python
-      ^^^^^^^^^^^^^^^^^^^^^^^^^
-      Ported from MATLAB for easier
-      use and access!
-
-   .. grid-item-card::
-
-      |:recycle:| Non-destructive
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      Keeps your EEG continuous, so
-      you can epoch your data however
-      and whenever you want to.
-
-.. grid::
-
-   .. grid-item-card:: 
-
-      |:pencil:| Artifacts are Noted
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      Bad channels, times, and
-      components are stored as
-      ``Annotations`` in your
-      raw data. 
-
-   .. grid-item-card::
-
-      |:woman_technologist:| Streamlined Review
-      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      Web dashboard built with Plotly/Dash helps
-      you Review the pipeline output and make
-      informed decisions about your data
-      
-.. image:: https://raw.githubusercontent.com/scott-huberty/wip_pipeline-figures/main/dashboard.png
-   :alt: pylossless-qc-dashboard-screenshot
-   :align: center
+   Paper <https://www.biorxiv.org/content/10.1101/2024.01.12.575323v1>

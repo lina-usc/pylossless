@@ -1,2 +1,2 @@
-PyLossless Tutorials
-^^^^^^^^^^^^^^^^^^^^
+Tutorials
+^^^^^^^^^

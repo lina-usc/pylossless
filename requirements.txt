@@ -5,6 +5,6 @@ mne_bids
 pandas
 xarray
 scipy>=1.2.1
-mne_icalabel
+mne_icalabel>=0.5.0
 pyyaml
 scikit-learn
