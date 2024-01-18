@@ -7,7 +7,11 @@
 
 """Utility Functions for running the Lossless Pipeline."""
 
+import numpy as np
 import pandas as pd
+from mne.utils import logger
+
+from .html import _sum_flagged_times
 
 
 def _icalabel_to_data_frame(ica):
@@ -26,3 +30,11 @@ def _icalabel_to_data_frame(ica):
             confidence=ica.labels_scores_.max(1),
         )
     )
+
+
+def _report_flagged_epochs(raw, flag):
+    times = _sum_flagged_times(raw, flag)[flag]
+    if not times:
+        times = 0
+    else:
+        logger.info(f"📋 LOSSLESS: {np.round(times, 2)} second(s) flagged as {flag}")
