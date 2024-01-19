@@ -25,4 +25,6 @@ filterwarnings = ["error",
 # error on warning except the non-int sample freq warning, which we want to be raised
 'ignore:The Raw sampling frequency is',
  # deprecation in dash-testing that needs to be reported
-"ignore::DeprecationWarning",]
+"ignore::DeprecationWarning",
+# TODO MNE deprecation that wont effect us. remove if we ever bump to mne 1.7
+"ignore:The current default of copy=False will change to copy=True in 1.7.",]

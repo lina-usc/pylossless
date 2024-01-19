@@ -13,9 +13,6 @@ from pylossless.datasets import load_openneuro_bids
 
 import pytest
 
-# TODO: Remove this once mne 1.7 is released
-pytest.mark.filterwarnings("ignore:The current default of copy")
-
 
 @pytest.fixture(scope="session")
 def pipeline_fixture():
