@@ -6,7 +6,7 @@ PyLossless :octicon:`pulse`
 
 .. rst-class:: lead
 
-    EEG Processing Pipeline that is non-destructive, automated, and built on Python.
+    Automated EEG Processing Pipeline that annotates continuous EEG data.
 
 .. container:: buttons
 
@@ -21,7 +21,7 @@ PyLossless :octicon:`pulse`
 
     .. grid-item-card:: :octicon:`zap` Automated
 
-        Fast, Open-source, and built on python.
+        Fast, open-source, and built on python.
 
     .. grid-item-card:: :octicon:`pin` Non-destructive
 
@@ -30,7 +30,7 @@ PyLossless :octicon:`pulse`
 
     .. grid-item-card:: :octicon:`telescope-fill` Streamlined Review
 
-         Web dashboard built with helps you review the output and make
+         Web dashboard helps you review the output and make
          informed decisions about your data.
 
 .. image:: https://raw.githubusercontent.com/scott-huberty/wip_pipeline-figures/main/dashboard.png
