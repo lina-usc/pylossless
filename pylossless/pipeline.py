@@ -1205,17 +1205,20 @@ class LosslessPipeline:
             setattr(self, this_ica, mne.preprocessing.read_ica(ica_bidspath.fpath))
 
         # Load IC labels
+        bpath = derivatives_path.copy()
         iclabels_bidspath = bpath.update(
             extension=".tsv", suffix="iclabels", check=False
         )
         self.flags["ic"].load_tsv(iclabels_bidspath.fpath)
 
+        bpath = derivatives_path.copy()
         self.config_fname = bpath.update(
             extension=".yaml", suffix="ll_config", check=False
         )
         self.load_config()
 
         # Load Flagged Chs
+        bpath = derivatives_path.copy()
         flagged_chs_fpath = bpath.update(
             extension=".tsv", suffix="ll_FlaggedChs", check=False
         )
