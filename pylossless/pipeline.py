@@ -497,6 +497,7 @@ class LosslessPipeline:
             "Noisy": ch_flags.get("noisy", None),
             "Bridged": ch_flags.get("bridged", None),
             "Uncorrelated": ch_flags.get("uncorrelated", None),
+            "Rank": ch_flags.get("rank", None),
         }
         html += _create_html_details("Flagged Channels", flagged_channels_data)
 
