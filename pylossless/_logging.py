@@ -43,7 +43,7 @@ def lossless_logger(func=None, *, message=None, verbose=True):
             logger.info(f"LOSSLESS: Skipping {this_step}")
             return
         elif verbose:
-            logger.info(f"LOSSLESS: 🚩 {this_step}.")
+            logger.info(f"LOSSLESS: 👇 {this_step}.")
         result = func(*args, **kwargs)
         end_time = time.time()
         dur = f"{end_time - start_time:.2f}"

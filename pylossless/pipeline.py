@@ -31,6 +31,7 @@ from mne_bids import get_bids_path_from_fname, BIDSPath
 from .config import Config
 from .flagging import FlaggedChs, FlaggedEpochs, FlaggedICs
 from ._logging import lossless_logger, lossless_time
+from .utils import _report_flagged_epochs
 from .utils.html import _get_ics, _sum_flagged_times, _create_html_details
 
 
@@ -476,9 +477,9 @@ class LosslessPipeline:
         channel_noise = _get_ics(df, "channel_noise")
 
         lossless_flags = [
-            "bad_noisy",
-            "bad_uncorrelated",
-            "bad_noisy_ICs",
+            "BAD_LL_noisy",
+            "BAD_LL_uncorrelated",
+            "BAD_LL_noisy_ICs",
         ]
         flagged_times = _sum_flagged_times(self.raw, lossless_flags)
 
@@ -579,13 +580,14 @@ class LosslessPipeline:
         """
         # Concatenate epoched data back to continuous data
         t_onset = epochs.events[inds, 0] / epochs.info["sfreq"]
+        desc = f"BAD_LL_{event_type}"
         df = pd.DataFrame(t_onset, columns=["onset"])
         # We exclude the last sample from the duration because
         # if the annot lasts the whole duration of the epoch
         # it's end will coincide with the first sample of the
         # next epoch, causing it to erroneously be rejected.
         df["duration"] = 1 / epochs.info["sfreq"] * len(epochs.times[:-1])
-        df["description"] = f"bad_{event_type}"
+        df["description"] = desc
 
         # Merge close onsets to prevent a bunch of 1-second annotations of the same name
         # find onsets close enough to be considered the same
@@ -604,6 +606,7 @@ class LosslessPipeline:
             orig_time=self.raw.annotations.orig_time,
         )
         self.raw.set_annotations(self.raw.annotations + annotations)
+        _report_flagged_epochs(self.raw, desc)
 
     def get_events(self):
         """Make an MNE events array of fixed length events."""
@@ -865,7 +868,6 @@ class LosslessPipeline:
         bad_epoch_inds = _detect_outliers(
             data_sd, flag_dim="epoch", init_dir="pos", **config_epoch
         )
-        logger.info(f"📋 LOSSLESS: Noisy epochs: {bad_epoch_inds}")
         self.flags["epoch"].add_flag_cat("noisy", bad_epoch_inds, epochs)
 
     def get_n_nbr(self):
@@ -976,7 +978,6 @@ class LosslessPipeline:
             init_dir="neg",
             **self.config["uncorrelated_epochs"],
         )
-        logger.info(f"📋 LOSSLESS: Uncorrelated epochs: {bad_epoch_inds}")
         self.flags["epoch"].add_flag_cat("uncorrelated", bad_epoch_inds, epochs)
 
     @lossless_logger
@@ -1175,7 +1176,7 @@ class LosslessPipeline:
         self.flag_noisy_ics(message="Flagging time periods with noisy IC's.")
 
         # 12. TODO: integrate labels from IClabels to self.flags["ic"]
-        self.run_ica("run2", message="Running Final ICA.")
+        self.run_ica("run2", message="Running Final ICA and ICLabel.")
 
     def run_dataset(self, paths):
         """Run a full dataset.

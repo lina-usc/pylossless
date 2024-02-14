@@ -197,9 +197,8 @@ class FlaggedEpochs(dict):
     def load_from_raw(self, raw):
         """Load pylossless annotations from raw object."""
         sfreq = raw.info["sfreq"]
-        lossless_descriptions = ["bad_noisy", "bad_uncorrelated", "bad_noisy_ICs"]
         for annot in raw.annotations:
-            if annot["description"] in lossless_descriptions:
+            if annot["description"].upper().startswith("BAD_LL"):
                 ind_onset = int(np.round(annot["onset"] * sfreq))
                 ind_dur = int(np.round(annot["duration"] * sfreq))
                 inds = np.arange(ind_onset, ind_onset + ind_dur)
