@@ -56,9 +56,9 @@ class FlaggedChs(dict):
         """Return a string representation of the FlaggedChs object."""
         return (
             f"Flagged channels: |\n"
-            f"  Noisy: {self.get('ch_sd', None)}\n"
-            f"  Bridged: {self.get('bridge', None)}\n"
-            f"  Uncorrelated: {self.get('low_r', None)}\n"
+            f"  Noisy: {self.get('noisy', None)}\n"
+            f"  Bridged: {self.get('bridged', None)}\n"
+            f"  Uncorrelated: {self.get('uncorrelated', None)}\n"
             f"  Rank: {self.get('rank', None)}\n"
         )
 
