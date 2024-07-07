@@ -1028,7 +1028,7 @@ class LosslessPipeline:
 
         # icsd_epoch_flags=padflags(raw, icsd_epoch_flags,1,'value',.5);
 
-    def save(self, derivatives_path, overwrite=False, format="EDF"):
+    def save(self, derivatives_path, overwrite=False, format="EDF", event_id=None):
         """Save the file at the end of the pipeline.
 
         Parameters
@@ -1040,6 +1040,8 @@ class LosslessPipeline:
         format : str (default "EDF")
             The format to use for saving the raw data. Can be 'auto',
             'FIF', 'EDF', 'BrainVision', 'EEGLAB'.
+        event_id : dict | None (default None)
+            Dictionary mapping annotation descriptions to event codes.
         """
         mne_bids.write_raw_bids(
             self.raw,
@@ -1047,6 +1049,7 @@ class LosslessPipeline:
             overwrite=overwrite,
             format=format,
             allow_preload=True,
+            event_id=event_id,
         )
         # TODO: address derivatives support in MNE bids.
         # use shutils ( or pathlib?) to rename file with ll suffix
