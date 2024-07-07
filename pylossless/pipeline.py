@@ -1037,8 +1037,9 @@ class LosslessPipeline:
             path of the derivatives folder to save the file to.
         overwrite : bool (default False)
             whether to overwrite existing files with the same name.
-        format : str (default "auto")
-            The format to use for saving the raw data. Can be 'auto', 'fif', 'edf', etc.
+        format : str (default "EDF")
+            The format to use for saving the raw data. Can be 'auto',
+            'FIF', 'EDF', 'BrainVision', 'EEGLAB'.
         """
         mne_bids.write_raw_bids(
             self.raw,
