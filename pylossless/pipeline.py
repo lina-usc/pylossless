@@ -1028,7 +1028,7 @@ class LosslessPipeline:
 
         # icsd_epoch_flags=padflags(raw, icsd_epoch_flags,1,'value',.5);
 
-    def save(self, derivatives_path, overwrite=False):
+    def save(self, derivatives_path, overwrite=False, format="EDF"):
         """Save the file at the end of the pipeline.
 
         Parameters
@@ -1037,12 +1037,14 @@ class LosslessPipeline:
             path of the derivatives folder to save the file to.
         overwrite : bool (default False)
             whether to overwrite existing files with the same name.
+        format : str (default "auto")
+            The format to use for saving the raw data. Can be 'auto', 'fif', 'edf', etc.
         """
         mne_bids.write_raw_bids(
             self.raw,
             derivatives_path,
             overwrite=overwrite,
-            format="EDF",
+            format=format,
             allow_preload=True,
         )
         # TODO: address derivatives support in MNE bids.
