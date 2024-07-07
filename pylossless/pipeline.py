@@ -1240,3 +1240,46 @@ class LosslessPipeline:
         return bids_path.copy().update(
             suffix=lossless_suffix, root=lossless_root, check=False
         )
+
+    def get_all_event_ids(self):
+        """
+        Get a combined event ID dictionary from existing markers and raw annotations.
+
+        Returns
+        -------
+        dict or None
+            A combined dictionary of event IDs, including both existing markers
+            and new ones from annotations.
+            Returns None if no events or annotations are found.
+        """
+        try:
+            # Get existing events and their IDs
+            events, event_id = mne.events_from_annotations(self.raw)
+        except ValueError as e:
+            print(f"Warning: No events found in raw data. Error: {e}")
+            event_id = {}
+
+        # Check if there are any annotations
+        if len(self.raw.annotations) == 0 and not event_id:
+            print("Warning: No events or annotations found in the raw data.")
+            return None
+
+        # Initialize the combined event ID dictionary with existing events
+        combined_event_id = event_id.copy()
+
+        # Determine the starting ID for new annotations
+        start_id = max(combined_event_id.values()) + 1 if combined_event_id else 1
+
+        # Get unique annotations and add new event IDs
+        for desc in set(self.raw.annotations.description):
+            if desc not in combined_event_id:
+                combined_event_id[desc] = start_id
+                start_id += 1
+
+        # Final check to ensure we have at least one event
+        if not combined_event_id:
+            print("Warning: No valid events or annotations could be processed.")
+            return None
+
+        return combined_event_id
+
