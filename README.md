@@ -19,7 +19,7 @@ This EEG processing pipeline is especially useful for the following scenarios:
 
 ## Fork Description
 
-This fork is mantained as a lightweight HPC ready version of the original implementation.
+This fork is maintained as a lightweight HPC ready version of the original implementation.
 
 All credit to the original Authors.
 
