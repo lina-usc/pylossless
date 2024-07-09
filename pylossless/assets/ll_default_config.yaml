@@ -10,13 +10,13 @@ montage_info: [0.0, -16.0, 0.0, -0.02, 0.0, -1.58, 10.7, 11.5, 11.5]
 
 ################## General info about the project ####################
 project:
-  readme: "# Q1K ACAR Dataset"
+  readme: "# Add Study Name Here"
 
   # Montage use to make file BIDS compliant.
   # Can be path to digitized montage OR a string of one of mne's built in
   # standard montages as specified by mne.channels.get_builtin_montages().
   # Can be left empty if the input dataset is already in BIDS format.
-  bids_montage: GSN-HydroCel-129
+  bids_montage: standard_1020
 
   # montage used while running the lossless pipeline.
   # if empty, the pipeline will use the electrodes.tsv sidecar file, if created
@@ -30,27 +30,6 @@ project:
     EEGCoordinateSystem: Other
     EEGCoordinateUnits: metres
 
-  general_info:
-    authors: [Q1K Neuroimaging group]
-    institution_Name: McGill University
-    institution_address: 3775 Rue University, Montreal, QC
-    dataset_doi: []
-    funding: Azrieli Foundationt
-    how_to_acknowledge: tba
-    license: ""
-    name: Q1K Mismatched Negativity
-    references_and_links: []
-
-  t_info:
-    EEG_placement_scheme: EGI 129
-    cap_manufacturer: EGI
-    cap_manufacturers_model_name: Hydrocel 129 Channel
-    hardware_filters: n/a
-    manufacturer: Electrical Geodesics
-    manufacturers_model_name: NetAmps300
-    power_line_frequency: 60
-    software_filters: n/a
-    software_versions: NetStation V4.5
 
 ######################## Task break detection ########################
 # See arguments definition from mne.preprocessing.annotate_breaks
@@ -74,19 +53,6 @@ filtering:
     l_freq: 1
   notch_filter_args:
     freqs: []
-
-############################## SLURM #################################
-# Options for running the pipeline on a cluster
-# through SLURM
-slurm_options:
-  account: def-emayada
-  job_name: pylossless
-  memory: 16g
-  mpi: false
-  num_tasks: 1
-  program_options: []
-  threads_per_task: []
-  time_limit: 2h
 
 ########################## Nearest neighbor ##########################
 nearest_neighbors:
