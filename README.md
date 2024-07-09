@@ -17,6 +17,13 @@ This EEG processing pipeline is especially useful for the following scenarios:
   betweeen 1-30Hz, while another analysis can use 1-second epochs with no filter, etc.)
 - You want to be able to do a hands on review of the pre-processing results for each file.
 
+## Fork Description
+
+This fork is mantained as a lightweight HPC ready version of the original implementation.
+
+All credit to the original Authors.
+
+
 ## 📘 Installation and usage instructions
 
 The development version can be installed from GitHub with
@@ -62,25 +69,6 @@ Once you are ready, you can save your file:
 pipeline.save(pipeline.get_derivative_path(bids_path), overwrite=True)
 ```
 
-## 👩‍💻 Dashboard Review
-[![Open in Colab](https://camo.githubusercontent.com/84f0493939e0c4de4e6dbe113251b4bfb5353e57134ffd9fcab6b8714514d4d1/68747470733a2f2f636f6c61622e72657365617263682e676f6f676c652e636f6d2f6173736574732f636f6c61622d62616467652e737667)](https://colab.research.google.com/github/lina-usc/pylossless/blob/main/notebooks/qc_example.ipynb)
-
-![QCR Dashboard](https://raw.githubusercontent.com/scott-huberty/wip_pipeline-figures/main/dashboard.png)
-
-After running the Lossless pipeline, you can launch the Quality Control
-Review (QC) dashboard to review the pipeline's decisions on each file!
-You can flag additional channels, times and components, and edit flags
-made by the pipeline.
-
-First install the dashboard requirements
-```bash
-$ cd ./path/to/pylossless/on/your/computer
-$ pip install --editable .[dash]
-```
-
-```bash
-$ pylossless_qc
-```
 
 ## ▶️ Example HPC Environment Setup
 
