@@ -22,7 +22,7 @@ def get_raw_ica():
     # pick only EEG channels, muscle artifact is basically not picked up by MEG
     # if you have a simultaneous recording, you may want to do ICA on MEG and
     # EEG separately
-    raw.pick_types(eeg=True)
+    raw.pick("eeg")
 
     # ICA works best with a highpass filter applied
     raw.load_data()
@@ -68,7 +68,7 @@ def test_GridTopoPlot():
 
 # chromedriver: https://chromedriver.storage.googleapis.com/
 #               index.html?path=114.0.5735.90/
-@pytest.mark.xfail(reason="an issue with chromedriver on GH CI to be debugged")
+@pytest.mark.xfail(reason="an issue with chromedriver causes failure. Need to debug.")
 def test_TopoViz(dash_duo):
     """Test TopoViz."""
     raw, ica = get_raw_ica()

@@ -13,10 +13,10 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Set up Python 3.x
+      - name: Set up Python 3.9
         uses: actions/setup-python@v4
         with:
-          python-version: "3.x"
+          python-version: "3.9"
       - name: Install Pylossless & Deps
         run: pip install -e .
       - name: Install testing dependencies
@@ -25,6 +25,8 @@ jobs:
         run: pip install -r requirements_qc.txt
       - name: install openneuro
         run: pip install openneuro-py
+      - name: install pytorch
+        run: pip install torch
       - name: Test Pipeline
         run: |
           coverage run -m pytest

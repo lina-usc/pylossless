@@ -1,35 +1,30 @@
 [![codecov](https://codecov.io/github/lina-usc/pylossless/branch/main/graph/badge.svg?token=SVAD8HTJNG)](https://codecov.io/github/lina-usc/pylossless)
 
-![logo](./docs/source/_static/logo_white.png)
+[![Documentation Status](https://readthedocs.org/projects/pylossless/badge/?version=latest)](https://pylossless.readthedocs.io/en/latest/?badge=latest)
+
+![logo](https://github.com/scott-huberty/wip_pipeline-figures/blob/main/logo/Logo_neutral.png)
 
 
 ## Introduction to the Lossless Pipeline
 
 This EEG processing pipeline is especially useful for the following scenarios:
 
-- You want to keep your EEG data in a continous state, allowing you the flexibility to epoch your data at a later stage.
-- You are part of a research team or community that shares a common dataset, and you want to ensure data processing happens only once, in a way that is useful to all collaborators.
-
-## Background and Purpose
-
-This project arose from a real-world use-case: We had a dataset of +1,500 infant EEG recordings from multiple studies. The event markers were inconsistent across recordings, and the EEG data were noisy. Multiple researchers needed to analyze the data, and we wanted to avoid a scenario where each person processed the data independently. We set out to orchestrate a single comprehensive effort to produce a clean version of the dataset, which each researcher could use for their own analysis. 
-
-## The gist of the Lossless pipeline 
-
-The Lossless pipeline was designed keep EEG recordings in their continuous nature. It _annotates_ bad channels, bad time periods, and artifactual independent components. The pipeline also provides a visual dashboard that displays the EEG recording, its respective ICA, and all the pipeline decisions. This allows the reviewer to quickly confirm that noisy sensors, time periods, and components were sufficiently identified by the pipeline on any given recording. With this tool, we were able to complete a thorough cleaning of the aforementioned 1,500 recording dataset. Individual researchers were then able purge the artifacts identified by the pipeline and epoch the data at the time of their own analysis.
+- You want to keep your EEG data in a continuous state, allowing you the flexibility to
+  epoch your data at a later stage.
+- You are part of a research team or community that shares a common dataset, and you
+  want to process the data once in a way that can be used for multiple analyses (i.e.,
+  one analysis can segment the cleaned data into 10-second epochs and filter the data
+  betweeen 1-30Hz, while another analysis can use 1-second epochs with no filter, etc.)
+- You want to be able to do a hands on review of the pre-processing results for each file.
 
 ## 📘 Installation and usage instructions
-
-This package can be install from PyPI with
-```bash
-$ pip install pylossless
-```
 
 The development version can be installed from GitHub with
 ```bash
 $ git clone git@github.com:lina-usc/pylossless.git
 $ pip install --editable ./pylossless
 ```
+
 for an editable installation, or simply with 
 ```bash
 $ pip install git+https://github.com/lina-usc/pylossless.git

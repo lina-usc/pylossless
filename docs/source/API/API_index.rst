@@ -14,12 +14,14 @@ the ``lossless`` namespace.
 
    config_class
    bids_funcs
+   datasets
    lossless_class
    pipeline_funcs
    flag_classes
 
 - :doc:`bids_funcs`
 - :doc:`config_class`
+- :doc:`datasets`
 - :doc:`lossless_class`
 - :doc:`pipeline_funcs`
 - :doc:`flag_classes`

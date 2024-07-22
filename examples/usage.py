@@ -1,7 +1,7 @@
 """
 
-Run pyLossless using an example dataset.
-========================================
+Open The QCR dashboard in a jupyter notebook.
+=============================================
 
 This notebook demonstrate how the PyLossless Quality Control interface can be
 integrated in a Jupyter Notebook. This can even be done on a virtualized
