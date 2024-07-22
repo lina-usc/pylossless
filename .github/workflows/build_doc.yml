@@ -24,12 +24,9 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -e .
-
-      - name: install openneuro-py
-        run: pip install openneuro-py
-
-      - name: install pytorch
-        run: pip install torch
+      
+      - name: Install testing dependencies
+        run: pip install -r requirements_testing.txt
 
       - name: Install doc dependencies
         run: pip install -r docs/requirements_doc.txt

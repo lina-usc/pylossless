@@ -1,5 +1,4 @@
 numpy>=1.21.2
-EDFlib-Python
 mne>=1.5
 mne_bids>=0.14
 pandas
