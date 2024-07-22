@@ -15,7 +15,7 @@ jobs:
         run: pip install -r requirements_testing.txt
       # Run Ruff
       - name: Run Ruff
-        run: ruff pylossless
+        run: ruff check pylossless
       # Run Codespell
       - name: Run Codespell
         run: codespell pylossless
