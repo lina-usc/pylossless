@@ -1039,7 +1039,7 @@ class LosslessPipeline:
             whether to overwrite existing files with the same name.
         format : str (default "EDF")
             The format to use for saving the raw data. Can be ``"auto"``,
-            'FIF', 'EDF', 'BrainVision', 'EEGLAB'.
+            ``"FIF"``, ``"EDF"``, ``"BrainVision"``, ``"EEGLAB"``.
         event_id : dict | None (default None)
             Dictionary mapping annotation descriptions to event codes.
         """
