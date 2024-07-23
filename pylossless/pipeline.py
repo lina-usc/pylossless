@@ -1254,7 +1254,7 @@ class LosslessPipeline:
         """
         try:
             # Get existing events and their IDs
-            events, event_id = mne.events_from_annotations(self.raw)
+            _, event_id = mne.events_from_annotations(self.raw)
         except ValueError as e:
             print(f"Warning: No events found in raw data. Error: {e}")
             event_id = {}
