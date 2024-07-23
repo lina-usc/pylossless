@@ -1278,7 +1278,7 @@ class LosslessPipeline:
 
         # Final check to ensure we have at least one event
         if not combined_event_id:
-            print("Warning: No valid events or annotations could be processed.")
+            warn("Warning: No valid events or annotations could be processed.")
             return None
 
         return combined_event_id
