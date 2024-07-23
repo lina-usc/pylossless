@@ -1250,7 +1250,7 @@ class LosslessPipeline:
         dict or None
             A combined dictionary of event IDs, including both existing markers
             and new ones from annotations.
-            Returns None if no events or annotations are found.
+            Returns ``None`` if no events or annotations are found.
         """
         try:
             # Get existing events and their IDs
