@@ -1261,7 +1261,7 @@ class LosslessPipeline:
 
         # Check if there are any annotations
         if len(self.raw.annotations) == 0 and not event_id:
-            print("Warning: No events or annotations found in the raw data.")
+            warn("Warning: No events or annotations found in the raw data.")
             return None
 
         # Initialize the combined event ID dictionary with existing events
