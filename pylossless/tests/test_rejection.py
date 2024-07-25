@@ -7,6 +7,8 @@ import pytest
 import pylossless as ll
 
 
+# XXX: This filter can be removed once MNE-ICAlabel 0.7 is released
+@pytest.mark.filterwarnings("ignore::FutureWarning")
 @pytest.mark.parametrize("clean_ch_mode", [None, "drop", "interpolate"])
 def test_rejection_policy(clean_ch_mode, pipeline_fixture):
     """Test the rejection policy."""
