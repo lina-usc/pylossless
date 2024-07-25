@@ -1282,4 +1282,3 @@ class LosslessPipeline:
             return
 
         return combined_event_id
-
