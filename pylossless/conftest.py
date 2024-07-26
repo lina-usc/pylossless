@@ -14,9 +14,6 @@ from pylossless.datasets import load_openneuro_bids
 import pytest
 
 
-# XXX: This is a temporary fix to suppress a warning from MNE-ICAlabel
-# This can be removed once MNE-ICAlabel 0.7 is released
-@pytest.mark.filterwarnings("ignore::FutureWarning")
 @pytest.fixture(scope="session")
 def pipeline_fixture():
     """Return a namedTuple containing MNE eyetracking raw data and events."""
