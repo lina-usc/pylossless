@@ -1,11 +1,4 @@
 repos:
-  - repo: https://github.com/psf/black
-    rev: 23.7.0
-    hooks:
-      - id: black
-        args: [--quiet]
-        files: ^pylossless/
-
   # Ruff linter
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.0.286
