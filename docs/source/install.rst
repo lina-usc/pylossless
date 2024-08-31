@@ -91,8 +91,7 @@ git repository directory, before running the code below:
    $ pip install -r docs/requirements_doc.txt
    $ pre-commit run -a
 
-PyLossless uses `black <https://github.com/psf/black>`_ style formatting. If you are
-using Visual Studio Code, you can also install the black extension to automatically
+PyLossless uses `ruff <https://docs.astral.sh/ruff/>`_ style formatting. If you are
+using Visual Studio Code, you can also install the ruff extension to automatically
 format your code. See the instructions at this
-`link 
-<https://dev.to/adamlombard/how-to-use-the-black-python-code-formatter-in-vscode-3lo0>`_
+`link <https://docs.astral.sh/ruff/editors/setup/>`_
