@@ -17,9 +17,6 @@ ignore-decorators = [
     "setter",
 ]
 
-[tool.black]
-exclude = "(dist/)|(build/)|(examples/)|(.*\\.ipynb)" # Exclude build artifacts and notebooks
-
 [tool.pytest.ini_options]
 filterwarnings = ["error", 
 # error on warning except the non-int sample freq warning, which we want to be raised
