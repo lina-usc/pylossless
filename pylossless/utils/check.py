@@ -40,12 +40,11 @@ def import_optional_dependency(
         None is returned when the package is not found and raise_error is False.
     """
     package_name = _INSTALL_MAPPING.get(name, name)
-    install_name = package_name if package_name is not None else name
     if importlib.util.find_spec(name) is None:
         if raise_error:
             raise ImportError(
-                f"Missing optional dependency '{install_name}'. {extra} Use pip or "
-                f"conda to install {install_name}."
+                f"Missing optional dependency '{package_name}'. {extra} Use pip or "
+                f"conda to install {package_name}."
             )
         else:
             return None
