@@ -2,7 +2,6 @@ from time import sleep
 from pathlib import Path
 
 import mne_bids
-import openneuro
 
 import pylossless as ll
 
@@ -31,6 +30,8 @@ def load_openneuro_bids(subject="pd6"):
     dataset is from the "UC San Diego Resting State EEG Data from Patients with
     Parkinson's Disease" study, curated by Alexander Rockhill.
     """
+    openneuro = ll.utils.import_optional_dependency("openneuro")
+
     config = ll.config.Config()
     config.load_default()
     config["project"]["bids_montage"] = ""

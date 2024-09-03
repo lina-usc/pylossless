@@ -19,6 +19,9 @@ jobs:
           python-version: "3.9"
       - name: Install Pylossless & Deps
         run: pip install -e .
+      - name: Test import
+        run: |
+          python -c "import pylossless"
       - name: Install testing dependencies
         run: pip install -r requirements_testing.txt
       - name: Install QC depedencies
