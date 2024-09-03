@@ -1,19 +1,4 @@
-import re
-from pathlib import Path
-
 import pytest
-
-@pytest.mark.skip(reason="This test is not yet implemented.")
-def test_toplevel_imports():
-    """Test that there are no optional dependencies at the top level."""
-    optional_deps = []
-    with (Path(".").parent.parent.parent / "requirements.txt") as file:
-        for line in file.read_text().split("\n"):
-            if line and not line.startswith("#"):
-                # regex for any one or two of the characters <, >, =, !
-                regex = r"[<>=!]{1,2}"
-                optional_deps.append(re.split(regex, line)[0])
-    pass
 
 def test_import_optional_dependency():
     """Test the import_optional_dependency function."""
