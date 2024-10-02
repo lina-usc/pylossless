@@ -10,7 +10,16 @@ on:
 
 jobs:
   test:
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
+    
+    strategy:
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest # arm64 (Apple Silicon)
+          - macos-13  # latest Intel release
+          - windows-latest
+
     steps:
       - uses: actions/checkout@v4
       - name: Set up Python 3.9
