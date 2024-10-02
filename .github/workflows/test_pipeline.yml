@@ -26,6 +26,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.9"
+      - name: Force numpy < 2 on MacOS Intel
+        if: matrix.os == 'macos-13'
+        run: pip install 'numpy<2'
       - name: Install Pylossless & Deps
         run: pip install -e .
       - name: Test import
