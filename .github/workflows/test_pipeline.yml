@@ -41,7 +41,8 @@ jobs:
       - name: Test Pipeline
         run: |
           coverage run -m pytest
-      - name: Upload coverage to codecov
+      - name: Upload coverage to codecov (Only do this for the ubuntu-latest job)
+        if: matrix.os == 'ubuntu-latest'
         uses: codecov/codecov-action@v3
         with:
           token: ${{secrets.CODECOV_TOKEN}}
