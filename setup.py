@@ -26,7 +26,7 @@ for extra, req_file in extras.items():
     extras_require[extra] = requirements_extra
 
 this_directory = Path(__file__).parent
-long_description = (this_directory / "README.md").read_text()
+long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 
 qc_entry_point = ["pylossless_qc=pylossless.dash.pylossless_qc:main"]
 setup(
