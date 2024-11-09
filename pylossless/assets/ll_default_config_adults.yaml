@@ -1,0 +1,144 @@
+######################### General properties #########################
+#ref_loc_file: derivatives/pylossless/code/misc/standard_1020_ll_ref19.elc
+#montage_info: [0.0, -16.0, 0.0, -0.02, 0.0, -1.58, 10.7, 11.5, 11.5]
+
+################## General info about the project ####################
+project:
+  readme: "# Description of the dataset"
+
+  # Montage use to make file BIDS compliant.
+  # Can be path to digitized montage OR a string of one of mne's built in
+  # standard montages as specified by mne.channels.get_builtin_montages().
+  # Can be left empty if the input dataset is already in BIDS format.
+  bids_montage: GSN-HydroCel-129
+
+  # montage used while running the lossless pipeline.
+  # if empty, the pipeline will use the electrodes.tsv sidecar file, if created
+  # during the BIDS conversion.
+  # If specified, needs to be a string of one of mne's built in standard montages.
+  analysis_montage: ""
+
+  set_montage_kwargs: {}
+
+  coordsys:
+    EEGCoordinateSystem: Other
+    EEGCoordinateUnits: metres
+
+  general_info:
+    authors: [Unspecified]
+    institution_Name: Unspecified
+    institution_address: Unspecified
+    dataset_doi: []
+    funding: Unspecified
+    how_to_acknowledge: tba
+    license: ""
+    name: Unspecified
+    references_and_links: []
+
+  t_info:
+    EEG_placement_scheme: EGI 129
+    cap_manufacturer: EGI
+    cap_manufacturers_model_name: Hydrocel 129 Channel
+    hardware_filters: n/a
+    manufacturer: Electrical Geodesics
+    manufacturers_model_name: NetAmps300
+    power_line_frequency: 60
+    software_filters: n/a
+    software_versions: NetStation V4.5
+
+######################## Task break detection ########################
+# See arguments definition from mne.preprocessing.annotate_breaks
+find_breaks:
+
+############################## epoching ##############################
+epoching:
+  overlap: 0
+
+  # See arguments definition from mne.Epochs
+  epochs_args:
+    baseline: null
+    tmax: 1
+    tmin: 0
+
+########################### EEG filtering ############################
+# See arguments definition from mne.io.Raw.filter & mne.io.Raw.notch_filter
+filtering:
+  filter_args:
+    h_freq: 100
+    l_freq: 1
+  notch_filter_args:
+    freqs: [60]
+
+############################## SLURM #################################
+# Options for running the pipeline on a cluster
+# through SLURM
+slurm_options:
+  account: def-emayada
+  job_name: pylossless
+  memory: 16g
+  mpi: false
+  num_tasks: 1
+  program_options: []
+  threads_per_task: []
+  time_limit: 2h
+
+########################## Nearest neighbor ##########################
+nearest_neighbors:
+  n_nbr_ch: 3
+  n_nbr_epoch: 3
+
+####################### Pipeline steps config ########################
+bridged_channels:
+  bridge_trim: 40
+  bridge_z: 6
+
+noisy_channels:
+  flag_crit: 0.2
+  outlier_method: quantile
+  outliers_kwargs:
+    k: 6
+    lower: 0.25
+    upper: 0.75
+
+uncorrelated_channels:
+  flag_crit: 0.2
+  outlier_method: quantile
+  outliers_kwargs:
+    k: 6
+    lower: 0.25
+    upper: 0.75
+
+noisy_epochs:
+  flag_crit: 0.2
+  outlier_method: quantile
+  outliers_kwargs:
+    k: 6
+    lower: 0.25
+    upper: 0.75
+
+uncorrelated_epochs:
+  flag_crit: 0.2
+  outlier_method: quantile
+  outliers_kwargs:
+    k: 6
+    lower: 0.25
+    upper: 0.75
+
+################################ ICA #################################
+ica:
+  noisy_ic_epochs:
+    flag_crit: 0.2
+    outlier_method: quantile
+    outliers_kwargs:
+      k: 6
+      lower: 0.25
+      upper: 0.75
+
+  # See arguments definition from mne.preprocessing.ICA
+  ica_args:
+    run1:
+      method: fastica
+    run2:
+      method: infomax
+      fit_params:
+        extended: True
