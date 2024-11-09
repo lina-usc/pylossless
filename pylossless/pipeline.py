@@ -1028,7 +1028,7 @@ class LosslessPipeline:
 
         # icsd_epoch_flags=padflags(raw, icsd_epoch_flags,1,'value',.5);
 
-    def save(self, derivatives_path, overwrite=False):
+    def save(self, derivatives_path, overwrite=False, format="EDF", event_id=None):
         """Save the file at the end of the pipeline.
 
         Parameters
@@ -1037,13 +1037,19 @@ class LosslessPipeline:
             path of the derivatives folder to save the file to.
         overwrite : bool (default False)
             whether to overwrite existing files with the same name.
+        format : str (default "EDF")
+            The format to use for saving the raw data. Can be ``"auto"``,
+            ``"FIF"``, ``"EDF"``, ``"BrainVision"``, ``"EEGLAB"``.
+        event_id : dict | None (default None)
+            Dictionary mapping annotation descriptions to event codes.
         """
         mne_bids.write_raw_bids(
             self.raw,
             derivatives_path,
             overwrite=overwrite,
-            format="EDF",
+            format=format,
             allow_preload=True,
+            event_id=event_id,
         )
         # TODO: address derivatives support in MNE bids.
         # use shutils ( or pathlib?) to rename file with ll suffix
@@ -1234,3 +1240,45 @@ class LosslessPipeline:
         return bids_path.copy().update(
             suffix=lossless_suffix, root=lossless_root, check=False
         )
+
+    def get_all_event_ids(self):
+        """
+        Get a combined event ID dictionary from existing markers and raw annotations.
+
+        Returns
+        -------
+        dict or None
+            A combined dictionary of event IDs, including both existing markers
+            and new ones from annotations.
+            Returns ``None`` if no events or annotations are found.
+        """
+        try:
+            # Get existing events and their IDs
+            event_id = mne.events_from_annotations(self.raw)[1]
+        except ValueError as e:
+            warn(f"Warning: No events found in raw data. Error: {e}")
+            event_id = {}
+
+        # Check if there are any annotations
+        if len(self.raw.annotations) == 0 and not event_id:
+            warn("Warning: No events or annotations found in the raw data.")
+            return
+
+        # Initialize the combined event ID dictionary with existing events
+        combined_event_id = event_id.copy()
+
+        # Determine the starting ID for new annotations
+        start_id = max(combined_event_id.values()) + 1 if combined_event_id else 1
+
+        # Get unique annotations and add new event IDs
+        for desc in set(self.raw.annotations.description):
+            if desc not in combined_event_id:
+                combined_event_id[desc] = start_id
+                start_id += 1
+
+        # Final check to ensure we have at least one event
+        if not combined_event_id:
+            warn("Warning: No valid events or annotations could be processed.")
+            return
+
+        return combined_event_id
