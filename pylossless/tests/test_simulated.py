@@ -11,7 +11,7 @@ raw_sim = ll.datasets.load_simulated_raw()
 
 # LOAD DEFAULT CONFIG
 config = ll.config.Config()
-config.load_default()
+config.load_default("infants")
 config["noisy_channels"]["outliers_kwargs"]["lower"] = 0.25
 config["noisy_channels"]["outliers_kwargs"]["upper"] = 0.75
 # short file, raise threshold so epochs w/ blinks dont cause flag
