@@ -33,7 +33,10 @@ def load_openneuro_bids(subject="pd6"):
     openneuro = ll.utils.import_optional_dependency("openneuro")
 
     config = ll.config.Config()
-    config.load_default()
+    # TODO: Tests were developed using this configuration. The adult version
+    # should probably be used instead, but this change will require fixing the
+    # tests accordingly.
+    config.load_default("infants")
     config["project"]["bids_montage"] = ""
     config["project"]["analysis_montage"] = "standard_1020"
     config["project"]["set_montage_kwargs"]["on_missing"] = "warn"
