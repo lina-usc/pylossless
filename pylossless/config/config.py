@@ -49,17 +49,16 @@ class ConfigMixin(dict):
 
 
 class Config(ConfigMixin):
-    """Representation of configuration file for running the pipeline.
+    """Representation of configuration file for running the pipeline."""
+
+    def load_default(self, kind="adults"):
+        """Get the default pylossless config file.
 
         Parameters
         ----------
         kind : str | pathlib.Path
             Can be either 'adults' or 'infants'. Default to 'adults'.
-    """
-
-    def load_default(self, kind="adults"):
-        """Get the default pylossless config file."""
-
+        """
         path = Config.DEFAULT_CONFIG_PATH / f"ll_default_config_{kind}.yaml"
         if not path.exists():
             raise ValueError(f"No default configuration for kind '{kind}'.")
