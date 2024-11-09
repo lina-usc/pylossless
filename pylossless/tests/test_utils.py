@@ -10,7 +10,7 @@ def test_import_optional_dependency():
         # Choosing a package that will probably never be added to the requirements!
         # We also choose a name of a package that is likely not to exist at all
         # to avoid the corresponding package is installed in the development
-        # environment of developpers.
+        # environment of developers.
         check.import_optional_dependency(package)
 
     # Test the case where the package is installed.
