@@ -15,7 +15,7 @@ class ConfigMixin(dict):
     """Base configuration file class for pipeline procedures."""
 
     DEFAULT_CONFIG_PATH = (
-        Path(__file__).parent.parent / "assets" / "ll_default_config.yaml"
+        Path(__file__).parent.parent / "assets"
     )
 
     def read(self, file_name):
@@ -51,11 +51,16 @@ class ConfigMixin(dict):
 class Config(ConfigMixin):
     """Representation of configuration file for running the pipeline."""
 
-    DEFAULT_CONFIG_PATH = (
-        Path(__file__).parent.parent / "assets" / "ll_default_config.yaml"
-    )
+    def load_default(self, kind="adults"):
+        """Get the default pylossless config file.
 
-    def load_default(self):
-        """Get the default pylossless config file."""
-        self.read(Config.DEFAULT_CONFIG_PATH)
+        Parameters
+        ----------
+        kind : str | pathlib.Path
+            Can be either 'adults' or 'infants'. Default to 'adults'.
+        """
+        path = Config.DEFAULT_CONFIG_PATH / f"ll_default_config_{kind}.yaml"
+        if not path.exists():
+            raise ValueError(f"No default configuration for kind '{kind}'.")
+        self.read(path)
         return self

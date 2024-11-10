@@ -18,7 +18,7 @@ import pytest
 def pipeline_fixture():
     """Return a namedTuple containing MNE eyetracking raw data and events."""
     raw, config, bids_path = load_openneuro_bids()
-    raw.crop(tmin=0, tmax=60)  # take 60 seconds for speed
+    # raw.crop(tmin=0, tmax=60)  # Too short for ICA to converge in some tests.
     annots = Annotations(
         onset=[1, 15], duration=[1, 1], description=["test_annot", "test_annot"]
     )
@@ -28,6 +28,7 @@ def pipeline_fixture():
     config["find_breaks"]["min_break_duration"] = 9
     config["find_breaks"]["t_start_after_previous"] = 1
     config["find_breaks"]["t_stop_before_next"] = 0
+    config["ica"]["ica_args"]["run1"]["max_iter"] = 5000
     config.save("test_config.yaml")
     pipeline = ll.LosslessPipeline("test_config.yaml")
     not_in_1020 = ["EXG1", "EXG2", "EXG3", "EXG4", "EXG5", "EXG6", "EXG7", "EXG8"]
