@@ -18,7 +18,14 @@ def test_find_breaks(tmp_path):
     import_args = [{"path_in": fname}]
     bids_path_args = [{'subject': '001', 'run': '01', 'session': '01',
                        "task": "test"}]
-    bids_paths = ll.bids.convert_dataset_to_bids(edf_import_fct, import_args,
+    bids_paths = ll.bids.convert_dataset_to_bids(
+        edf_import_fct,
+        import_args,
+        bids_path_args,
+        bids_root=tmp_path / "bids_dataset",
+        overwrite=True
+        )
+
                                                  bids_path_args, overwrite=True)
 
     print(bids_paths)
