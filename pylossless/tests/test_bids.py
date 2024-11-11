@@ -5,7 +5,7 @@ import pytest
 
 
 @pytest.mark.filterwarnings("ignore:Converting data files to EDF format")
-def test_find_breaks():
+def test_find_breaks(tmp_path):
     """Make sure MNE's annotate_break function can run."""
     def edf_import_fct(path_in):
         # read in a file
