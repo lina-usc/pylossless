@@ -528,12 +528,14 @@ class LosslessPipeline:
 
     @property
     def config_fname(self):
-        warn(f'config_fname is deprecated and will be removed from future versions.', DeprecationWarning)
+        warn('config_fname is deprecated and will be removed from future versions.',
+             DeprecationWarning)
         return self.config_path
 
     @config_fname.setter
     def config_fname(self, config_path):
-        warn(f'config_fname is deprecated and will be removed from future versions.', DeprecationWarning)
+        warn('config_fname is deprecated and will be removed from future versions.',
+             DeprecationWarning)
         self.config_path = config_path
 
     def load_config(self):

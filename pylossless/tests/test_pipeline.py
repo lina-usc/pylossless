@@ -47,6 +47,7 @@ def test_find_breaks(logging):
 
 
 def test_deprecation():
+    """Test the config_name property added for deprecation."""
     config = ll.config.Config()
     config.load_default()
     pipeline = ll.LosslessPipeline(config=config)
