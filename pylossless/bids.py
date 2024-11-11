@@ -78,7 +78,7 @@ def convert_recording_to_bids(
         write_kwargs["allow_preload"] = True
 
     write_raw_bids(
-        raw, bids_path=bids_path, events_data=events, event_id=event_id, **write_kwargs
+        raw, bids_path=bids_path, events=events, event_id=event_id, **write_kwargs
     )
 
     return bids_path
