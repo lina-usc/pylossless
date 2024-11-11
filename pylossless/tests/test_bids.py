@@ -2,10 +2,11 @@ import pylossless as ll
 import mne
 import numpy as np
 import pytest
+import shutil
 
 
 @pytest.mark.filterwarnings("ignore:Converting data files to EDF format")
-def test_find_breaks(tmp_path):
+def test_convert_dataset_to_bids(tmp_path):
     """Make sure MNE's annotate_break function can run."""
     def edf_import_fct(path_in):
         # read in a file
@@ -18,14 +19,11 @@ def test_find_breaks(tmp_path):
     import_args = [{"path_in": fname}]
     bids_path_args = [{'subject': '001', 'run': '01', 'session': '01',
                        "task": "test"}]
-    bids_paths = ll.bids.convert_dataset_to_bids(
+    ll.bids.convert_dataset_to_bids(
         edf_import_fct,
         import_args,
         bids_path_args,
         bids_root=tmp_path / "bids_dataset",
         overwrite=True
         )
-
-
-    print(bids_paths)
-
+    shutil.rmtree(tmp_path / "bids_dataset")
