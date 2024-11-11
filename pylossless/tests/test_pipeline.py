@@ -44,3 +44,13 @@ def test_find_breaks(logging):
     else:
         pipeline.find_breaks()
     Path(config_fname).unlink()  # delete config file
+
+
+def test_deprecation():
+    """Test the config_name property added for deprecation."""
+    config = ll.config.Config()
+    config.load_default()
+    pipeline = ll.LosslessPipeline(config=config)
+    # with pytest.raises(DeprecationWarning, match=f"config_fname is deprecated"):
+    # DeprecationWarning are currently ignored by pytest given our toml file
+    pipeline.config_fname = pipeline.config_fname

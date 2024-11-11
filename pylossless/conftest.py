@@ -29,8 +29,18 @@ def pipeline_fixture():
     config["find_breaks"]["t_start_after_previous"] = 1
     config["find_breaks"]["t_stop_before_next"] = 0
     config["ica"]["ica_args"]["run1"]["max_iter"] = 5000
+
+    # Testing when passing the config object directly...
+    pipeline = ll.LosslessPipeline("test_config.yaml", config)
+    pipeline = ll.LosslessPipeline(config=config)
     config.save("test_config.yaml")
+
+    # Testing when passing a string...
     pipeline = ll.LosslessPipeline("test_config.yaml")
+
+    # Testing when passing a Path...
+    pipeline = ll.LosslessPipeline(Path("test_config.yaml"))
+
     not_in_1020 = ["EXG1", "EXG2", "EXG3", "EXG4", "EXG5", "EXG6", "EXG7", "EXG8"]
     pipeline.raw = raw.pick("eeg", exclude=not_in_1020).load_data()
     pipeline.run_with_raw(pipeline.raw)

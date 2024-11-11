@@ -26,7 +26,7 @@ pipeline.raw = raw_sim
 @pytest.mark.parametrize("pipeline", [(pipeline)])
 def test_simulated_raw(pipeline):
     """Test pipeline on simulated EEG."""
-    with pytest.warns(RuntimeWarning, match="sampling frequency"):
+    with pytest.warns(RuntimeWarning, match="The Raw sampling frequency is"):
         pipeline._check_sfreq()
     # This file should have been downsampled
     assert pipeline.raw.info["sfreq"] == 600
@@ -59,5 +59,5 @@ def test_simulated_raw(pipeline):
     assert "EEG 054" in pipeline.flags["ch"]["bridged"]
 
     # Delete temp config file
-    tmp_config_fname = Path(pipeline.config_fname).absolute()
-    tmp_config_fname.unlink()
+    tmp_config_path = Path(pipeline.config_path).absolute()
+    tmp_config_path.unlink()

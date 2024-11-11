@@ -417,7 +417,7 @@ class LosslessPipeline:
 
     Parameters
     ----------
-    config_fname : pathlib.Path
+    config_path : pathlib.Path
         path to config file specifying the parameters to be used
         in the pipeline.
 
@@ -429,7 +429,7 @@ class LosslessPipeline:
         :class:`~pylossless.flagging.FlaggedChs`,
         :class:`~pylossless.flagging.FlaggedEpochs`, and
         :class:`~pylossless.flagging.FlaggedICs`, respectively.
-    config_fname : pathlib.Path
+    config_path : pathlib.Path
         path to the config file specifying the parameters to be used in the
         in the pipeline.
     config : dict
@@ -445,23 +445,31 @@ class LosslessPipeline:
         during the pipeline.
     """
 
-    def __init__(self, config_fname=None):
+    def __init__(self, config_path=None, config=None):
         """Initialize class.
 
         Parameters
         ----------
-        config_fname : pathlib.Path
-            path to config file specifying the parameters to be used
-            in the pipeline.
+        config_path : pathlib.Path | str | None
+            Path to config file specifying the parameters to be used in the pipeline.
+
+        config : pylossless.config.Config | None
+            :class:`pylossless.config.Config` object for the pipeline.
         """
         self.flags = {
             "ch": FlaggedChs(self),
             "epoch": FlaggedEpochs(self),
             "ic": FlaggedICs(),
         }
-        self.config_fname = config_fname
-        if config_fname:
+        if config:
+            self.config = config
+            if config_path is None:
+                self.config_path = "._tmp_pylossless.yaml"
+        elif config_path:
+            self.config_path = Path(config_path)
             self.load_config()
+        else:
+            self.config_path = None
         self.raw = None
         self.ica1 = None
         self.ica2 = None
@@ -483,13 +491,13 @@ class LosslessPipeline:
         ]
         flagged_times = _sum_flagged_times(self.raw, lossless_flags)
 
-        config_fname = self.config_fname
+        config_path = self.config_path
         raw = self.raw.filenames if self.raw else "Not specified"
 
         html = "<h3>LosslessPipeline</h3>"
         html += "<table>"
         html += f"<tr><td><strong>Raw</strong></td><td>{raw}</td></tr>"
-        html += f"<tr><td><strong>Config</strong></td><td>{config_fname}</td></tr>"
+        html += f"<tr><td><strong>Config</strong></td><td>{config_path}</td></tr>"
         html += "</table>"
 
         # Flagged Channels
@@ -518,9 +526,21 @@ class LosslessPipeline:
 
         return html
 
+    @property
+    def config_fname(self):
+        warn('config_fname is deprecated and will be removed from future versions.',
+             DeprecationWarning)
+        return self.config_path
+
+    @config_fname.setter
+    def config_fname(self, config_path):
+        warn('config_fname is deprecated and will be removed from future versions.',
+             DeprecationWarning)
+        self.config_path = config_path
+
     def load_config(self):
         """Load the config file."""
-        self.config = Config().read(self.config_fname)
+        self.config = Config().read(self.config_path)
 
     def _check_sfreq(self):
         """Make sure sampling frequency is an integer.
@@ -1215,7 +1235,7 @@ class LosslessPipeline:
         )
         self.flags["ic"].load_tsv(iclabels_bidspath.fpath)
 
-        self.config_fname = bpath.update(
+        self.config_path = bpath.update(
             extension=".yaml", suffix="ll_config", check=False
         )
         self.load_config()
