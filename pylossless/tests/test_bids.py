@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 
-@pytest.mark.filterwarnings("ignore:Converting data files to EDF format")  
+@pytest.mark.filterwarnings("ignore:Converting data files to EDF format")
 def test_find_breaks():
     """Make sure MNE's annotate_break function can run."""
     def edf_import_fct(path_in):
@@ -16,7 +16,7 @@ def test_find_breaks():
     testing_path = mne.datasets.testing.data_path()
     fname = testing_path / "EDF" / "test_edf_overlapping_annotations.edf"
     import_args = [{"path_in": fname}]
-    bids_path_args = [{'subject': '001', 'run': '01', 'session': '01', 
+    bids_path_args = [{'subject': '001', 'run': '01', 'session': '01',
                        "task": "test"}]
     bids_paths = ll.bids.convert_dataset_to_bids(edf_import_fct, import_args,
                                                  bids_path_args, overwrite=True)
