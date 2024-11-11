@@ -26,7 +26,6 @@ def test_find_breaks(tmp_path):
         overwrite=True
         )
 
-                                                 bids_path_args, overwrite=True)
 
     print(bids_paths)
 
