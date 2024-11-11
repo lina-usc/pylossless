@@ -445,23 +445,27 @@ class LosslessPipeline:
         during the pipeline.
     """
 
-    def __init__(self, config_fname=None):
+    def __init__(self, config=None):
         """Initialize class.
 
         Parameters
         ----------
-        config_fname : pathlib.Path
-            path to config file specifying the parameters to be used
-            in the pipeline.
+        config : pathlib.Path | str
+            :class:`pylossless.config.Config` object or path to config file specifying
+            the parameters to be used in the pipeline.
         """
         self.flags = {
             "ch": FlaggedChs(self),
             "epoch": FlaggedEpochs(self),
             "ic": FlaggedICs(),
         }
-        self.config_fname = config_fname
-        if config_fname:
+        if isinstance(config, Config):
+            self.config = config
+        elif config:
+            self.config_fname = Path(config)
             self.load_config()
+        else:
+            self.config_fname = None
         self.raw = None
         self.ica1 = None
         self.ica2 = None
