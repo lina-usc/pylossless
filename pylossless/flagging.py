@@ -52,6 +52,11 @@ class FlaggedChs(dict):
         super().__init__(*args, **kwargs)
         self.ll = ll
 
+    @property
+    def valid_keys(self):
+        """Return the valid keys for FlaggedChs objects."""
+        return ('ch_sd', 'bridge', 'low_r', 'rank')
+
     def __repr__(self):
         """Return a string representation of the FlaggedChs object."""
         return (
@@ -62,13 +67,20 @@ class FlaggedChs(dict):
             f"  Rank: {self.get('rank', None)}\n"
         )
 
+    def __eq__(self, other):
+        for key in self.valid_keys:
+            if not np.array_equal(self.get(key, np.array([])),
+                                  other.get(key, np.array([]))):
+                return False
+        return True
+
     def add_flag_cat(self, kind, bad_ch_names, *args):
         """Store channel names that have been flagged by pipeline.
 
         Parameters
         ----------
         kind : str
-            Should be one of ``'outlier'``, ``'ch_sd'``, ``'low_r'``,
+            Should be one of ``'ch_sd'``, ``'low_r'``,
             ``'bridge'``, ``'rank'``.
         bad_ch_names : list | tuple
             Channel names. Will be the values corresponding to the ``kind``
@@ -174,6 +186,27 @@ class FlaggedEpochs(dict):
         super().__init__(*args, **kwargs)
 
         self.ll = ll
+
+    @property
+    def valid_keys(self):
+        """Return the valid keys for FlaggedEpochs objects."""
+        return ('noisy', 'uncorrelated', 'noisy_ICs')
+
+    def __repr__(self):
+        """Return a string representation of the FlaggedEpochs object."""
+        return (
+            f"Flagged channels: |\n"
+            f"  Noisy: {self.get('noisy', None)}\n"
+            f"  Noisy ICs: {self.get('noisy_ICs', None)}\n"
+            f"  Uncorrelated: {self.get('uncorrelated', None)}\n"
+        )
+
+    def __eq__(self, other):
+        for key in self.valid_keys:
+            if not np.array_equal(self.get(key, np.array([])),
+                                  other.get(key, np.array([]))):
+                return False
+        return True
 
     def add_flag_cat(self, kind, bad_epoch_inds, epochs):
         """Add information on time periods flagged by pyLossless.
