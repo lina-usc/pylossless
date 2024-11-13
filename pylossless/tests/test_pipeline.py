@@ -43,6 +43,9 @@ def test_find_breaks(logging):
         pipeline.find_breaks(message="Looking for break periods between tasks")
     else:
         pipeline.find_breaks()
+        # Now explicitly remove annotations and make sure we avoid MNE's error.
+        pipeline.raw.set_annotations(None)
+        pipeline.find_breaks()
     Path(config_fname).unlink()  # delete config file
 
 

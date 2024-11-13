@@ -718,6 +718,9 @@ class LosslessPipeline:
         """
         if "find_breaks" not in self.config or not self.config["find_breaks"]:
             return
+        if not self.raw.annotations:
+            logger.debug("No annotations found in raw object. Skipping find_breaks.")
+            return
         breaks = annotate_break(self.raw, **self.config["find_breaks"])
         self.raw.set_annotations(breaks + self.raw.annotations)
 
