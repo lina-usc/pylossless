@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import mne_bids
 import pytest
 
 import pylossless as ll
@@ -54,3 +54,36 @@ def test_deprecation():
     # with pytest.raises(DeprecationWarning, match=f"config_fname is deprecated"):
     # DeprecationWarning are currently ignored by pytest given our toml file
     pipeline.config_fname = pipeline.config_fname
+
+
+@pytest.mark.filterwarnings("ignore:Converting data files to EDF format")
+def test_load_flags(pipeline_fixture, tmp_path):
+    """Test running the pipeline."""
+    bids_root = tmp_path / "derivatives" / "pylossless"
+    print(bids_root)
+
+    subject = "pd6"
+    datatype = "eeg"
+    session = "off"
+    task = "rest"
+    suffix = "eeg"
+    bids_path = mne_bids.BIDSPath(
+        subject=subject,
+        session=session,
+        task=task,
+        suffix=suffix,
+        datatype=datatype,
+        root=bids_root
+    )
+
+    pipeline_fixture.save(bids_path,
+                          overwrite=False, format="EDF", event_id=None)
+    pipeline = ll.LosslessPipeline().load_ll_derivative(bids_path)
+
+    assert pipeline_fixture.flags['ch'] == pipeline.flags['ch']
+    pipeline.flags['ch']["bridge"] = ["xx"]
+    assert pipeline_fixture.flags['ch'] != pipeline.flags['ch']
+
+    assert pipeline_fixture.flags['epoch'] == pipeline.flags['epoch']
+    pipeline.flags['epoch']["bridge"] = ["noisy"]
+    assert pipeline_fixture.flags['epoch'] == pipeline.flags['epoch']

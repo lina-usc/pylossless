@@ -6,7 +6,7 @@ import mne_bids
 import pylossless as ll
 
 
-def load_openneuro_bids(subject="pd6"):
+def load_openneuro_bids(subject="pd6", timeout=20):
     """Download and Load BIDS dataset ds002778 from OpenNeuro.
 
     Parameters
@@ -72,8 +72,14 @@ def load_openneuro_bids(subject="pd6"):
         root=bids_root,
     )
 
-    while not bids_path.fpath.with_suffix(".bdf").exists():
-        print(list(bids_path.fpath.glob("*")))
+    for _ in range(timeout):
+        if bids_path.fpath.with_suffix(".bdf").exists():
+            break
+        print("Waiting for .bdf files to be created. Current files available:",
+              list(bids_path.fpath.glob("*")))
         sleep(1)
+    else:
+        raise TimeoutError("OpenNeuro failed to create the .bdf files.")
+
     raw = mne_bids.read_raw_bids(bids_path, verbose="ERROR")
     return raw, config, bids_path

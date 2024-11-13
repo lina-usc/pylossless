@@ -1229,9 +1229,20 @@ class LosslessPipeline:
         for path in paths:
             self.run(path)
 
-    # TODO: Finish docstring
     def load_ll_derivative(self, derivatives_path):
-        """Load a completed pylossless derivative state."""
+        """Load a completed pylossless derivative state.
+
+        Parameters
+        ----------
+        derivatives_path : str | mne_bids.BIDSPath
+            Path to a saved pylossless derivatives.
+
+        Returns
+        -------
+        :class:`~pylossless.pipeline.LosslessPipeline`
+            Returns an instance of :class:`~pylossless.pipeline.LosslessPipeline`
+            for the loaded pylossless derivative state.
+        """
         if not isinstance(derivatives_path, BIDSPath):
             derivatives_path = get_bids_path_from_fname(derivatives_path)
         self.raw = mne_bids.read_raw_bids(derivatives_path)
@@ -1260,7 +1271,7 @@ class LosslessPipeline:
         self.flags["ch"].load_tsv(flagged_chs_fpath.fpath)
 
         # Load Flagged Epochs
-        self.flags["epoch"].load_from_raw(self.raw)
+        self.flags["epoch"].load_from_raw(self.raw, self.get_events(), self.config)
 
         return self
 
