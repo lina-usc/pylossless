@@ -21,3 +21,5 @@ python:
       - requirements: requirements.txt
       - requirements: docs/requirements_doc.txt
       - requirements: requirements_testing.txt
+      # Make sure we install the package itself
+      - requirements: .
