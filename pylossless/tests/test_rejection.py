@@ -16,7 +16,19 @@ def test_rejection_policy(clean_ch_mode, pipeline_fixture):
     want_flags = ["noisy", "uncorrelated", "bridged"]
     assert rejection_config["ch_flags_to_reject"] == want_flags
 
-    raw, ica = rejection_config.apply(pipeline_fixture, return_ica=True)
+    pipeline_fixture.config["version"] = "-1"
+    with pytest.raises(RuntimeError, match="The output of the pipeline was"):
+        raw, ica = rejection_config.apply(pipeline_fixture,
+                                          version_mismatch="raise")
+    with pytest.raises(RuntimeWarning, match="The output of the pipeline was"):
+        raw, ica = rejection_config.apply(pipeline_fixture,
+                                          version_mismatch="warning")
+    with pytest.raises(ValueError, match="version_mismatch can take values"):
+        raw, ica = rejection_config.apply(pipeline_fixture,
+                                          version_mismatch="sdfdf")
+    raw, ica = rejection_config.apply(pipeline_fixture, return_ica=True,
+                                      version_mismatch="ignore")
+
     flagged_chs = []
     for key in rejection_config["ch_flags_to_reject"]:
         flagged_chs.extend(pipeline_fixture.flags["ch"][key].tolist())

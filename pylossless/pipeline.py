@@ -10,6 +10,7 @@
 from copy import deepcopy
 from pathlib import Path
 from functools import partial
+from importlib.metadata import version
 
 # Math and data structures
 import numpy as np
@@ -1094,6 +1095,8 @@ class LosslessPipeline:
         config_bidspath = bpath.update(
             extension=".yaml", suffix="ll_config", check=False
         )
+
+        self.config["version"] = version("pylossless")
         self.config.save(config_bidspath)
 
         # Save flag["ch"]
