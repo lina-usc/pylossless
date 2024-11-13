@@ -4,6 +4,8 @@
 # License: MIT
 
 import numpy as np
+from importlib.metadata import version
+import warnings
 
 from .config import ConfigMixin
 
@@ -90,7 +92,7 @@ class RejectionPolicy(ConfigMixin):
         )
 
     def __repr__(self):
-        """Return a summary of the Calibration object."""
+        """Return a summary of the RejectionPolicy object."""
         return (
             f"RejectionPolicy: |\n"
             f"  config_fname: {self['config_fname']}\n"
@@ -101,7 +103,7 @@ class RejectionPolicy(ConfigMixin):
             f"  remove_flagged_ics: {self['remove_flagged_ics']}\n"
         )
 
-    def apply(self, pipeline, return_ica=False):
+    def apply(self, pipeline, return_ica=False, version_mismatch="raise"):
         """Return a cleaned new raw object based on the rejection policy.
 
         Parameters
@@ -119,6 +121,21 @@ class RejectionPolicy(ConfigMixin):
             An :class:`~mne.io.Raw` instance with the appropriate channels and ICs
             added to mne bads, interpolated, or dropped.
         """
+        if pipeline.config["version"] != version("pylossless"):
+            error_message = (
+                "The output of the pipeline was saved with pylossless version "
+                f"{pipeline.config['version']} and you are currently using "
+                f"version {version('pylossless')}. The behavior is undefined."
+            )
+            if version_mismatch == "raise":
+                raise RuntimeError(error_message)
+            elif version_mismatch == "warning":
+                warnings.warn(error_message, RuntimeWarning)
+            elif version_mismatch != "ignore":
+                raise ValueError("version_mismatch can take values 'raise', "
+                                 "'warning', or 'ignore'. Received "
+                                 f"{version_mismatch}.")
+
         # Get the raw object
         raw = pipeline.raw.copy()
 

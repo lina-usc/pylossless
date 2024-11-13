@@ -10,6 +10,7 @@
 from copy import deepcopy
 from pathlib import Path
 from functools import partial
+from importlib.metadata import version
 
 # Math and data structures
 import numpy as np
@@ -461,6 +462,8 @@ class LosslessPipeline:
             "epoch": FlaggedEpochs(self),
             "ic": FlaggedICs(),
         }
+        self._config = None
+
         if config:
             self.config = config
             if config_path is None:
@@ -525,6 +528,15 @@ class LosslessPipeline:
         )
 
         return html
+
+    @property
+    def config(self):
+        return self._config
+
+    @config.setter
+    def config(self, config):
+        self._config = config
+        self._config["version"] = version("pylossless")
 
     @property
     def config_fname(self):
@@ -1094,6 +1106,7 @@ class LosslessPipeline:
         config_bidspath = bpath.update(
             extension=".yaml", suffix="ll_config", check=False
         )
+
         self.config.save(config_bidspath)
 
         # Save flag["ch"]
