@@ -1258,7 +1258,7 @@ class LosslessPipeline:
         self.flags["ch"].load_tsv(flagged_chs_fpath.fpath)
 
         # Load Flagged Epochs
-        self.flags["epoch"].load_from_raw(self.raw)
+        self.flags["epoch"].load_from_raw(self.raw, self.get_events(), self.config)
 
         return self
 
