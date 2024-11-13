@@ -11,4 +11,3 @@ tomli; python_version<'3.11'
 torch
 edfio
 openneuro-py
--e .
