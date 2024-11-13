@@ -121,7 +121,6 @@ class RejectionPolicy(ConfigMixin):
             An :class:`~mne.io.Raw` instance with the appropriate channels and ICs
             added to mne bads, interpolated, or dropped.
         """
-
         if pipeline.config["version"] != version("pylossless"):
             error_message = (
                 "The output of the pipeline was saved with pylossless version "
