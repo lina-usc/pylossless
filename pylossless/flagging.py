@@ -231,15 +231,17 @@ class FlaggedEpochs(_Flagged):
         sfreq = raw.info["sfreq"]
         tmax = config["epoching"]["epochs_args"]["tmax"]
         tmin = config["epoching"]["epochs_args"]["tmin"]
-        starts = events[:, 0]/sfreq - tmin
-        stops = events[:, 0]/sfreq + tmax
+        starts = events[:, 0] / sfreq - tmin
+        stops = events[:, 0] / sfreq + tmax
         for annot in raw.annotations:
             if annot["description"].upper().startswith("BAD_LL_"):
                 onset = annot["onset"]
-                offset = annot["onset"]+annot["duration"]
-                mask = ((starts >= onset) & (starts < offset) |
-                        (stops > onset) & (stops <= offset) |
-                        (onset <= starts) & (offset >= stops))
+                offset = annot["onset"] + annot["duration"]
+                mask = (
+                    (starts >= onset) & (starts < offset)
+                    | (stops > onset) & (stops <= offset)
+                    | (onset <= starts) & (offset >= stops)
+                )
                 inds = np.where(mask)[0]
                 desc = annot["description"].lower().replace("bad_ll_", "")
                 if desc not in self:
