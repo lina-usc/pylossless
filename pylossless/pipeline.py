@@ -1069,7 +1069,7 @@ class LosslessPipeline:
 
         Parameters
         ----------
-        derivatives_path : mne_bids.BIDSPath
+        derivatives_path : None | mne_bids.BIDSPath
             path of the derivatives folder to save the file to.
         overwrite : bool (default False)
             whether to overwrite existing files with the same name.
@@ -1079,7 +1079,6 @@ class LosslessPipeline:
         event_id : dict | None (default None)
             Dictionary mapping annotation descriptions to event codes.
         """
-
         if derivatives_path is None:
             derivatives_path = self.get_derivative_path(self.bids_path)
 
