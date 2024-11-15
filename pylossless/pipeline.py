@@ -457,6 +457,7 @@ class LosslessPipeline:
         config : pylossless.config.Config | None
             :class:`pylossless.config.Config` object for the pipeline.
         """
+        self.bids_path = None
         self.flags = {
             "ch": FlaggedChs(self),
             "epoch": FlaggedEpochs(self),
@@ -1060,7 +1061,7 @@ class LosslessPipeline:
 
         # icsd_epoch_flags=padflags(raw, icsd_epoch_flags,1,'value',.5);
 
-    def save(self, derivatives_path, overwrite=False, format="EDF", event_id=None):
+    def save(self, derivatives_path=None, overwrite=False, format="EDF", event_id=None):
         """Save the file at the end of the pipeline.
 
         Parameters
@@ -1075,6 +1076,10 @@ class LosslessPipeline:
         event_id : dict | None (default None)
             Dictionary mapping annotation descriptions to event codes.
         """
+
+        if derivatives_path is None:
+            derivatives_path = self.get_derivative_path(self.bids_path)
+
         mne_bids.write_raw_bids(
             self.raw,
             derivatives_path,
@@ -1121,22 +1126,17 @@ class LosslessPipeline:
         # 5.a. Filter lowpass/highpass
         self.raw.filter(**self.config["filtering"]["filter_args"])
 
+        # 5.b. Filter notch
         if "notch_filter_args" in self.config["filtering"]:
             notch_args = self.config["filtering"]["notch_filter_args"]
-            # in raw.notch_filter, freqs=None is ok if method=spectrum_fit
-            if not notch_args["freqs"] and "method" not in notch_args:
-                logger.info("No notch filter arguments provided. Skipping")
-            else:
+            spectrum_fit_method = (
+                "method" in notch_args and notch_args["method"] == "spectrum_fit"
+            )
+            if notch_args["freqs"] or spectrum_fit_method:
+                # in raw.notch_filter, freqs=None is ok if method=='spectrum_fit'
                 self.raw.notch_filter(**notch_args)
-
-        # 5.b. Filter notch
-        notch_args = self.config["filtering"]["notch_filter_args"]
-        spectrum_fit_method = (
-            "method" in notch_args and notch_args["method"] == "spectrum_fit"
-        )
-        if notch_args["freqs"] or spectrum_fit_method:
-            # in raw.notch_filter, freqs=None is ok if method=='spectrum_fit'
-            self.raw.notch_filter(**notch_args)
+            else:
+                logger.info("No notch filter arguments provided. Skipping")
         else:
             logger.info("No notch filter arguments provided. Skipping")
 
