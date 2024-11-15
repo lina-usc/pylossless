@@ -17,8 +17,53 @@ import mne_icalabel
 
 from .utils._utils import _icalabel_to_data_frame
 
+IC_LABELS = mne_icalabel.config.ICA_LABELS_TO_MNE
+CH_LABELS: dict[str, str] = {
+    "Noisy": "ch_sd",
+    "Bridged": "bridge",
+    "Uncorrelated": "low_r",
+    "Rank": "rank"
+}
+EPOCH_LABELS: dict[str, str] = {
+    "Noisy": "noisy",
+    "Noisy ICs": "noisy_ICs",
+    "Uncorrelated": "uncorrelated",
+}
 
-class FlaggedChs(dict):
+
+class _Flagged(dict):
+
+    def __init__(self, key_map, kind_str, ll, *args, **kwargs):
+        """Initialize class."""
+        super().__init__(*args, **kwargs)
+        self.ll = ll
+        self._key_map = key_map
+        self._kind_str = kind_str
+
+    @property
+    def valid_keys(self):
+        """Return the valid keys."""
+        return tuple(self._key_map.values())
+
+    def __repr__(self):
+        """Return a string representation."""
+        ret_str = f"Flagged {self._kind_str}s: |\n"
+        for key, val in self._key_map.items():
+            ret_str += f"  {key}: {self.get(val, None)}\n"
+        return ret_str
+
+    def __eq__(self, other):
+        for key in self.valid_keys:
+            if not np.array_equal(self.get(key, np.array([])),
+                                  other.get(key, np.array([]))):
+                return False
+        return True
+
+    def __ne__(self, other):
+        return not self == other
+
+
+class FlaggedChs(_Flagged):
     """Object for handling flagged channels in an instance of mne.io.Raw.
 
     Attributes
@@ -47,20 +92,9 @@ class FlaggedChs(dict):
     and methods for python dictionaries.
     """
 
-    def __init__(self, ll, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """Initialize class."""
-        super().__init__(*args, **kwargs)
-        self.ll = ll
-
-    def __repr__(self):
-        """Return a string representation of the FlaggedChs object."""
-        return (
-            f"Flagged channels: |\n"
-            f"  Noisy: {self.get('ch_sd', None)}\n"
-            f"  Bridged: {self.get('bridge', None)}\n"
-            f"  Uncorrelated: {self.get('low_r', None)}\n"
-            f"  Rank: {self.get('rank', None)}\n"
-        )
+        super().__init__(CH_LABELS, "channel", *args, **kwargs)
 
     def add_flag_cat(self, kind, bad_ch_names, *args):
         """Store channel names that have been flagged by pipeline.
@@ -68,7 +102,7 @@ class FlaggedChs(dict):
         Parameters
         ----------
         kind : str
-            Should be one of ``'outlier'``, ``'ch_sd'``, ``'low_r'``,
+            Should be one of ``'ch_sd'``, ``'low_r'``,
             ``'bridge'``, ``'rank'``.
         bad_ch_names : list | tuple
             Channel names. Will be the values corresponding to the ``kind``
@@ -140,7 +174,7 @@ class FlaggedChs(dict):
             self[label] = grp_df.ch_names.values
 
 
-class FlaggedEpochs(dict):
+class FlaggedEpochs(_Flagged):
     """Object for handling flagged Epochs in an instance of mne.Epochs.
 
     Methods
@@ -159,7 +193,7 @@ class FlaggedEpochs(dict):
     and methods for python dictionaries.
     """
 
-    def __init__(self, ll, *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         """Initialize class.
 
         Parameters
@@ -171,9 +205,7 @@ class FlaggedEpochs(dict):
         kwargs : dict
             keyword arguments accepted by python's dictionary class.
         """
-        super().__init__(*args, **kwargs)
-
-        self.ll = ll
+        super().__init__(EPOCH_LABELS, "epoch", *args, **kwargs)
 
     def add_flag_cat(self, kind, bad_epoch_inds, epochs):
         """Add information on time periods flagged by pyLossless.
@@ -194,17 +226,27 @@ class FlaggedEpochs(dict):
         self[kind] = bad_epoch_inds
         self.ll.add_pylossless_annotations(bad_epoch_inds, kind, epochs)
 
-    def load_from_raw(self, raw):
+    def load_from_raw(self, raw, events, config):
         """Load pylossless annotations from raw object."""
         sfreq = raw.info["sfreq"]
+        tmax = config["epoching"]["epochs_args"]["tmax"]
+        tmin = config["epoching"]["epochs_args"]["tmin"]
+        starts = events[:, 0] / sfreq - tmin
+        stops = events[:, 0] / sfreq + tmax
         for annot in raw.annotations:
-            if annot["description"].upper().startswith("BAD_LL"):
-                ind_onset = int(np.round(annot["onset"] * sfreq))
-                ind_dur = int(np.round(annot["duration"] * sfreq))
-                inds = np.arange(ind_onset, ind_onset + ind_dur)
-                if annot["description"] not in self:
-                    self[annot["description"]] = list()
-                self[annot["description"]].append(inds)
+            if annot["description"].upper().startswith("BAD_LL_"):
+                onset = annot["onset"]
+                offset = annot["onset"] + annot["duration"]
+                mask = (
+                    (starts >= onset) & (starts < offset)
+                    | (stops > onset) & (stops <= offset)
+                    | (onset <= starts) & (offset >= stops)
+                )
+                inds = np.where(mask)[0]
+                desc = annot["description"].lower().replace("bad_ll_", "")
+                if desc not in self:
+                    self[desc] = np.array([])
+                self[desc] = np.concatenate((self[desc], inds))
 
 
 class FlaggedICs(pd.DataFrame):
