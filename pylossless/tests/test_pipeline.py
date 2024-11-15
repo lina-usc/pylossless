@@ -42,7 +42,9 @@ def test_pipeline_save(bids_dataset_fixture):
         pipeline.save(overwrite=False, format="EDF")
     pipeline.save(overwrite=True, format="EDF")
 
-    shutil.rmtree(bids_dataset_fixture.root)
+    # Files are created in a tmp folder so no need
+    # to clean up...
+    # shutil.rmtree(bids_dataset_fixture.root)
 
 
 @pytest.mark.parametrize("logging", [True, False])
