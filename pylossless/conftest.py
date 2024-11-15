@@ -56,7 +56,7 @@ def pipeline_fixture():
 @pytest.fixture(scope="session")
 @pytest.mark.filterwarnings("ignore:Converting data files to EDF format")
 def bids_dataset_fixture(tmpdir_factory):
-    """Returns a BIDS path for a test recording."""
+    """Return a BIDS path for a test recording."""
     def edf_import_fct(path_in):
         # read in a file
         raw = mne.io.read_raw_edf(path_in, preload=True)
