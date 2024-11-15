@@ -1,10 +1,9 @@
 from pathlib import Path
+import mne
 import mne_bids
 import pytest
 
 import pylossless as ll
-
-import mne
 
 
 def test_empty_repr(tmp_path):
@@ -23,6 +22,28 @@ def test_pipeline_run(pipeline_fixture):
     assert "BAD_break" in pipeline_fixture.raw.annotations.description
     assert pipeline_fixture._repr_html_()
     assert pipeline_fixture.flags["ch"].__repr__()
+
+
+@pytest.mark.filterwarnings("ignore:Converting data files to EDF format")
+@pytest.mark.filterwarnings("ignore:The provided Epochs instance is not"
+                            " filtered between 1 and 100 Hz.")
+def test_pipeline_save(bids_dataset_fixture):
+    """Test running the pipeline."""
+    config = ll.config.Config()
+    config.load_default()
+    config["filtering"]["filter_args"]["h_freq"] = 40
+    del config["filtering"]["notch_filter_args"]
+
+    pipeline = ll.LosslessPipeline(config=config)
+    pipeline.run(bids_dataset_fixture, save=True)
+
+    with pytest.raises(FileExistsError):
+        pipeline.save(overwrite=False, format="EDF")
+    pipeline.save(overwrite=True, format="EDF")
+
+    # Files are created in a tmp folder so no need
+    # to clean up...
+    # shutil.rmtree(bids_dataset_fixture.root)
 
 
 @pytest.mark.parametrize("logging", [True, False])

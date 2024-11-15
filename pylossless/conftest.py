@@ -1,11 +1,14 @@
 """Pytest fixtures that can be reused across our unit tests."""
 # Author: Scott Huberty <seh33@uw.edu>
+#         Christian O'Reilly <christian.oreilly@sc.edu>
 #
 # License: MIT
 
 from pathlib import Path
 import shutil
 
+import mne
+import numpy as np
 from mne import Annotations
 
 import pylossless as ll
@@ -48,3 +51,30 @@ def pipeline_fixture():
     Path("test_config.yaml").unlink()  # delete config file
     shutil.rmtree(bids_path.root)
     return pipeline
+
+
+@pytest.fixture(scope="session")
+@pytest.mark.filterwarnings("ignore:Converting data files to EDF format")
+def bids_dataset_fixture(tmpdir_factory):
+    """Return a BIDS path for a test recording."""
+    def edf_import_fct(path_in):
+        # read in a file
+        raw = mne.io.read_raw_edf(path_in, preload=True)
+        match_alias = {ch_name: ch_name.strip(".") for ch_name in raw.ch_names}
+        raw.set_montage("standard_1005", match_alias=match_alias, match_case=False)
+        return raw, np.array([[0, 0, 0]]), {"test": 0, "T0": 1, "T1": 2, "T2": 3}
+
+    tmp_path = tmpdir_factory.mktemp('bids_dataset')
+    testing_path = mne.datasets.testing.data_path()
+    fname = testing_path / "EDF" / "test_edf_overlapping_annotations.edf"
+    import_args = [{"path_in": fname}]
+    bids_path_args = [{'subject': '001', 'run': '01', 'session': '01',
+                       "task": "test"}]
+    bids_path = ll.bids.convert_dataset_to_bids(
+        edf_import_fct,
+        import_args,
+        bids_path_args,
+        bids_root=tmp_path,
+        overwrite=True
+    )[0]
+    return bids_path
