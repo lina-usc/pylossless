@@ -31,7 +31,7 @@ long_description = (this_directory / "README.md").read_text(encoding="utf-8")
 qc_entry_point = ["pylossless_qc=pylossless.dash.pylossless_qc:main"]
 setup(
     name="pylossless",
-    version="0.1.0",
+    version="0.2.0",
     description="Lossless EEG Processing Pipeline Built on MNE and Dash",
     long_description=long_description,
     long_description_content_type="text/markdown",
