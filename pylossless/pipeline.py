@@ -1079,7 +1079,8 @@ class LosslessPipeline:
         elif run == "run2":
             self.ica2 = ICA(**ica_kwargs)
             self.ica2.fit(epochs)
-            self.flags["ic"].label_components(epochs, self.ica2)
+            if picks == "eeg":
+                self.flags["ic"].label_components(epochs, self.ica2)
         else:
             raise ValueError("The `run` argument must be 'run1' or 'run2'")
 
