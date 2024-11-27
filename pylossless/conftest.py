@@ -19,7 +19,7 @@ import pytest
 
 @pytest.fixture(scope="session")
 def pipeline_fixture():
-    """Return a namedTuple containing MNE eyetracking raw data and events."""
+    """Return a LosslessPipeline object."""
     raw, config, bids_path = load_openneuro_bids()
     # raw.crop(tmin=0, tmax=60)  # Too short for ICA to converge in some tests.
     annots = Annotations(
