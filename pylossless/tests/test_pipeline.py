@@ -81,7 +81,7 @@ def test_deprecation():
 
 
 def test_multimodality():
-    """Test running the pipeline on a multimodal (EEG, MEG) dataset."""    
+    """Test running the pipeline on a multimodal (EEG, MEG) dataset."""
     fname = mne.datasets.sample.data_path() / 'MEG' / 'sample' / 'sample_audvis_raw.fif'
     raw = mne.io.read_raw_fif(fname, preload=True)
     raw.crop(tmin=0, tmax=60)

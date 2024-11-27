@@ -932,7 +932,8 @@ class LosslessPipeline:
         Parameters
         ----------
         picks : str (default "eeg")
-            Type of channels to pick."""
+            Type of channels to pick.
+        """
         # Calculate nearest neighbour correlation on
         # non-flagged channels and epochs...
         epochs = self.get_epochs(picks=picks)
