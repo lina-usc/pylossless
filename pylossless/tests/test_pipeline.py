@@ -80,6 +80,22 @@ def test_deprecation():
     pipeline.config_fname = pipeline.config_fname
 
 
+def test_multimodality():
+    """Test running the pipeline on a multimodal (EEG, MEG) dataset."""
+    fname = mne.datasets.sample.data_path() / 'MEG' / 'sample' / 'sample_audvis_raw.fif'
+    raw = mne.io.read_raw_fif(fname, preload=True)
+    raw.crop(tmin=0, tmax=60)
+
+    config = ll.config.Config()
+    config.load_default()
+    config["modality"] = ["eeg", "meg"]
+    config["ica"] = None
+    pipeline = ll.LosslessPipeline(config=config)
+    pipeline.run_with_raw(raw)
+
+    assert pipeline.flags["ch"]["noisy"] == ['EEG 007', 'MEG 1032']
+
+
 @pytest.mark.filterwarnings("ignore:Converting data files to EDF format")
 def test_load_flags(pipeline_fixture, tmp_path):
     """Test running the pipeline."""

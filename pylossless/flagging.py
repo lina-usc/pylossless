@@ -115,7 +115,11 @@ class FlaggedChs(_Flagged):
         logger.debug(f"NEW BAD CHANNELS {bad_ch_names}")
         if isinstance(bad_ch_names, xr.DataArray):
             bad_ch_names = bad_ch_names.values
-        self[kind] = bad_ch_names
+        if kind in self:
+            self[kind] = list(np.unique(np.concatenate((self[kind], bad_ch_names))))
+        else:
+            self[kind] = bad_ch_names
+
 
     def get_flagged(self):
         """Return a list of channels flagged by the lossless pipeline."""
@@ -138,9 +142,12 @@ class FlaggedChs(_Flagged):
         """
         # Concatenate and remove duplicates
         bad_chs = list(
-            set(self.ll.find_outlier_chs(inst) + self.get_flagged() + inst.info["bads"])
+            set(self.ll.find_outlier_chs(inst, picks="eeg") +
+                self.get_flagged() +
+                inst.info["bads"])
         )
-        ref_chans = [ch for ch in inst.copy().pick("eeg").ch_names if ch not in bad_chs]
+        ref_chans = [ch for ch in inst.copy().pick("eeg").ch_names
+                     if ch not in bad_chs]
         inst.set_eeg_reference(ref_channels=ref_chans, **kwargs)
 
     def save_tsv(self, fname):
@@ -223,7 +230,10 @@ class FlaggedEpochs(_Flagged):
             The :class:`mne.Epochs` object created from the Raw object that is
             being assessed by the LosslessPipeline.
         """
-        self[kind] = bad_epoch_inds
+        if kind in self:
+            self[kind] = list(np.unique(np.concatenate((self[kind], bad_epoch_inds))))
+        else:
+            self[kind] = bad_epoch_inds
         self.ll.add_pylossless_annotations(bad_epoch_inds, kind, epochs)
 
     def load_from_raw(self, raw, events, config):
