@@ -45,9 +45,8 @@ raw = mne.io.read_raw_fif(fname, preload=True)
 
 config = ll.config.Config()
 config.load_default()
-config.save("my_project_ll_config.yaml")
 
-pipeline = ll.LosslessPipeline('my_project_ll_config.yaml')
+pipeline = ll.LosslessPipeline(config=config)
 pipeline.run_with_raw(raw)
 ```
 
@@ -90,6 +89,7 @@ If you are a Canadian researcher working on an HPC system such as [Narval](https
 module load python/3.10
 
 # Build the virtualenv in your homedir
+cd ~
 virtualenv --no-download eeg-env
 source eeg-env/bin/activate
 
@@ -99,17 +99,17 @@ pip install --no-index xarray
 pip install --no-index pyyaml
 pip install --no-index sklearn
 pip install mne_bids
+pip install EDFlib-Python
+pip install openneuro-py
 
 # Clone down mne-iclabel and switch to the right version and install it locally
+cd ~/eeg-env
 git clone https://github.com/mne-tools/mne-icalabel.git
 cd mne-icalabel
-git checkout maint/0.4
+git checkout maint/0.5
 pip install .
 
-# Clone down pipeline and install without reading dependencies
-git clone git@github.com:lina-usc/pylossless.git
-cd pylossless
-pip install --no-deps .
+pip install --no-deps pylossless
 
 # Verify that the package has installed correct with an import
 python -c 'import pylossless'
