@@ -4,6 +4,8 @@ mne_bids>=0.14
 pandas
 xarray
 scipy>=1.7.1
-mne_icalabel>=0.5.0
+mne_icalabel>=0.6.0
 pyyaml
 scikit-learn
+torch
+edfio
