@@ -43,4 +43,5 @@ setup(
     extras_require=extras_require,
     include_package_data=True,
     entry_points={"console_scripts": qc_entry_point},
+    dependency_links=['https://download.pytorch.org/whl/cpu'],
 )

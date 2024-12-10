@@ -24,28 +24,6 @@ project:
     EEGCoordinateSystem: Other
     EEGCoordinateUnits: metres
 
-  general_info:
-    authors: [Unspecified]
-    institution_Name: Unspecified
-    institution_address: Unspecified
-    dataset_doi: []
-    funding: Unspecified
-    how_to_acknowledge: tba
-    license: ""
-    name: Unspecified
-    references_and_links: []
-
-  t_info:
-    EEG_placement_scheme: EGI 129
-    cap_manufacturer: EGI
-    cap_manufacturers_model_name: Hydrocel 129 Channel
-    hardware_filters: n/a
-    manufacturer: Electrical Geodesics
-    manufacturers_model_name: NetAmps300
-    power_line_frequency: 60
-    software_filters: n/a
-    software_versions: NetStation V4.5
-
 ######################## Task break detection ########################
 # See arguments definition from mne.preprocessing.annotate_breaks
 find_breaks:
@@ -68,19 +46,6 @@ filtering:
     l_freq: 1
   notch_filter_args:
     freqs: []
-
-############################## SLURM #################################
-# Options for running the pipeline on a cluster
-# through SLURM
-slurm_options:
-  account: def-emayada
-  job_name: pylossless
-  memory: 16g
-  mpi: false
-  num_tasks: 1
-  program_options: []
-  threads_per_task: []
-  time_limit: 2h
 
 ########################## Nearest neighbor ##########################
 nearest_neighbors:
