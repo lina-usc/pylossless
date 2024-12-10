@@ -40,7 +40,7 @@ class _Flagged(dict):
         """Return a string representation."""
         ret_str = f"Flagged {self._kind_str}s: |\n"
         for key in self._keys:
-            ret_str += f"  {key.title().replace("_", " ")}: {self.get(key, None)}\n"
+            ret_str += f"  {key.title().replace('_', ' ')}: {self.get(key, None)}\n"
         return ret_str
 
     def __eq__(self, other):
