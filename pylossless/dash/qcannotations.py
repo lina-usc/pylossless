@@ -26,7 +26,7 @@ class EEGAnnotation:
             description of the annotation event, such as "blink".
             descriptions beginning with "bad_" will be considered as
             time durations to be excluded by mne-python.
-        layout : plotly.graph_objects.layout
+        layout : plotly.graph_objects.Layout
             The graph layout object that the annotations should be
             plotted onto.
         """
