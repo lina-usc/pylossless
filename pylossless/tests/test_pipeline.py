@@ -121,9 +121,9 @@ def test_load_flags(pipeline_fixture, tmp_path):
     pipeline = ll.LosslessPipeline().load_ll_derivative(bids_path)
 
     assert pipeline_fixture.flags['ch'] == pipeline.flags['ch']
-    pipeline.flags['ch']["bridge"] = ["xx"]
+    pipeline.flags['ch']["bridged"] = ["xx"]
     assert pipeline_fixture.flags['ch'] != pipeline.flags['ch']
 
     assert pipeline_fixture.flags['epoch'] == pipeline.flags['epoch']
-    pipeline.flags['epoch']["bridge"] = ["noisy"]
+    pipeline.flags['epoch']["bridged"] = ["noisy"]
     assert pipeline_fixture.flags['epoch'] == pipeline.flags['epoch']
