@@ -109,10 +109,6 @@ pip install mne_bids
 pip install edfio
 pip install openneuro-py
 
-# Clone down mne-iclabel and switch to the right version and install it locally
-cd ~/eeg-env
-git clone https://github.com/mne-tools/mne-icalabel.git
-cd mne-icalabel
 git checkout maint/0.5
 pip install .
 
