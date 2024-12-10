@@ -109,8 +109,7 @@ pip install mne_bids
 pip install edfio
 pip install openneuro-py
 
-git checkout maint/0.5
-pip install .
+pip install mne-icalabel
 
 pip install --no-deps pylossless
 
