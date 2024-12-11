@@ -43,6 +43,6 @@ jobs:
           coverage run -m pytest
       - name: Upload coverage to codecov (Only do this for the ubuntu-latest job)
         if: matrix.os == 'ubuntu-latest'
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v5
         with:
           token: ${{secrets.CODECOV_TOKEN}}
