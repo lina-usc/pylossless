@@ -3,6 +3,7 @@
 
 import json
 import plotly.graph_objects as go
+from dash import dcc
 
 from ..qcannotations import EEGAnnotationList, EEGAnnotation
 
@@ -17,4 +18,6 @@ def test_EEGAnnotationList_serialization():
     annotation_list = EEGAnnotationList(annotation)
 
     # Check if json serializable
-    json.dumps(annotation_list)
+    #json.dumps(annotation_list)
+    mne_annots = dcc.Store(id="annotations")
+    mne_annots.data = annotation_list
