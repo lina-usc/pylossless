@@ -18,38 +18,29 @@ import mne_icalabel
 from .utils._utils import _icalabel_to_data_frame
 
 IC_LABELS = mne_icalabel.config.ICA_LABELS_TO_MNE
-CH_LABELS: dict[str, str] = {
-    "Noisy": "ch_sd",
-    "Bridged": "bridge",
-    "Uncorrelated": "low_r",
-    "Rank": "rank"
-}
-EPOCH_LABELS: dict[str, str] = {
-    "Noisy": "noisy",
-    "Noisy ICs": "noisy_ICs",
-    "Uncorrelated": "uncorrelated",
-}
+CH_LABELS: list = ["noisy", "bridged", "uncorrelated", "rank"]
+EPOCH_LABELS: list = ["noisy", "noisy_ICs", "uncorrelated"]
 
 
 class _Flagged(dict):
 
-    def __init__(self, key_map, kind_str, ll, *args, **kwargs):
+    def __init__(self, keys, kind_str, ll, *args, **kwargs):
         """Initialize class."""
         super().__init__(*args, **kwargs)
         self.ll = ll
-        self._key_map = key_map
+        self._keys = keys
         self._kind_str = kind_str
 
     @property
     def valid_keys(self):
         """Return the valid keys."""
-        return tuple(self._key_map.values())
+        return tuple(self._keys)
 
     def __repr__(self):
         """Return a string representation."""
         ret_str = f"Flagged {self._kind_str}s: |\n"
-        for key, val in self._key_map.items():
-            ret_str += f"  {key}: {self.get(val, None)}\n"
+        for key in self._keys:
+            ret_str += f"  {key.title().replace('_', ' ')}: {self.get(key, None)}\n"
         return ret_str
 
     def __eq__(self, other):
@@ -102,8 +93,7 @@ class FlaggedChs(_Flagged):
         Parameters
         ----------
         kind : str
-            Should be one of ``'ch_sd'``, ``'low_r'``,
-            ``'bridge'``, ``'rank'``.
+            Should be one of the values in ``CH_LABELS``.
         bad_ch_names : list | tuple
             Channel names. Will be the values corresponding to the ``kind``
             dictionary key.
@@ -220,7 +210,7 @@ class FlaggedEpochs(_Flagged):
         Parameters
         ----------
         kind : str
-            Should be one of ``'noisy'``, ``'uncorrelated'``, ``'noisy_ICs'``.
+            Should be one of the values in ``EPOCH_LABELS``.
         bad_epochs_inds : list | tuple
             Indices for the epochs in an :class:`mne.Epochs` object. Will be
             the values for the ``kind`` dictionary key.
