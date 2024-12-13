@@ -23,6 +23,7 @@ from mne.io import RawArray
 from mne.utils.check import _check_sphere
 from mne.viz.topomap import _get_pos_outlines
 from mne.viz.topomap import _setup_interp, _check_extrapolate
+from mne._fiff.constants import FIFF
 
 from .css_defaults import CSS, STYLE
 from . import ic_label_cmap
@@ -36,6 +37,7 @@ yaxis.update({"scaleanchor": "x", "scaleratio": 1})
 def pick_montage(montage, ch_names):
     """Pick a subset of channels from a montage."""
     digs = montage.remove_fiducials().dig
+    digs = [dig for dig in digs if dig["kind"] == FIFF.FIFFV_POINT_EEG]
     digs = [dig for dig, ch_name in zip(digs, montage.ch_names) if ch_name in ch_names]
     return mne.channels.DigMontage(dig=digs, ch_names=ch_names)
 

@@ -4,10 +4,17 @@
 #
 # License: MIT
 
+import webbrowser
+from threading import Timer
 import argparse
 from pylossless.dash.app import get_app
 
 desc = "Launch QCR dashboard with optional directory and filename arguments."
+
+
+def open_browser(port=8050):
+    """Open a webbrowser."""
+    webbrowser.open_new("http://localhost:{}".format(port))
 
 
 def launch_dash_app(directory=None, filepath=None, disable_buttons=False):
@@ -15,7 +22,12 @@ def launch_dash_app(directory=None, filepath=None, disable_buttons=False):
     app = get_app(
         fpath=filepath, project_root=directory, disable_buttons=disable_buttons
     )
-    app.run_server(debug=True)
+
+    Timer(1, open_browser).start()
+    # We can use either (debug=False) or (debug=True, use_reloader=False)
+    # if we don't want the code to open the browser twice.
+    # Explanations: https://stackoverflow.com/a/68686551/1825043
+    app.run_server(debug=True, use_reloader=False)
 
 
 def main():
