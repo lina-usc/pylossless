@@ -4,7 +4,6 @@
 
 """Tests for topo_viz.py."""
 
-import pytest
 import mne
 from pylossless.dash.mne_visualizer import MNEVisualizer
 
