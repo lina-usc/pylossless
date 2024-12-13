@@ -776,7 +776,7 @@ class LosslessPipeline:
         logger.info("🔍 Detecting channels to leave out of reference.")
         if isinstance(inst, mne.Epochs):
             epochs = inst
-        elif isinstance(inst, mne.Raw):
+        elif isinstance(inst, mne.io.Raw):
             epochs = self.get_epochs(rereference=False, picks=picks)
         else:
             raise TypeError(
