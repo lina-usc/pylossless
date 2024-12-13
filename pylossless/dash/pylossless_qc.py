@@ -13,7 +13,7 @@ desc = "Launch QCR dashboard with optional directory and filename arguments."
 
 
 def open_browser(port=8050):
-    """ Open a webbrowser. """
+    """Open a webbrowser."""
     webbrowser.open_new("http://localhost:{}".format(port))
 
 

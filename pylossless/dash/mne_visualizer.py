@@ -7,6 +7,7 @@
 import dash
 from dash import dcc, html, no_update
 from dash.dependencies import Input, Output
+import dash_bootstrap_components as dbc
 
 # time series plot
 import plotly.graph_objects as go
@@ -32,8 +33,8 @@ class MNEVisualizer:
 
     def __init__(
         self,
-        app,
-        inst,
+        app=None,
+        inst=None,
         dcc_graph_kwargs=None,
         dash_id_suffix=None,
         show_time_slider=True,
@@ -45,6 +46,7 @@ class MNEVisualizer:
         refresh_inputs=None,
         show_n_channels=20,
         set_callbacks=True,
+        mode=None
     ):
         """Initialize class.
 
@@ -72,15 +74,36 @@ class MNEVisualizer:
         show_time_slider : bool
             Whether to show the channel slider with the MNEVIsualizer
             time-series graph. Defaults to True.
+        mode : str
+            Can take the value "standalone_jupyter" for an app within a
+            Jupyter Notebook, "standalone" for a typical Dash app, or
+            "embedded" for using an pre-existing app object.
 
         Returns
         -------
         an instance of MNEVisualizer.
         """
-        if not isinstance(refresh_inputs, list):
+        if refresh_inputs is None:
+            refresh_inputs = []
+        elif not isinstance(refresh_inputs, list):
             refresh_inputs = [refresh_inputs]
         self.refresh_inputs = refresh_inputs
-        self.app = app
+
+        if app is None:
+            stylesheets = [dbc.themes.SLATE]
+            if mode == "standalone_jupyter":
+                from jupyter_dash import JupyterDash
+
+                self.app = JupyterDash("TopoViz", external_stylesheets=stylesheets)
+                self.mode = mode
+            else:
+                self.app = dash.Dash("TopoViz", external_stylesheets=stylesheets)
+                self.mode = "standalone"
+            self.app.layout = html.Div([])
+        else:
+            self.app = app
+            self.mode = "embedded"
+
         self.scalings_arg = scalings
         self._inst = None
         self.n_sel_ch = show_n_channels
@@ -207,8 +230,10 @@ class MNEVisualizer:
     def initialize_shapes(self):
         """Make graph.layout.shapes for each mne.io.raw.annotation."""
         if not self.inst:
-            return
-        self.mne_annots.data = EEGAnnotationList.from_mne_inst(self.inst, self.layout)
+            data = EEGAnnotationList()
+        else:
+            data = EEGAnnotationList.from_mne_inst(self.inst, self.layout)
+        self.mne_annots.data = data
 
     def refresh_shapes(self):
         """Identify shapes that are viewable in the current time-window."""
@@ -336,7 +361,7 @@ class MNEVisualizer:
             Input(self.dash_ids["ch-slider"], "value"),
             Input(self.dash_ids["time-slider"], "value"),
             Input(self.dash_ids["graph"], "clickData"),
-            Input(self.dash_ids["graph"], "relayoutData"),
+            Input(self.dash_ids["graph"], "relayoutData")
         ]
         if self.refresh_inputs:
             args += self.refresh_inputs
@@ -491,6 +516,7 @@ class MNEVisualizer:
     def _init_annot_store(self):
         """Initialize the dcc.Store component of mne annotations."""
         self.mne_annots = dcc.Store(id=self.dash_ids["mne-annotations"])
+        self.mne_annots.data = EEGAnnotationList()
 
     def _set_loading_icon(self):
         """Add the loading icon."""

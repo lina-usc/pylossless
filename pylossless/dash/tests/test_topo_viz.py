@@ -68,7 +68,8 @@ def test_GridTopoPlot():
 
 # chromedriver: https://chromedriver.storage.googleapis.com/
 #               index.html?path=114.0.5735.90/
-@pytest.mark.skip(reason="an issue with chromedriver causes failure. Need to debug.")
+#@pytest.mark.skip(reason="an issue with chromedriver causes failure. Need to debug.")
+@pytest.mark.filterwarnings("ignore:Exception in thread")
 def test_TopoViz(dash_duo):
     """Test TopoViz."""
     raw, ica = get_raw_ica()
@@ -78,7 +79,6 @@ def test_TopoViz(dash_duo):
         topo_data.add_topomap(dict(zip(ica.ch_names, comp)))
 
     topo_viz = TopoViz(data=topo_data, montage=raw.get_montage(), mode="standalone")
-
     topo_viz.app.layout.children.append(html.Div(id="nully-wrapper", children=0))
     dash_duo.start_server(topo_viz.app)
     assert dash_duo.find_element("#nully-wrapper").text == "0"
