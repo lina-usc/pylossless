@@ -358,8 +358,8 @@ def coregister(
 
     Parameters
     ----------
-    raw_edf : mne.Raw
-        an instance of `mne.Raw` to coregister.
+    raw_edf : mne.io.Raw
+        an instance of `mne.io.Raw` to coregister.
     fiducials : str (default 'estimated')
         fiducials to use for coregistration. if `'estimated'`, gets fiducials
         from fsaverage.
@@ -393,8 +393,8 @@ def warp_locs(self, raw):
 
     Parameters
     ----------
-    raw : mne.Raw
-        an instance of mne.Raw
+    raw : mne.io.Raw
+        an instance of mne.io.Raw
 
     Returns
     -------
@@ -435,7 +435,7 @@ class LosslessPipeline:
         in the pipeline.
     config : dict
         A dictionary containing the pipeline parameters.
-    raw : mne.Raw
+    raw : mne.io.Raw
         An instance of :class:`~mne.io.Raw` containing that will
         be processed by the pipeline.
     ica1 : mne.preprocessing.ICA
@@ -776,7 +776,7 @@ class LosslessPipeline:
         logger.info("🔍 Detecting channels to leave out of reference.")
         if isinstance(inst, mne.Epochs):
             epochs = inst
-        elif isinstance(inst, mne.Raw):
+        elif isinstance(inst, mne.io.Raw):
             epochs = self.get_epochs(rereference=False, picks=picks)
         else:
             raise TypeError(
