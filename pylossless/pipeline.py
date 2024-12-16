@@ -771,16 +771,36 @@ class LosslessPipeline:
         self.flags[flag_dim].add_flag_cat("volt_std", above_threshold, epochs)
 
     def find_outlier_chs(self, inst, picks="eeg"):
-        """Detect outlier Channels to leave out of rereference."""
+        """Detect outlier Channels to leave out of rereference.
+
+        Parameters
+        ----------
+        inst : mne.Epochs
+            an instance of mne.Epochs.
+        picks : str (default "eeg")
+            Channels to include in the outlier detection process. You can pass any
+            argument that is valid for the :meth:`~mne.Epochs.pick` method, but
+            you should avoid passing a mix of channel types with differing units of
+            measurement (e.g. EEG and MEG), as this would likely lead to incorrect
+            outlier detection (e.g. all MEG channels would be flagged as outliers).
+
+        Returns
+        -------
+        list
+            a list of channel names that are considered outliers.
+
+        Notes
+        -----
+        - This method is used to detect channels that are so noisy that they
+            should be left out of the robust average rereference process.
+        """
         # TODO: Reuse _detect_outliers here.
         logger.info("🔍 Detecting channels to leave out of reference.")
         if isinstance(inst, mne.Epochs):
             epochs = inst
-        elif isinstance(inst, mne.io.Raw):
-            epochs = self.get_epochs(rereference=False, picks=picks)
         else:
             raise TypeError(
-                "inst must be an MNE Raw or Epochs object," f" but got {type(inst)}."
+                "inst must be an instance of mne.Epochs," f" but got {type(inst)}."
             )
         epochs_xr = epochs_to_xr(epochs, kind="ch")
 
