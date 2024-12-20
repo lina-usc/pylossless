@@ -798,7 +798,6 @@ class LosslessPipeline:
         logger.info("🔍 Detecting channels to leave out of reference.")
         if epochs is None:
             epochs = self.get_epochs(rereference=False, picks=picks)
-                "inst must be an instance of mne.Epochs," f" but got {type(inst)}."
         epochs_xr = epochs_to_xr(epochs, kind="ch")
 
         # Determines comically bad channels,
