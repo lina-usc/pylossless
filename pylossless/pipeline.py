@@ -770,12 +770,12 @@ class LosslessPipeline:
         )
         self.flags[flag_dim].add_flag_cat("volt_std", above_threshold, epochs)
 
-    def find_outlier_chs(self, inst, picks="eeg"):
+    def find_outlier_chs(self, epochs, picks="eeg"):
         """Detect outlier Channels to leave out of rereference.
 
         Parameters
         ----------
-        inst : mne.Epochs
+        epochs : mne.Epochs | None
             an instance of mne.Epochs.
         picks : str (default "eeg")
             Channels to include in the outlier detection process. You can pass any
@@ -796,12 +796,9 @@ class LosslessPipeline:
         """
         # TODO: Reuse _detect_outliers here.
         logger.info("🔍 Detecting channels to leave out of reference.")
-        if isinstance(inst, mne.Epochs):
-            epochs = inst
-        else:
-            raise TypeError(
+        if epochs is None:
+            epochs = self.get_epochs(rereference=False, picks=picks)
                 "inst must be an instance of mne.Epochs," f" but got {type(inst)}."
-            )
         epochs_xr = epochs_to_xr(epochs, kind="ch")
 
         # Determines comically bad channels,
