@@ -795,12 +795,24 @@ class LosslessPipeline:
         Notes
         -----
         - This method is used to detect channels that are so noisy that they
-            should be left out of the robust average rereference process.
+          should be left out of the robust average rereference process.
+
+        Examples
+        --------
+        >>> import mne
+        >>> import pylossless as ll
+        >>> config = ll.Config().load_default()
+        >>> pipeline = ll.LosslessPipeline(config=config)
+        >>> fname = mne.datasets.sample.data_path() / "MEG/sample/sample_audvis_raw.fif"
+        >>> raw = mne.io.read_raw(fname)
+        >>> epochs = mne.make_fixed_length_epochs(raw, preload=True)
+        >>> chs_to_leave_out = pipeline.find_outlier_chs(epochs=epochs)
         """
         # TODO: Reuse _detect_outliers here.
         logger.info("🔍 Detecting channels to leave out of reference.")
         if epochs is None:
-            epochs = self.get_epochs(rereference=False, picks=picks)
+            epochs = self.get_epochs(rereference=False)
+        epochs = epochs.copy().pick(picks=picks)
         epochs_xr = epochs_to_xr(epochs, kind="ch")
 
         # Determines comically bad channels,
