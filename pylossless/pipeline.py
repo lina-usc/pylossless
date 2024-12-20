@@ -776,13 +776,16 @@ class LosslessPipeline:
         Parameters
         ----------
         epochs : mne.Epochs | None
-            an instance of mne.Epochs.
+            An instance of :class:`mne.Epochs`, or ``None``. If ``None``, then
+            :attr:`pylossless.LosslessPipeline.raw` should be set, and this
+            method will call :meth:`pylossless.LosslessPipeline.get_epochs`
+            to create epochs to use for outlier detection.
         picks : str (default "eeg")
             Channels to include in the outlier detection process. You can pass any
             argument that is valid for the :meth:`~mne.Epochs.pick` method, but
             you should avoid passing a mix of channel types with differing units of
             measurement (e.g. EEG and MEG), as this would likely lead to incorrect
-            outlier detection (e.g. all MEG channels would be flagged as outliers).
+            outlier detection (e.g. all EEG channels would be flagged as outliers).
 
         Returns
         -------
