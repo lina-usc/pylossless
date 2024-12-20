@@ -69,6 +69,7 @@ def test_find_breaks(logging):
         pipeline.find_breaks()
     Path(config_fname).unlink()  # delete config file
 
+
 def test_find_outliers():
     """Test the find_outliers method for the case that epochs is None."""
     fname = mne.datasets.sample.data_path() / 'MEG' / 'sample' / 'sample_audvis_raw.fif'
