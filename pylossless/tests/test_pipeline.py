@@ -78,7 +78,7 @@ def test_find_outliers():
     config = ll.config.Config().load_default()
     pipeline = ll.LosslessPipeline(config=config)
     pipeline.raw = raw
-    chs_to_leave_out = pipeline.find_outlier_chs(epochs=None)
+    chs_to_leave_out = pipeline.find_outlier_chs()
     assert chs_to_leave_out == ['EEG 001']
 
 

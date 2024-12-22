@@ -770,7 +770,7 @@ class LosslessPipeline:
         )
         self.flags[flag_dim].add_flag_cat("volt_std", above_threshold, epochs)
 
-    def find_outlier_chs(self, epochs, picks="eeg"):
+    def find_outlier_chs(self, epochs=None, picks="eeg"):
         """Detect outlier Channels to leave out of rereference.
 
         Parameters
