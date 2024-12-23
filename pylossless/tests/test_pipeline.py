@@ -70,6 +70,18 @@ def test_find_breaks(logging):
     Path(config_fname).unlink()  # delete config file
 
 
+def test_find_outliers():
+    """Test the find_outliers method for the case that epochs is None."""
+    fname = mne.datasets.sample.data_path() / 'MEG' / 'sample' / 'sample_audvis_raw.fif'
+    raw = mne.io.read_raw_fif(fname, preload=True)
+    raw.apply_function(lambda x: x * 10, picks="EEG 001") # create an outlier
+    config = ll.config.Config().load_default()
+    pipeline = ll.LosslessPipeline(config=config)
+    pipeline.raw = raw
+    chs_to_leave_out = pipeline.find_outlier_chs()
+    assert chs_to_leave_out == ['EEG 001']
+
+
 def test_deprecation():
     """Test the config_name property added for deprecation."""
     config = ll.config.Config()
