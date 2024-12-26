@@ -26,7 +26,8 @@ project:
 
 ######################## Task break detection ########################
 # See arguments definition from mne.preprocessing.annotate_breaks
-find_breaks:
+# Uncomment dict to enable task break detection with default values
+find_breaks:  # {}
 
 ############################## epoching ##############################
 epoching:
@@ -53,6 +54,12 @@ nearest_neighbors:
   n_nbr_epoch: 3
 
 ####################### Pipeline steps config ########################
+
+# The following two steps are optional and are not enabled by default.
+# Uncomment the {} to enable them with default values.
+flag_channels_fixed_threshold: # {}
+flag_epochs_fixed_threshold: # {}
+
 bridged_channels:
   bridge_trim: 40
   bridge_z: 6
