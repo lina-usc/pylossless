@@ -52,7 +52,7 @@ class EEGAnnotation:
         )
         self._dash_description = dict(
             x=self.onset + self.duration / 2,
-            y=self.layout.yaxis["range"][1],
+            y=layout.yaxis["range"][1],
             text=self.description,
             showarrow=False,
             yshift=10,
