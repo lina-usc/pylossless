@@ -60,6 +60,7 @@ class EEGAnnotation:
         )
 
     def to_dict(self):
+        """Return a dict representation of the EEGAnnotation object."""
         return {"_id": self._id, "_onset": self._onset,
                 "_duration": self._duration, "_description": self._description,
                 "_dash_description": self._dash_description,
@@ -180,6 +181,11 @@ class EEGAnnotationList:
             self.annotations = pd.Series()
 
     def to_plotly_json(self):
+        """Return a dict representation of the EEGAnnotation object.
+
+        Implementing this function is necessary for Plotly/Dash to serialize
+        EEGAnnotationList objects.
+        """
         return {key: value.to_dict() for key, value in self.annotations.items()}
 
     def __get_series(self, attr):
