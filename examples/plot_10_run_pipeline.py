@@ -7,6 +7,13 @@ In this notebook, we will run the pyLossless pipeline on a publicly available da
 """
 
 # %%
+# Installation (in the terminal or through Jupyter)
+# -------
+#!pip install -q pylossless
+#!pip install -q openneuro-py
+
+
+# %%
 # Imports
 # -------
 from pathlib import Path
@@ -14,7 +21,12 @@ import shutil
 import pylossless as ll
 
 # %%
-# Get the data
+# Get the data.
+#
+# Note: If you are testing this examples in Google Colab, the
+# openneuro-py download function does not always work flawlessly. You may have
+# to run this cell twice for the files to be properly downloaded and usable by
+# the next cell.
 # ------------
 raw, config, bids_path = ll.datasets.load_openneuro_bids()
 
