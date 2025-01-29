@@ -35,16 +35,15 @@ class EEGAnnotation:
         self._duration = duration
         self._description = description_str
 
-        self._dash_layout = layout
         self._dash_shape = dict(
-            name=self.id,
+            name=self._id,
             type="rect",
             xref="x",
             yref="y",
             x0=self.onset,
-            y0=self._dash_layout.yaxis["range"][0],
+            y0=layout.yaxis["range"][0],
             x1=self.onset + self.duration,
-            y1=self._dash_layout.yaxis["range"][1],
+            y1=layout.yaxis["range"][1],
             fillcolor="red",
             opacity=0.25 if self.duration else 0.75,
             line_width=1,
@@ -53,12 +52,19 @@ class EEGAnnotation:
         )
         self._dash_description = dict(
             x=self.onset + self.duration / 2,
-            y=self._dash_layout.yaxis["range"][1],
+            y=layout.yaxis["range"][1],
             text=self.description,
             showarrow=False,
             yshift=10,
             font={"color": "#F1F1F1"},
         )
+
+    def to_dict(self):
+        """Return a dict representation of the EEGAnnotation object."""
+        return {"_id": self._id, "_onset": self._onset,
+                "_duration": self._duration, "_description": self._description,
+                "_dash_description": self._dash_description,
+                "_dash_shape": self._dash_shape}
 
     def update_dash_objects(self):
         """Update plotly shape/annotations.
@@ -173,6 +179,14 @@ class EEGAnnotationList:
                 self.annotations = pd.Series(annotations)
         else:
             self.annotations = pd.Series()
+
+    def to_plotly_json(self):
+        """Return a dict representation of the EEGAnnotation object.
+
+        Implementing this function is necessary for Plotly/Dash to serialize
+        EEGAnnotationList objects.
+        """
+        return {key: value.to_dict() for key, value in self.annotations.items()}
 
     def __get_series(self, attr):
         return pd.Series(

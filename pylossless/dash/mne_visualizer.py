@@ -215,7 +215,8 @@ class MNEVisualizer:
         )
         if self.scalings_arg == "auto":
             for kind in np.unique(self.inst.get_channel_types()):
-                self.scalings[kind] = np.percentile(self.inst.get_data(), 99.5)
+                data = self.inst.get_data(picks=kind)
+                self.scalings[kind] = np.percentile(data, 99.5)
         else:
             self.scalings.update(self.scalings_arg)
 

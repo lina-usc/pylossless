@@ -19,11 +19,10 @@ drawn_selections_format = {"line": dict(color="crimson", width=2)}
 DEFAULT_LAYOUT_XAXIS = {
     "zeroline": False,
     "showgrid": True,
-    "title": "time (seconds)",
+    "title": {"text": "time (seconds)", "font": {"color": "#ADB5BD"}},
     "gridcolor": "white",
     "fixedrange": True,
     "showline": True,
-    "titlefont": dict(color="#ADB5BD"),
     "tickfont": dict(color="#ADB5BD"),
     "automargin": True,
 }
@@ -35,7 +34,7 @@ DEFAULT_LAYOUT_YAXIS = {
     "autorange": False,  # 'reversed',
     "scaleratio": 0.5,
     "tickmode": "array",
-    "titlefont": dict(color="#ADB5BD"),
+    "title": {"font": {"color": "#ADB5BD"}},
     "tickfont": dict(color="#ADB5BD"),
     "fixedrange": True,
     "automargin": True,
