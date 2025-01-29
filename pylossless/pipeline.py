@@ -721,7 +721,7 @@ class LosslessPipeline:
         for example would unpack two keyword arguments from
         mne.preprocessing.annotate_break
         """
-        if "find_breaks" not in self.config or not self.config["find_breaks"]:
+        if "find_breaks" not in self.config or self.config["find_breaks"] is None:
             return
         if not self.raw.annotations:
             logger.debug("No annotations found in raw object. Skipping find_breaks.")
@@ -861,7 +861,10 @@ class LosslessPipeline:
         with. You may need to assess a more appropriate value for your own
         data.
         """
-        if "flag_channels_fixed_threshold" not in self.config:
+        try:
+            if self.config["flag_channels_fixed_threshold"] is None:
+                return
+        except KeyError:
             return
         if "threshold" in self.config["flag_channels_fixed_threshold"]:
             threshold = self.config["flag_channels_fixed_threshold"]["threshold"]
