@@ -412,7 +412,87 @@ def warp_locs(self, raw):
             # 'manual','off'))
             # MNE does not apply the transform to the montage permanently.
 
+def standardize_eeg(
+        raw: mne.io.Raw,
+        sfreq=None,
+        montage=None,
+        freqMethod='fft',
+        montageMethod='spline'
+):
+    """Standardize EEG data by resampling in both frequency and spatial spaces.
+    If sFreq or montage is left as none, the method will not perform resampling
+    for those domains.
 
+    Parameters
+    ----------
+    raw : mne.io.Raw
+        an instance of mne.io.Raw, must have a montage
+    sfreq : None | float
+        New sample rate to use
+    montage : None | str | DigMontage
+        The montage the raw data will get sampled to, all strings should be in
+        mne.channels.get_builtin_montages()
+    freqMethod : str
+        The method that mne will use to resample the frequency
+    montageMethod : str
+        The method that mne will use to resample the montage. Can be one of
+        "spline", "MNE", or "nan"
+
+    Returns
+    -------
+    Raw
+        A Raw object that was resampled in the domains specified through the
+        parameters
+    """
+    resampledRaw = raw.copy()
+
+    if sfreq is not None:
+        resampledRaw = resampledRaw.resample(sfreq=sfreq, method=freqMethod)
+    
+
+    return resampledRaw
+
+def spatial_resample(
+        raw: mne.io.Raw,
+        montage='standard_1020',
+        montageMethod='spline'
+):
+    """The method that will perform spatial interpolation on raw EEG data
+
+    Parameters
+    ----------
+    raw : mne.io.Raw
+        an instance of mne.io.Raw, must have a montage
+    montage : str | DigMontage
+        The montage the raw data will get sampled to, all strings should be in
+        mne.channels.get_builtin_montages()
+    montageMethod : str
+        The method that mne will use to resample the montage. Can be one of
+        "spline", "MNE", or "nan"
+
+    Returns
+    -------
+    Raw
+        A Raw object that has been spatailly resampled to the specified montage
+    """
+    # Get both of the DigMontages
+    montage1 = raw.get_montage()
+    montage2 = montage
+    if montage2 is str: # If the user input a string, convert to a DigMontage
+        montage2 = mne.channels.make_standard_montage(montage2)
+    
+    # # Coregister the second montage with the first montage on the same head surface
+    # # Calling add_estimated_fiducials() calls mne.coreg.get_mni_fiducials(),
+    # # using fsaverage subject to predict them
+    # montage1.add_estimated_fiducials()
+    # montage2.add_estimated_fiducials()
+    
+    # For coregistration, there is a warning that I have questions about, is
+    # this warning something we should be worried about:
+    # https://mne.tools/stable/auto_tutorials/forward/25_automated_coreg.html#sphx-glr-auto-tutorials-forward-25-automated-coreg-py
+
+    return
+ 
 class LosslessPipeline:
     """Class used to handle pipeline parameters.
 

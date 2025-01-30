@@ -5,7 +5,6 @@ import pytest
 
 import pylossless as ll
 
-
 def test_empty_repr(tmp_path):
     """Test the __repr__ method for a pipeline that hasn't run."""
     config = ll.config.Config()
@@ -139,3 +138,35 @@ def test_load_flags(pipeline_fixture, tmp_path):
     assert pipeline_fixture.flags['epoch'] == pipeline.flags['epoch']
     pipeline.flags['epoch']["bridged"] = ["noisy"]
     assert pipeline_fixture.flags['epoch'] == pipeline.flags['epoch']
+
+def test_resampling_frequency():
+    """Test the frequency resampling portion of EEG standardization"""
+    fname = mne.datasets.sample.data_path() / 'MEG' / 'sample' / 'sample_audvis_raw.fif'
+    raw = mne.io.read_raw_fif(fname, preload=True)
+    
+    assert raw.info['sfreq'] > 600 and raw.info['sfreq'] < 601
+    rawResampled = ll.pipeline.standardize_eeg(raw, sfreq=200)
+    assert rawResampled.info['sfreq'] == 200
+
+def test_resampling_frequency_eeg():
+    """Test the frequency resampling portion of EEG standardization on a
+    dataset with only EEG. Should not change anything, but it is good to cover
+    each base."""
+    fname = mne.datasets.sample.data_path() / 'MEG' / 'sample' / 'sample_audvis_raw.fif'
+    raw = mne.io.read_raw_fif(fname, preload=True)
+    rawEEG = raw.copy().pick(picks=['eeg'])
+    
+    assert rawEEG.info['sfreq'] > 600 and rawEEG.info['sfreq'] < 601
+    rawEEGFinal = ll.pipeline.standardize_eeg(rawEEG, sfreq=200)
+    assert rawEEGFinal.info['sfreq'] == 200
+
+def test_resampling_frequency_methods():
+    """Test the frequency resampling portion of EEG standardization with a
+    different resampling method than the default."""
+    fname = mne.datasets.sample.data_path() / 'MEG' / 'sample' / 'sample_audvis_raw.fif'
+    raw = mne.io.read_raw_fif(fname, preload=True)
+    rawEEG = raw.copy().pick(picks=['eeg'])
+    
+    assert rawEEG.info['sfreq'] > 600 and rawEEG.info['sfreq'] < 601
+    rawEEGFinal = ll.pipeline.standardize_eeg(rawEEG, sfreq=200, freqMethod='polyphase')
+    assert rawEEGFinal.info['sfreq'] == 200
