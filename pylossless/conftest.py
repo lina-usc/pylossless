@@ -31,6 +31,7 @@ def pipeline_fixture():
     config["find_breaks"]["min_break_duration"] = 9
     config["find_breaks"]["t_start_after_previous"] = 1
     config["find_breaks"]["t_stop_before_next"] = 0
+    config["flag_channels_fixed_threshold"] = {"threshold": 10_000}
     config["ica"]["ica_args"]["run1"]["max_iter"] = 5000
 
     # Testing when passing the config object directly...
