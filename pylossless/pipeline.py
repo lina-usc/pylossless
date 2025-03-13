@@ -232,13 +232,14 @@ def find_bads_by_threshold(epochs, threshold=5e-5):
 
     Parameters
     ----------
-    inst : mne.Epochs
-        an instance of mne.Epochs
+    epochs : mne.Epochs
+        an instance of mne.Epochs with a single channel type.
     threshold : float
         the threshold in volts. If the standard deviation of a channel's voltage
-        varianceat a specific epoch is above the threshold, then that channel x epoch
-        will be flagged as an "outlier". Default is 5e-5 (0.00005), i.e.
-        50 microvolts.
+        variance at a specific epoch is above the threshold, then that channel x epoch
+        will be flagged as an "outlier". If more than 20% of epochs are flagged as
+        outliers for a specific channel, then that channel will be flagged as bad.
+        Default threshold is 5e-5 (0.00005), i.e. 50 microvolts.
 
     Returns
     -------
@@ -256,6 +257,11 @@ def find_bads_by_threshold(epochs, threshold=5e-5):
     ...     print(threshold)
     0.00005
 
+    .. seealso::
+
+        :func:`~pylossless.LosslessPipeline.flag_channels_fixed_threshold` to use
+        this function within the lossless pipeline.
+
     Examples
     --------
     >>> import mne
@@ -266,11 +272,17 @@ def find_bads_by_threshold(epochs, threshold=5e-5):
     >>> epochs = mne.make_fixed_length_epochs(raw, preload=True)
     >>> bad_chs = ll.pipeline.find_bads_by_threshold(epochs)
     """
-    bads = _threshold_volt_std(epochs, flag_dim="ch", threshold=threshold)
-    logger.info(
-        f"Found {len(bads)} channels with high voltage variance: {bads}"
+    # XXX: We should make this function handle multiple channel types.
+    # XXX: but I'd like to avoid making a copy of the epochs object
+    ch_types = np.unique(epochs.get_channel_types()).tolist()
+    if len(ch_types) > 1:
+        warn(
+            f"The epochs object contains multiple channel types: {ch_types}.\n"
+            " This will likely bias the results of the threshold detection."
+            " Use the `mne.Epochs.pick` to select a single channel type."
         )
-    return _threshold_volt_std(epochs, flag_dim="ch", threshold=threshold)
+    bads = _threshold_volt_std(epochs, flag_dim="ch", threshold=threshold)
+    return bads
 
 
 def _threshold_volt_std(epochs, flag_dim, threshold=5e-5):
@@ -293,7 +305,7 @@ def _threshold_volt_std(epochs, flag_dim, threshold=5e-5):
         assert len(threshold) == 2
         l_out, u_out = threshold
         init_dir = "both"
-    elif isinstance(threshold, float):
+    elif isinstance(threshold, (float, int)):
         l_out, u_out = (0, threshold)
         init_dir = "pos"
     else:
@@ -814,6 +826,14 @@ class LosslessPipeline:
         # So yes this add a few LOC, but IMO it's worth it for readability
         if flag_dim == "ch":
             above_threshold = find_bads_by_threshold(epochs, threshold=threshold)
+            if above_threshold.any():
+                logger.info(
+                    f"🚩 Found {len(above_threshold)} channels with "
+                    f"voltage variance above {threshold} volts: {above_threshold}"
+                )
+            else:
+                msg = f"No channels with standard deviation above {threshold} volts."
+                logger.info(msg)
         else:  # TODO: Implement an annotate_bads_by_threshold for epochs
             above_threshold = _threshold_volt_std(
                 epochs, flag_dim=flag_dim, threshold=threshold
@@ -884,6 +904,7 @@ class LosslessPipeline:
 
         return mean_ch_dist.ch[mean_ch_dist > mdn + 6 * deviation].values.tolist()
 
+    @lossless_logger
     def flag_channels_fixed_threshold(self, threshold=5e-5, picks="eeg"):
         """Flag channels based on the stdev value across the time dimension.
 
@@ -895,7 +916,7 @@ class LosslessPipeline:
         threshold : float
             threshold, in volts. If the standard deviation across time in
             any channel x epoch indice is above this threshold, then the
-            channel x epoch indices will considered an outlier. Defaults
+            channel x epoch indices will be considered an outlier. Defaults
             to 5e-5, or 50 microvolts. Note that here, 'time' refers to
             the samples in an epoch. For each channel, if its std value is
             above the given threshold in more than 20% of the epochs, it
@@ -903,18 +924,42 @@ class LosslessPipeline:
         picks : str (default "eeg")
             Type of channels to pick.
 
+        Returns
+        -------
+        None
+            If any channels are flagged, those channel names will be logged
+            in the `flags` attribute of the `LosslessPipeline` object,
+            under the key ``'volt_std'``, e.g.
+            ``my_pipeline.flags["ch"]["volt_std"]``.
+
         Notes
         -----
-        WARNING: the default threshold of 50 microvolts may not be appropriate
-        for a particular dataset or data file, as the baseline voltage variance
-        is affected by the impedance of the system that the data was recorded
-        with. You may need to assess a more appropriate value for your own
-        data.
+        .. warning::
+
+            the default threshold of 50 microvolts may not be appropriate
+            for a particular dataset or data file, as the baseline voltage variance
+            is affected by the impedance of the system that the data was recorded
+            with. You may need to assess a more appropriate value for your own
+            data. You can use the :func:`~pylossless.pipeline.find_bads_by_threshold`
+            function to quickly assess a more appropriate threshold.
+
+        .. seealso::
+
+            :func:`~pylossless.pipeline.find_bads_by_threshold`
+
+        Examples
+        --------
+        >>> import mne
+        >>> import pylossless as ll
+        >>> config = ll.Config().load_default()
+        >>> config["flag_channels_fixed_threshold"] = {"threshold": 5e-5}
+        >>> pipeline = ll.LosslessPipeline(config=config)
+        >>> sample_fpath = mne.datasets.sample.data_path()
+        >>> fpath = sample_fpath / "MEG" / "sample" / "sample_audvis_raw.fif"
+        >>> raw = mne.io.read_raw(fpath).pick("eeg")
+        >>> pipeline.raw = raw
+        >>> pipeline.flag_channels_fixed_threshold()
         """
-        if "flag_channels_fixed_threshold" not in self.config:
-            return
-        if "threshold" in self.config["flag_channels_fixed_threshold"]:
-            threshold = self.config["flag_channels_fixed_threshold"]["threshold"]
         self._flag_volt_std(flag_dim="ch", threshold=threshold, picks=picks)
 
     def flag_epochs_fixed_threshold(self, threshold=5e-5, picks="eeg"):
@@ -1318,7 +1363,15 @@ class LosslessPipeline:
 
             # OPTIONAL: Flag chs/epochs based off fixed std threshold of time axis
             self.flag_epochs_fixed_threshold(picks=picks)
-            self.flag_channels_fixed_threshold(picks=picks)
+            if "flag_channels_fixed_threshold" in self.config:
+                if "threshold" in self.config["flag_channels_fixed_threshold"]:
+                    thresh = self.config["flag_channels_fixed_threshold"]["threshold"]
+                else:
+                    thresh = 5e-5
+                msg = "Flagging Channels by fixed threshold"
+                self.flag_channels_fixed_threshold(
+                    threshold=thresh, picks=picks, message=msg
+                    )
 
             # 3.flag channels based on large Stdev. across time
             msg = "Flagging Noisy Channels"
