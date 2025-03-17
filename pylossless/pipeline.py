@@ -272,8 +272,8 @@ def find_bads_by_threshold(epochs, threshold=5e-5):
     >>> epochs = mne.make_fixed_length_epochs(raw, preload=True)
     >>> bad_chs = ll.pipeline.find_bads_by_threshold(epochs)
     """
-    # XXX: We should make this function handle multiple channel types.
-    # XXX: but I'd like to avoid making a copy of the epochs object
+    # TODO: We should make this function handle multiple channel types.
+    # TODO: but I'd like to avoid making a copy of the epochs object
     ch_types = np.unique(epochs.get_channel_types()).tolist()
     if len(ch_types) > 1:
         warn(
@@ -823,7 +823,6 @@ class LosslessPipeline:
         on. You may need to assess a more appropriate value for your own data.
         """
         epochs = self.get_epochs(picks=picks)
-        # So yes this add a few LOC, but IMO it's worth it for readability
         if flag_dim == "ch":
             above_threshold = find_bads_by_threshold(epochs, threshold=threshold)
             if above_threshold.any():
@@ -1367,7 +1366,10 @@ class LosslessPipeline:
                 msg = "Flagging Channels by fixed threshold"
                 kwargs = dict(picks=picks, message=msg)
                 if "threshold" in self.config["flag_channels_fixed_threshold"]:
-                    kwargs["threshold"] = self.config["flag_channels_fixed_threshold"]["threshold"]
+                    threshold = self.config["flag_channels_fixed_threshold"][
+                        "threshold"
+                    ]
+                    kwargs["threshold"] = threshold
                 self.flag_channels_fixed_threshold(**kwargs)
 
             # 3.flag channels based on large Stdev. across time
