@@ -1364,14 +1364,11 @@ class LosslessPipeline:
             # OPTIONAL: Flag chs/epochs based off fixed std threshold of time axis
             self.flag_epochs_fixed_threshold(picks=picks)
             if "flag_channels_fixed_threshold" in self.config:
-                if "threshold" in self.config["flag_channels_fixed_threshold"]:
-                    thresh = self.config["flag_channels_fixed_threshold"]["threshold"]
-                else:
-                    thresh = 5e-5
                 msg = "Flagging Channels by fixed threshold"
-                self.flag_channels_fixed_threshold(
-                    threshold=thresh, picks=picks, message=msg
-                    )
+                kwargs = dict(picks=picks, message=msg)
+                if "threshold" in self.config["flag_channels_fixed_threshold"]:
+                    kwargs["threshold"] = self.config["flag_channels_fixed_threshold"]["threshold"]
+                self.flag_channels_fixed_threshold(**kwargs)
 
             # 3.flag channels based on large Stdev. across time
             msg = "Flagging Noisy Channels"
