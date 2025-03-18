@@ -1,6 +1,7 @@
 from pathlib import Path
 import mne
 import mne_bids
+import numpy as np
 import pytest
 
 import pylossless as ll
@@ -80,6 +81,32 @@ def test_find_outliers():
     pipeline.raw = raw
     chs_to_leave_out = pipeline.find_outlier_chs()
     assert chs_to_leave_out == ['EEG 001']
+
+def test_find_bads_by_threshold():
+    """Test the find bads by threshold function and method."""
+    fname = mne.datasets.sample.data_path() / 'MEG' / 'sample' / 'sample_audvis_raw.fif'
+    raw = mne.io.read_raw_fif(fname, preload=True)
+    # Make a noisy channel
+    raw.apply_function(lambda x: x * 3, picks=["EEG 001"])
+    epochs = mne.make_fixed_length_epochs(raw, preload=True)
+
+    # First test the function
+    with pytest.warns(
+        RuntimeWarning, match="The epochs object contains multiple channel types"
+        ):
+        _ = ll.pipeline.find_bads_by_threshold(epochs)
+    epochs.pick("eeg")
+    bads = ll.pipeline.find_bads_by_threshold(epochs)
+    np.testing.assert_array_equal(bads, ['EEG 001'])
+
+    # Now test the method
+    config = ll.config.Config().load_default()
+    pipeline = ll.LosslessPipeline(config=config)
+    pipeline.raw = raw
+    pipeline.flag_channels_fixed_threshold(threshold=10_000) # too high
+    np.testing.assert_array_equal(pipeline.flags["ch"]["volt_std"], [])
+    pipeline.flag_channels_fixed_threshold()
+    np.testing.assert_array_equal(pipeline.flags["ch"]["volt_std"], ['EEG 001'])
 
 
 def test_deprecation():
