@@ -1,0 +1,46 @@
+{
+    "participant_id": {
+        "Description": "Unique participant identifier"
+    },
+    "age": {
+        "Description": "Age of the participant at time of testing",
+        "Units": "years"
+    },
+    "gender": {
+        "Description": "Gender identity of the participant",
+        "Levels": {
+            "F": "female",
+            "M": "male"
+        }
+    },
+    "hand": {
+        "Description": "Handedness of the participant",
+        "Levels": {
+            "R": "right",
+            "L": "left",
+            "A": "ambidextrous"
+        }
+    },
+    "MMSE": {
+	"Description": "Mini-Mental State Examination score",
+	"Levels": {
+	    ">24": "normal cognition",
+	    "19 - 23": "mild cognitive impairment",
+	    "10 - 18": "moderate cognitive impairment",
+	    "<9": "severe cognitive impairment"
+	}
+    },
+    "NAART": {
+	"Description": "North American Adult Reading Test score, scored similar to an IQ test on a 100-point-based scale"
+    },
+    "disease_duration": {
+	"Description": "How long since the patient was diagnosed",
+	"Units": "years"
+    },
+    "rl_deficits": {
+	"Description": "Which side of the body has deficits and how great these deficits are"
+    },
+    "notes": {
+	"Description": "Experimenter/curator notes on collection and curation"
+    }
+}

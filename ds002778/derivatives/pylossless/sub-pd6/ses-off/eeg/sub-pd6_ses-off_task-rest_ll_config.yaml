@@ -1,0 +1,109 @@
+bridged_channels:
+    bridge_trim: 40
+    bridge_z: 6
+epoching:
+    epochs_args:
+        baseline: null
+        tmax: 1
+        tmin: 0
+    overlap: 0
+filtering:
+    filter_args:
+        h_freq: 100
+        l_freq: 1
+    notch_filter_args:
+        freqs:
+        - 60
+find_breaks: null
+ica:
+    ica_args:
+        run1:
+            max_iter: auto
+            method: fastica
+            random_state: 97
+        run2:
+            fit_params:
+                extended: true
+            max_iter: auto
+            method: infomax
+            random_state: 97
+    noisy_ic_epochs:
+        flag_crit: 0.2
+        outlier_method: quantile
+        outliers_kwargs:
+            k: 6
+            lower: 0.3
+            upper: 0.7
+modality:
+- eeg
+nearest_neighbors:
+    n_nbr_ch: 3
+    n_nbr_epoch: 3
+noisy_channels:
+    flag_crit: 0.2
+    outlier_method: quantile
+    outliers_kwargs:
+        k: 16
+        lower: 0.3
+        upper: 0.7
+noisy_epochs:
+    flag_crit: 0.2
+    outlier_method: quantile
+    outliers_kwargs:
+        k: 16
+        lower: 0.3
+        upper: 0.7
+project:
+    analysis_montage: standard_1020
+    bids_montage: ''
+    coordsys:
+        EEGCoordinateSystem: Other
+        EEGCoordinateUnits: metres
+    general_info:
+        authors:
+        - Unspecified
+        dataset_doi: []
+        funding: Unspecified
+        how_to_acknowledge: tba
+        institution_Name: Unspecified
+        institution_address: Unspecified
+        license: ''
+        name: Unspecified
+        references_and_links: []
+    readme: '# Description of the dataset'
+    set_montage_kwargs:
+        on_missing: warn
+    t_info:
+        EEG_placement_scheme: EGI 129
+        cap_manufacturer: EGI
+        cap_manufacturers_model_name: Hydrocel 129 Channel
+        hardware_filters: n/a
+        manufacturer: Electrical Geodesics
+        manufacturers_model_name: NetAmps300
+        power_line_frequency: 60
+        software_filters: n/a
+        software_versions: NetStation V4.5
+slurm_options:
+    account: def-emayada
+    job_name: pylossless
+    memory: 16g
+    mpi: false
+    num_tasks: 1
+    program_options: []
+    threads_per_task: []
+    time_limit: 2h
+uncorrelated_channels:
+    flag_crit: 0.2
+    outlier_method: quantile
+    outliers_kwargs:
+        k: 16
+        lower: 0.3
+        upper: 0.7
+uncorrelated_epochs:
+    flag_crit: 0.2
+    outlier_method: quantile
+    outliers_kwargs:
+        k: 16
+        lower: 0.3
+        upper: 0.7
+version: 0.2.0

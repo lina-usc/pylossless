@@ -1,0 +1,3 @@
+[submodule "packages/pylossless"]
+	path = packages/pylossless
+	url = https://github.com/lina-usc/pylossless.git

@@ -1,0 +1,18 @@
+{
+    "TaskName": "rest",
+    "Manufacturer": "Biosemi",
+    "PowerLineFrequency": 60,
+    "SamplingFrequency": 512.0,
+    "SoftwareFilters": "n/a",
+    "RecordingDuration": 190.998046875,
+    "RecordingType": "continuous",
+    "EEGReference": "n/a",
+    "EEGGround": "n/a",
+    "EEGPlacementScheme": "n/a",
+    "EEGChannelCount": 40,
+    "EOGChannelCount": 0,
+    "ECGChannelCount": 0,
+    "EMGChannelCount": 0,
+    "MiscChannelCount": 0,
+    "TriggerChannelCount": 1
+}
