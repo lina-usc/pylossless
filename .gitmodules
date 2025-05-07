@@ -1,0 +1,3 @@
+[submodule "pylossless/dash/packages/pylossless"]
+	path = pylossless/dash/packages/pylossless
+	url = https://github.com/lina-usc/pylossless.git
