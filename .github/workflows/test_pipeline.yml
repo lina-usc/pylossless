@@ -15,6 +15,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     
     strategy:
+      fail-fast: false
       matrix:
         os:
           - ubuntu-latest
@@ -24,15 +25,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
-      - name: Set up Python 3.9
+      - name: Set up Python 3.10
         uses: actions/setup-python@v6
         with:
-          python-version: "3.9"
-      - name: Force numpy < 2 on MacOS Intel
-        if: matrix.os == 'macos-13'
-        run: pip install 'numpy<2'
+          python-version: "3.10"
       - name: Install Pylossless & Deps
-        run: pip install -e .
+        run: |
+          pip install -e .
+          pip install onnxruntime  # Needed for MNE-ICALabel
       - name: Test import
         run: |
           python -c "import pylossless"
