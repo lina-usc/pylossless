@@ -7,6 +7,8 @@ on:
   pull_request:
     branches:
       - main
+  schedule:
+    - cron: '0 0 * * *' # Runs at Midnight UTC every day
 
 jobs:
   test:
@@ -17,11 +19,11 @@ jobs:
         os:
           - ubuntu-latest
           - macos-latest # arm64 (Apple Silicon)
-          - macos-13  # latest Intel release
+          - macos-14  # MacOS Sonoma Arm64 (Apple Silicon)
           - windows-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Python 3.9
         uses: actions/setup-python@v6
         with:
