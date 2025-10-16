@@ -17,7 +17,7 @@ jobs:
         os:
           - ubuntu-latest
           - macos-latest # arm64 (Apple Silicon)
-          - macos-13  # latest Intel release
+          - macos-14  # MacOS Sonoma Arm64 (Apple Silicon)
           - windows-latest
 
     steps:
