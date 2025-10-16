@@ -15,13 +15,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     
     strategy:
+      fail-fast: false
       matrix:
         os:
           - ubuntu-latest
           - macos-latest # arm64 (Apple Silicon)
           - macos-14  # MacOS Sonoma Arm64 (Apple Silicon)
           - windows-latest
-        fail-fast: false
 
     steps:
       - uses: actions/checkout@v5
