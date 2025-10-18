@@ -7,30 +7,32 @@ on:
   pull_request:
     branches:
       - main
+  schedule:
+    - cron: '0 0 * * *' # Runs at Midnight UTC every day
 
 jobs:
   test:
     runs-on: ${{ matrix.os }}
     
     strategy:
+      fail-fast: false
       matrix:
         os:
           - ubuntu-latest
           - macos-latest # arm64 (Apple Silicon)
-          - macos-13  # latest Intel release
+          - macos-14  # MacOS Sonoma Arm64 (Apple Silicon)
           - windows-latest
 
     steps:
       - uses: actions/checkout@v5
-      - name: Set up Python 3.9
+      - name: Set up Python 3.10
         uses: actions/setup-python@v6
         with:
-          python-version: "3.9"
-      - name: Force numpy < 2 on MacOS Intel
-        if: matrix.os == 'macos-13'
-        run: pip install 'numpy<2'
+          python-version: "3.10"
       - name: Install Pylossless & Deps
-        run: pip install -e .
+        run: |
+          pip install -e .
+          pip install onnxruntime  # Needed for MNE-ICALabel
       - name: Test import
         run: |
           python -c "import pylossless"

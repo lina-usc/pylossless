@@ -28,6 +28,9 @@ def test_pipeline_run(pipeline_fixture):
 @pytest.mark.filterwarnings("ignore:Converting data files to EDF format")
 @pytest.mark.filterwarnings("ignore:The provided Epochs instance is not"
                             " filtered between 1 and 100 Hz.")
+@pytest.mark.filterwarnings(
+    "ignore:FastICA did not converge:sklearn.exceptions.ConvergenceWarning"
+    )
 def test_pipeline_save(bids_dataset_fixture):
     """Test running the pipeline."""
     config = ll.config.Config()
