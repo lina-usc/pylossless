@@ -40,6 +40,7 @@ setup(
     url="https://github.com/lina-usc/pylossless",
     packages=find_packages(),
     install_requires=requirements,
+    python_requires=">=3.10",
     extras_require=extras_require,
     include_package_data=True,
     entry_points={"console_scripts": qc_entry_point},
