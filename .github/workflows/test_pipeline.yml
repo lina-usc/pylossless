@@ -43,8 +43,32 @@ jobs:
       - name: Test Pipeline
         run: |
           coverage run -m pytest
+      - name: Test example notebooks
+        run: |
+          pip install nbmake
+          rm -rf ./reports
+          mkdir -p ./reports
+          pytest --nbmake notebooks/*ipynb --cov=src --cov-report=json:./reports/coverage.json --cov-report=xml:./reports/coverage.xml
+      - name: Upload pylossless example notebooks coverage report
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage_pylossless_notebooks-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: ./reports/coverage.json
+      - name: Generate Markdown summary of code coverage
+        uses: irongut/CodeCoverageSummary@v1.3.0
+        with:
+          filename: ./reports/coverage.xml
+          format: markdown
+          output: both
+          thresholds: "10 10"
+      - name: Add test results to job summary
+        run: |
+          cat ./code-coverage-results.md >> $GITHUB_STEP_SUMMARY          
       - name: Upload coverage to codecov (Only do this for the ubuntu-latest job)
         if: matrix.os == 'ubuntu-latest'
         uses: codecov/codecov-action@v5
         with:
           token: ${{secrets.CODECOV_TOKEN}}
+
+
+
