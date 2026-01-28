@@ -1365,8 +1365,31 @@ class LosslessPipeline:
         # ===================================================================
         if self.raw_original is not None:
             logger.info("LOSSLESS: Saving original (unmodified) raw data...")
+            # Copy pylossless annotations from processed raw to original
+            # so epoch flags can be reconstructed during load
+            raw_to_save = self.raw_original.copy()
+            pylossless_annots = [
+                annot for annot in self.raw.annotations
+                if annot["description"].upper().startswith("BAD_LL_")
+            ]
+            if pylossless_annots:
+                # Add pylossless annotations to the original data
+                from mne import Annotations
+                ll_descriptions = [a["description"] for a in pylossless_annots]
+                ll_onsets = [a["onset"] for a in pylossless_annots]
+                ll_durations = [a["duration"] for a in pylossless_annots]
+                new_annots = Annotations(
+                    onset=ll_onsets,
+                    duration=ll_durations,
+                    description=ll_descriptions,
+                    orig_time=self.raw.annotations.orig_time
+                )
+                raw_to_save.set_annotations(
+                    raw_to_save.annotations + new_annots
+                )
+
             mne_bids.write_raw_bids(
-                self.raw_original,  # CRITICAL: Use original, not self.raw!
+                raw_to_save,  # Original data with pylossless annotations
                 derivatives_path,
                 overwrite=overwrite,
                 format=format,
@@ -1482,6 +1505,9 @@ class LosslessPipeline:
             extension=".tsv", suffix="ll_FlaggedChs", check=False
         )
         self.flags["ch"].save_tsv(flagged_chs_fpath.fpath)
+
+        # Note: Epoch flags are saved as BAD_LL_* annotations in the raw data,
+        # not as a separate TSV file
 
         logger.info(f"LOSSLESS: ✓ Saved truly lossless pipeline "
                     f"output to {derivatives_path}")
@@ -1773,7 +1799,7 @@ class LosslessPipeline:
         )
         self.flags["ch"].load_tsv(flagged_chs_fpath.fpath)
 
-        # Load Flagged Epochs
+        # Load Flagged Epochs (from BAD_LL_* annotations in raw data)
         self.flags["epoch"].load_from_raw(self.raw, self.get_events(), self.config)
 
         return self
