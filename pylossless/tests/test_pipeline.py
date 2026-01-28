@@ -9,13 +9,14 @@ import pylossless as ll
 
 # Apply these filterwarnings to all tests in this module
 pytestmark = [
-    @pytest.mark.filterwarnings("ignore:Converting data files to EDF format")
-    @pytest.mark.filterwarnings("ignore:unique with argument that is not not a Series")
-    @pytest.mark.filterwarnings("ignore:No events found or provided")
-    @pytest.mark.filterwarnings("ignore:Did not find any events.tsv")
-    @pytest.mark.filterwarnings("ignore:Data has a non-integer sampling rate")
-    @pytest.mark.filterwarnings("ignore:EDF format requires equal-length data blocks")
+    pytest.mark.filterwarnings("ignore:Converting data files to EDF format"),
+    pytest.mark.filterwarnings("ignore:unique with argument that is not a Series"),
+    pytest.mark.filterwarnings("ignore:No events found or provided"),
+    pytest.mark.filterwarnings("ignore:Did not find any events.tsv"),
+    pytest.mark.filterwarnings("ignore:Data has a non-integer sampling rate"),
+    pytest.mark.filterwarnings("ignore:EDF format requires equal-length data blocks"),
 ]
+
 
 def test_empty_repr(tmp_path):
     """Test the __repr__ method for a pipeline that hasn't run."""

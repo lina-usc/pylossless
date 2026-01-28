@@ -151,7 +151,8 @@ class RejectionPolicy(ConfigMixin):
 
         # Check if we have operations log (new lossless format)
         if hasattr(pipeline, 'operations_log') and len(pipeline.operations_log) > 0:
-            logger.info("LOSSLESS: Applying rejection policy by replaying operations...")
+            logger.info("LOSSLESS: Applying rejection policy by replaying"
+                        " operations...")
             raw = self._apply_with_replay(pipeline)
         else:
             # Fallback to old method for backwards compatibility
@@ -196,7 +197,6 @@ class RejectionPolicy(ConfigMixin):
     def _apply_with_replay(self, pipeline):
         """Apply rejection policy by replaying operations from log."""
         from mne.utils import logger
-        from mne.preprocessing import ICA
 
         # Start with original unmodified data
         raw = pipeline.raw_original.copy()

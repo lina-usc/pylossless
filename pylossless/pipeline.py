@@ -476,6 +476,7 @@ def warp_locs(self, raw):
 
 class OperationType(Enum):
     """Types of operations in the pipeline."""
+
     PREPROCESSING = "preprocessing"
     ARTIFACT_FLAG = "artifact_flag"
     ICA_FIT = "ica_fit"
@@ -698,8 +699,8 @@ class LosslessPipeline:
         df["duration"] = 1 / epochs.info["sfreq"] * len(epochs.times[:-1])
         df["description"] = desc
 
-        # Merge close onsets to prevent a bunch of 1-second annotations of the same name
-        # find onsets close enough to be considered the same
+        # Merge close onsets to prevent a bunch of 1-second annotations of the same
+        # name find onsets close enough to be considered the same
         df["close"] = df.sort_values("onset")["onset"].diff().le(1)
         df["group"] = ~df["close"]
         df["group"] = df["group"].cumsum()
@@ -889,7 +890,8 @@ class LosslessPipeline:
         >>> import pylossless as ll
         >>> config = ll.Config().load_default()
         >>> pipeline = ll.LosslessPipeline(config=config)
-        >>> fname = mne.datasets.sample.data_path() / "MEG/sample/sample_audvis_raw.fif"
+        >>> fname = mne.datasets.sample.data_path()
+        >>> fname = fname / "MEG/sample/sample_audvis_raw.fif"
         >>> raw = mne.io.read_raw(fname)
         >>> epochs = mne.make_fixed_length_epochs(raw, preload=True)
         >>> chs_to_leave_out = pipeline.find_outlier_chs(epochs=epochs)
@@ -1046,7 +1048,9 @@ class LosslessPipeline:
         self._log_operation(
             operation_type=OperationType.ARTIFACT_FLAG,
             operation_name="flag_noisy_channels",
-            flags={"noisy_channels": bad_ch_names.tolist() if hasattr(bad_ch_names, 'tolist') else list(bad_ch_names)},
+            flags={"noisy_channels": bad_ch_names.tolist()
+                   if hasattr(bad_ch_names, 'tolist')
+                   else list(bad_ch_names)},
             metadata={
                 "n_flagged": len(bad_ch_names),
                 "detection_method": "robust_deviations"
@@ -1127,7 +1131,9 @@ class LosslessPipeline:
         self._log_operation(
             operation_type=OperationType.ARTIFACT_FLAG,
             operation_name="flag_uncorrelated_channels",
-            flags={"uncorrelated_channels": bad_ch_names.tolist() if hasattr(bad_ch_names, 'tolist') else list(bad_ch_names)},
+            flags={"uncorrelated_channels": (bad_ch_names.tolist()
+                                             if hasattr(bad_ch_names, 'tolist')
+                                             else list(bad_ch_names))},
             metadata={"n_flagged": len(bad_ch_names)}
         )
 
@@ -1145,7 +1151,8 @@ class LosslessPipeline:
         # Uses the correlation of neighbours
         # calculated to flag bridged channels.
 
-        msr = data_r_ch.median("epoch") / data_r_ch.reduce(scipy.stats.iqr, dim="epoch")
+        msr = data_r_ch.median("epoch") / data_r_ch.reduce(scipy.stats.iqr,
+                                                           dim="epoch")
 
         trim = self.config["bridged_channels"]["bridge_trim"]
         if trim >= 1:
@@ -1168,7 +1175,9 @@ class LosslessPipeline:
         self._log_operation(
             operation_type=OperationType.ARTIFACT_FLAG,
             operation_name="flag_bridged_channels",
-            flags={"bridged_channels": bad_ch_names.tolist() if hasattr(bad_ch_names, 'tolist') else list(bad_ch_names)},
+            flags={"bridged_channels": (bad_ch_names.tolist()
+                                        if hasattr(bad_ch_names, 'tolist')
+                                        else list(bad_ch_names))},
             metadata={"n_flagged": len(bad_ch_names)}
         )
 
@@ -1283,9 +1292,14 @@ class LosslessPipeline:
                 ic_labels_dict = {}
                 if hasattr(self.flags["ic"], 'index') and len(self.flags["ic"]) > 0:
                     for idx in self.flags["ic"].index:
+                        confidence = (float(self.flags["ic"].loc[idx, "confidence"])
+                                      if "confidence" in self.flags["ic"].columns
+                                      else 0.0)
                         ic_labels_dict[str(idx)] = {
-                            "ic_type": str(self.flags["ic"].loc[idx, "ic_type"]) if "ic_type" in self.flags["ic"].columns else "unknown",
-                            "confidence": float(self.flags["ic"].loc[idx, "confidence"]) if "confidence" in self.flags["ic"].columns else 0.0
+                            "ic_type": (str(self.flags["ic"].loc[idx, "ic_type"])
+                                        if "ic_type" in self.flags["ic"].columns
+                                        else "unknown"),
+                            "confidence": confidence
                         }
 
                 self._log_operation(
@@ -1322,7 +1336,8 @@ class LosslessPipeline:
 
         # icsd_epoch_flags=padflags(raw, icsd_epoch_flags,1,'value',.5);
 
-    def save(self, derivatives_path=None, overwrite=False, format="EDF", event_id=None):
+    def save(self, derivatives_path=None, overwrite=False, format="EDF",
+             event_id=None):
         """Save the file at the end of the pipeline in a truly lossless manner.
 
         This saves:
@@ -1386,7 +1401,8 @@ class LosslessPipeline:
             "version": "1.0.0",
             "note": "Operations include both preprocessing and artifact detection",
             "operations": self.operations_log,
-            "config_file": str(self.config_path) if hasattr(self, 'config_path') else None,
+            "config_file": (str(self.config_path) if hasattr(self, 'config_path')
+                            else None),
             "software": {
                 "name": "pylossless",
                 "version": version("pylossless"),
@@ -1396,9 +1412,21 @@ class LosslessPipeline:
             "timestamp": datetime.now().isoformat()
         }
 
-        logger.info(f"LOSSLESS: Saving operation log ({len(self.operations_log)} operations)...")
+        logger.info(f"LOSSLESS: Saving operation log "
+                    f"({len(self.operations_log)} operations)...")
+
+        class NumPyEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if isinstance(obj, np.integer):
+                    return int(obj)
+                elif isinstance(obj, np.floating):
+                    return float(obj)
+                elif isinstance(obj, np.ndarray):
+                    return obj.tolist()
+                return super(NumPyEncoder, self).default(obj)
+
         with open(operations_file, 'w') as f:
-            json.dump(operations_metadata, f, indent=2)
+            json.dump(operations_metadata, f, indent=2, cls=NumPyEncoder)
 
         # ===================================================================
         # STEP 3: Save preprocessed version for QC dashboard
@@ -1431,7 +1459,8 @@ class LosslessPipeline:
         ) in zip(["ica1", "ica2"], [self.ica1, self.ica2]):
             if self_ica is not None:
                 suffix = this_ica + "_ica"
-                ica_bidspath = bpath.update(extension=".fif", suffix=suffix, check=False)
+                ica_bidspath = bpath.update(extension=".fif", suffix=suffix,
+                                            check=False)
                 self_ica.save(ica_bidspath, overwrite=overwrite)
 
         # Save IC labels (only if ICA was performed)
@@ -1454,7 +1483,8 @@ class LosslessPipeline:
         )
         self.flags["ch"].save_tsv(flagged_chs_fpath.fpath)
 
-        logger.info(f"LOSSLESS: ✓ Saved truly lossless pipeline output to {derivatives_path}")
+        logger.info(f"LOSSLESS: ✓ Saved truly lossless pipeline "
+                    f"output to {derivatives_path}")
 
     @lossless_logger
     def filter(self):
@@ -1714,7 +1744,8 @@ class LosslessPipeline:
         if has_ica_ops:
             for this_ica in ["ica1", "ica2"]:
                 suffix = this_ica + "_ica"
-                ica_bidspath = bpath.update(extension=".fif", suffix=suffix, check=False)
+                ica_bidspath = bpath.update(extension=".fif", suffix=suffix,
+                                            check=False)
                 setattr(self, this_ica, mne.preprocessing.read_ica(ica_bidspath.fpath))
         else:
             logger.info("LOSSLESS: No ICA operations in log, skipping ICA loading")
@@ -1728,7 +1759,8 @@ class LosslessPipeline:
             )
             self.flags["ic"].load_tsv(iclabels_bidspath.fpath)
         else:
-            logger.info("LOSSLESS: No ICA operations in log, skipping IC labels loading")
+            logger.info("LOSSLESS: No ICA operations in log, "
+            "skipping IC labels loading")
 
         self.config_path = bpath.update(
             extension=".yaml", suffix="ll_config", check=False
