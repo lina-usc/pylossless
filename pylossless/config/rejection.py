@@ -205,6 +205,10 @@ class RejectionPolicy(ConfigMixin):
         if not raw.preload:
             raw.load_data()
 
+        # Copy montage from processed data if available (needed for interpolation)
+        if raw.get_montage() is None and pipeline.raw.get_montage() is not None:
+            raw.set_montage(pipeline.raw.get_montage())
+
         # ICA model (will be fitted during replay if needed)
         ica_model = None
 
@@ -286,8 +290,40 @@ class RejectionPolicy(ConfigMixin):
                         f"  Op {op_id}: Skipping ICA (removal disabled)"
                     )
 
-            # Other operation types are just noted
-            elif op_type in ["artifact_flag", "ica_label"]:
+            # ARTIFACT FLAG OPERATIONS
+            # Mark channels as bad immediately so ICA fit sees the correct channel set
+            elif op_type == "artifact_flag":
+                logger.debug(f"  Op {op_id}: Processing {op_name}")
+                if "flags" in operation:
+                    # Check for noisy channels
+                    if "noisy_channels" in operation["flags"]:
+                        if "noisy" in self["ch_flags_to_reject"]:
+                            flagged = operation["flags"]["noisy_channels"]
+                            for ch in flagged:
+                                if ch not in raw.info["bads"]:
+                                    raw.info["bads"].append(ch)
+                                    logger.debug(f"    Marked {ch} as bad (noisy)")
+
+                    # Check for bridged channels
+                    if "bridged_channels" in operation["flags"]:
+                        if "bridged" in self["ch_flags_to_reject"]:
+                            flagged = operation["flags"]["bridged_channels"]
+                            for ch in flagged:
+                                if ch not in raw.info["bads"]:
+                                    raw.info["bads"].append(ch)
+                                    logger.debug(f"    Marked {ch} as bad (bridged)")
+
+                    # Check for uncorrelated channels
+                    if "uncorrelated_channels" in operation["flags"]:
+                        if "uncorrelated" in self["ch_flags_to_reject"]:
+                            flagged = operation["flags"]["uncorrelated_channels"]
+                            for ch in flagged:
+                                if ch not in raw.info["bads"]:
+                                    raw.info["bads"].append(ch)
+                                    logger.debug(f"    Marked {ch} as bad (uncorrelated)")
+
+            # ICA LABEL OPERATIONS
+            elif op_type == "ica_label":
                 logger.debug(f"  Op {op_id}: Noted {op_name}")
                 pass
 
@@ -299,26 +335,25 @@ class RejectionPolicy(ConfigMixin):
         # Apply final artifact rejections
         logger.info("LOSSLESS: Applying final artifact rejections...")
 
-        # Apply channel rejections
-        channels_to_reject = self._get_channels_to_reject(pipeline)
-        if channels_to_reject:
+        # At this point, bad channels are already marked in raw.info["bads"]
+        # from artifact_flag operations. Now apply the cleaning mode.
+        bad_channels = list(set(raw.info["bads"]))  # Remove duplicates
+        if bad_channels:
             if self["ch_cleaning_mode"] is None:
                 logger.info(
-                    f"  Flagging {len(channels_to_reject)} channels as bad"
+                    f"  {len(bad_channels)} channels marked as bad"
                 )
-                raw.info["bads"].extend(channels_to_reject)
+                # Channels already marked, nothing more to do
             elif self["ch_cleaning_mode"] == "interpolate":
                 logger.info(
-                    f"  Interpolating {len(channels_to_reject)} channels"
+                    f"  Interpolating {len(bad_channels)} channels"
                 )
-                raw.info["bads"].extend(channels_to_reject)
                 raw.interpolate_bads(**self["interpolate_bads_kwargs"])
             elif self["ch_cleaning_mode"] == "drop":
                 logger.info(
-                    f"  Dropping {len(channels_to_reject)} channels"
+                    f"  Dropping {len(bad_channels)} channels"
                 )
-                raw.info["bads"].extend(channels_to_reject)
-                raw.drop_channels(raw.info["bads"])
+                raw.drop_channels(bad_channels)
 
         # Apply ICA component removal
         if self["remove_flagged_ics"] and ica_model is not None:
@@ -327,7 +362,12 @@ class RejectionPolicy(ConfigMixin):
                 logger.info(
                     f"  Removing {len(components_to_remove)} ICA components"
                 )
-                ica_model.apply(raw, exclude=components_to_remove)
+                # Set exclude attribute and apply (matches legacy behavior)
+                ica_model.exclude = components_to_remove
+                ica_model.apply(raw)
+
+            # Replace pipeline's ICA with our replayed model
+            pipeline.ica2 = ica_model
 
         logger.info("LOSSLESS: ✓ Rejection policy applied successfully")
         return raw
