@@ -1,10 +1,22 @@
 from pathlib import Path
 
 from numpy.testing import assert_array_equal
+import mne
+import mne_bids
 
 import pytest
 
 import pylossless as ll
+
+# Apply these filterwarnings to all tests in this module
+pytestmark = [
+    pytest.mark.filterwarnings("ignore:Converting data files to EDF format"),
+    pytest.mark.filterwarnings("ignore:unique with argument that is not not a Series"),
+    pytest.mark.filterwarnings("ignore:No events found or provided"),
+    pytest.mark.filterwarnings("ignore:Did not find any events.tsv"),
+    pytest.mark.filterwarnings("ignore:Data has a non-integer sampling rate"),
+    pytest.mark.filterwarnings("ignore:EDF format requires equal-length data blocks"),
+]
 
 
 @pytest.mark.parametrize("clean_ch_mode", [None, "drop", "interpolate"])
@@ -51,3 +63,146 @@ def test_rejection_policy(clean_ch_mode, pipeline_fixture):
     threshold = rejection_config["ic_rejection_threshold"]
     assert (df.loc[ica.exclude]["confidence"] > threshold).all()
     rejection_config_path.unlink()
+
+
+def test_rejection_policy_replay(tmp_path):
+    """Test operation replay via RejectionPolicy with new lossless format."""
+    fname = mne.datasets.sample.data_path() / 'MEG' / 'sample' / 'sample_audvis_raw.fif'
+    raw = mne.io.read_raw_fif(fname, preload=True)
+    raw.pick_types(eeg=True)
+    raw.resample(600)  # Resample to integer sampling rate for EDF compatibility
+    raw.crop(tmax=10)
+
+    config = ll.config.Config()
+    config.load_default()
+    config["filtering"]["filter_args"]["h_freq"] = 40
+    config["ica"] = None  # Skip ICA for speed
+
+    # Create BIDS structure for saving
+    subject = "test"
+    datatype = "eeg"
+    task = "test"
+    suffix = "eeg"
+    bids_root = tmp_path / "derivatives" / "pylossless"
+
+    bids_path = mne_bids.BIDSPath(
+        subject=subject,
+        task=task,
+        suffix=suffix,
+        datatype=datatype,
+        root=bids_root
+    )
+
+    # Run and save pipeline
+    pipeline = ll.LosslessPipeline(config=config)
+    pipeline.run_with_raw(raw)
+    pipeline.save(bids_path, overwrite=True, format="EDF")
+
+    # Load and apply policy
+    pipeline_loaded = ll.LosslessPipeline(config=config)
+    pipeline_loaded.load_ll_derivative(bids_path)
+
+    rejection_policy = ll.RejectionPolicy()
+    rejection_policy.remove_flagged_ics = False  # No ICA in this test
+    cleaned = rejection_policy.apply(pipeline_loaded, version_mismatch="ignore")
+
+    # Should return mne.io.BaseRaw object (or any subclass like RawEDF, RawFIF, etc.)
+    assert isinstance(cleaned, mne.io.BaseRaw)
+
+    # Should have operations log
+    assert hasattr(pipeline_loaded, 'operations_log')
+    assert len(pipeline_loaded.operations_log) > 0
+
+
+def test_rejection_policy_skip_preprocessing(tmp_path):
+    """Test skipping preprocessing operations in replay."""
+    fname = mne.datasets.sample.data_path() / 'MEG' / 'sample' / 'sample_audvis_raw.fif'
+    raw = mne.io.read_raw_fif(fname, preload=True)
+    raw.pick_types(eeg=True)
+    raw.resample(600)  # Resample to integer sampling rate for EDF compatibility
+    raw.crop(tmax=10)
+
+    config = ll.config.Config()
+    config.load_default()
+    config["filtering"]["filter_args"]["h_freq"] = 40
+    config["ica"] = None  # Skip ICA for speed
+
+    # Create BIDS structure for saving
+    subject = "test"
+    datatype = "eeg"
+    task = "test"
+    suffix = "eeg"
+    bids_root = tmp_path / "derivatives" / "pylossless"
+
+    bids_path = mne_bids.BIDSPath(
+        subject=subject,
+        task=task,
+        suffix=suffix,
+        datatype=datatype,
+        root=bids_root
+    )
+
+    # Run and save pipeline
+    pipeline = ll.LosslessPipeline(config=config)
+    pipeline.run_with_raw(raw)
+    pipeline.save(bids_path, overwrite=True, format="EDF")
+
+    # Load and apply policy without preprocessing
+    pipeline_loaded = ll.LosslessPipeline(config=config)
+    pipeline_loaded.load_ll_derivative(bids_path)
+
+    rejection_policy = ll.RejectionPolicy()
+    rejection_policy.apply_preprocessing = False
+    rejection_policy.remove_flagged_ics = False
+    cleaned = rejection_policy.apply(pipeline_loaded, version_mismatch="ignore")
+
+    # Should return mne.io.BaseRaw object (or any subclass like RawEDF, RawFIF, etc.)
+    assert isinstance(cleaned, mne.io.BaseRaw)
+
+
+def test_rejection_policy_param_override(tmp_path):
+    """Test overriding operation parameters during replay."""
+    fname = mne.datasets.sample.data_path() / 'MEG' / 'sample' / 'sample_audvis_raw.fif'
+    raw = mne.io.read_raw_fif(fname, preload=True)
+    raw.pick_types(eeg=True)
+    raw.resample(600)  # Resample to integer sampling rate for EDF compatibility
+    raw.crop(tmax=10)
+
+    config = ll.config.Config()
+    config.load_default()
+    config["filtering"]["filter_args"]["h_freq"] = 40
+    config["ica"] = None  # Skip ICA for speed
+
+    # Create BIDS structure for saving
+    subject = "test"
+    datatype = "eeg"
+    task = "test"
+    suffix = "eeg"
+    bids_root = tmp_path / "derivatives" / "pylossless"
+
+    bids_path = mne_bids.BIDSPath(
+        subject=subject,
+        task=task,
+        suffix=suffix,
+        datatype=datatype,
+        root=bids_root
+    )
+
+    # Run and save pipeline
+    pipeline = ll.LosslessPipeline(config=config)
+    pipeline.run_with_raw(raw)
+    pipeline.save(bids_path, overwrite=True, format="EDF")
+
+    # Load and apply policy with custom filter parameters
+    pipeline_loaded = ll.LosslessPipeline(config=config)
+    pipeline_loaded.load_ll_derivative(bids_path)
+
+    rejection_policy = ll.RejectionPolicy()
+    rejection_policy.operation_param_overrides = {
+        'filter': {'l_freq': 0.5, 'h_freq': 30.0}
+    }
+    rejection_policy.remove_flagged_ics = False
+    cleaned = rejection_policy.apply(pipeline_loaded, version_mismatch="ignore")
+
+    # Should return mne.io.BaseRaw object (or any subclass like RawEDF, RawFIF, etc.)
+    assert isinstance(cleaned, mne.io.BaseRaw)

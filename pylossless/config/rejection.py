@@ -201,6 +201,10 @@ class RejectionPolicy(ConfigMixin):
         # Start with original unmodified data
         raw = pipeline.raw_original.copy()
 
+        # Ensure data is preloaded for operations
+        if not raw.preload:
+            raw.load_data()
+
         # ICA model (will be fitted during replay if needed)
         ica_model = None
 

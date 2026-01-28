@@ -1429,15 +1429,18 @@ class LosslessPipeline:
             this_ica,
             self_ica,
         ) in zip(["ica1", "ica2"], [self.ica1, self.ica2]):
-            suffix = this_ica + "_ica"
-            ica_bidspath = bpath.update(extension=".fif", suffix=suffix, check=False)
-            self_ica.save(ica_bidspath, overwrite=overwrite)
+            if self_ica is not None:
+                suffix = this_ica + "_ica"
+                ica_bidspath = bpath.update(extension=".fif", suffix=suffix, check=False)
+                self_ica.save(ica_bidspath, overwrite=overwrite)
 
-        # Save IC labels
-        iclabels_bidspath = bpath.update(
-            extension=".tsv", suffix="iclabels", check=False
-        )
-        self.flags["ic"].save_tsv(iclabels_bidspath)
+        # Save IC labels (only if ICA was performed)
+        has_ica = self.ica1 is not None or self.ica2 is not None
+        if has_ica:
+            iclabels_bidspath = bpath.update(
+                extension=".tsv", suffix="iclabels", check=False
+            )
+            self.flags["ic"].save_tsv(iclabels_bidspath)
 
         # Save config
         config_bidspath = bpath.update(
@@ -1506,8 +1509,16 @@ class LosslessPipeline:
         """
         # Linter ID'd below as bad practice - likely need a structure fix
         self.bids_path = bids_path
-        self.raw = mne_bids.read_raw_bids(self.bids_path)
-        self.raw.load_data()
+        raw = mne_bids.read_raw_bids(self.bids_path)
+        raw.load_data()
+
+        # CRITICAL: Store original data before ANY modifications
+        logger.info("LOSSLESS: Storing original data before preprocessing...")
+        self.raw_original = raw.copy()
+
+        # Create working copy for preprocessing
+        self.raw = raw.copy()
+
         self._run()
 
         if save:
@@ -1695,17 +1706,29 @@ class LosslessPipeline:
             logger.warning("LOSSLESS: No operation log found (may be old format)")
             self.operations_log = []
 
-        # Load ICAs
-        for this_ica in ["ica1", "ica2"]:
-            suffix = this_ica + "_ica"
-            ica_bidspath = bpath.update(extension=".fif", suffix=suffix, check=False)
-            setattr(self, this_ica, mne.preprocessing.read_ica(ica_bidspath.fpath))
-
-        # Load IC labels
-        iclabels_bidspath = bpath.update(
-            extension=".tsv", suffix="iclabels", check=False
+        # Load ICAs (only if ICA operations were performed)
+        has_ica_ops = any(
+            op["operation_type"] in ["ica_fit", "ica_label"]
+            for op in self.operations_log
         )
-        self.flags["ic"].load_tsv(iclabels_bidspath.fpath)
+        if has_ica_ops:
+            for this_ica in ["ica1", "ica2"]:
+                suffix = this_ica + "_ica"
+                ica_bidspath = bpath.update(extension=".fif", suffix=suffix, check=False)
+                setattr(self, this_ica, mne.preprocessing.read_ica(ica_bidspath.fpath))
+        else:
+            logger.info("LOSSLESS: No ICA operations in log, skipping ICA loading")
+            self.ica1 = None
+            self.ica2 = None
+
+        # Load IC labels (only if ICA operations were performed)
+        if has_ica_ops:
+            iclabels_bidspath = bpath.update(
+                extension=".tsv", suffix="iclabels", check=False
+            )
+            self.flags["ic"].load_tsv(iclabels_bidspath.fpath)
+        else:
+            logger.info("LOSSLESS: No ICA operations in log, skipping IC labels loading")
 
         self.config_path = bpath.update(
             extension=".yaml", suffix="ll_config", check=False
