@@ -1,4 +1,5 @@
 from pathlib import Path
+from importlib.metadata import version
 
 from numpy.testing import assert_array_equal
 import mne
@@ -206,3 +207,329 @@ def test_rejection_policy_param_override(tmp_path):
 
     # Should return mne.io.BaseRaw object (or any subclass like RawEDF, RawFIF, etc.)
     assert isinstance(cleaned, mne.io.BaseRaw)
+
+
+def test_rejection_policy_repr():
+    """Test the __repr__ method of RejectionPolicy."""
+    rejection_policy = ll.RejectionPolicy(
+        ch_flags_to_reject=["noisy"],
+        ic_flags_to_reject=["muscle"],
+        ic_rejection_threshold=0.5,
+        ch_cleaning_mode="drop",
+        remove_flagged_ics=False
+    )
+
+    repr_str = repr(rejection_policy)
+
+    # Check that repr contains expected fields
+    assert "RejectionPolicy:" in repr_str
+    assert "ch_flags_to_reject: ['noisy']" in repr_str
+    assert "ic_flags_to_reject: ['muscle']" in repr_str
+    assert "ic_rejection_threshold: 0.5" in repr_str
+    assert "ch_cleaning_mode: drop" in repr_str
+    assert "remove_flagged_ics: False" in repr_str
+
+
+def test_rejection_policy_from_config_file(tmp_path):
+    """Test creating RejectionPolicy from config file."""
+    # Create a config file
+    config_path = tmp_path / "rejection_config.yaml"
+
+    # First create a rejection policy and save it
+    rejection_policy = ll.RejectionPolicy(
+        ch_flags_to_reject=["noisy", "bridged"],
+        ic_flags_to_reject=["muscle", "eog"],
+        ic_rejection_threshold=0.4,
+        ch_cleaning_mode="interpolate",
+        remove_flagged_ics=True
+    )
+    rejection_policy.save(config_path)
+
+    # Now load it from the config file
+    loaded_policy = ll.RejectionPolicy(config_fname=config_path)
+
+    # Verify the loaded policy has the correct values
+    assert loaded_policy["ch_flags_to_reject"] == ["noisy", "bridged"]
+    assert loaded_policy["ic_flags_to_reject"] == ["muscle", "eog"]
+    assert loaded_policy["ic_rejection_threshold"] == 0.4
+    assert loaded_policy["ch_cleaning_mode"] == "interpolate"
+    assert loaded_policy["remove_flagged_ics"] is True
+
+
+def test_rejection_policy_legacy_apply(pipeline_fixture):
+    """Test legacy apply method (backward compatibility)."""
+    # Create a pipeline without operations_log to test legacy path
+    pipeline = pipeline_fixture
+
+    # Remove operations_log to force legacy path
+    if hasattr(pipeline, 'operations_log'):
+        original_log = pipeline.operations_log
+        pipeline.operations_log = []
+
+    rejection_policy = ll.RejectionPolicy(
+        ch_cleaning_mode="interpolate",
+        remove_flagged_ics=True
+    )
+
+    # Apply should use legacy method
+    cleaned = rejection_policy.apply(pipeline, version_mismatch="ignore")
+
+    # Verify it returns a Raw object
+    assert isinstance(cleaned, mne.io.BaseRaw)
+
+    # Restore operations_log
+    if 'original_log' in locals():
+        pipeline.operations_log = original_log
+
+
+def test_rejection_policy_notch_and_resample(tmp_path):
+    """Test replay with notch_filter and resample operations."""
+    fname = mne.datasets.sample.data_path() / 'MEG' / 'sample' / 'sample_audvis_raw.fif'
+    raw = mne.io.read_raw_fif(fname, preload=True)
+    raw.pick_types(eeg=True)
+    raw.crop(tmax=10)
+
+    config = ll.config.Config()
+    config.load_default()
+
+    # Add notch filter to config
+    config["notch_filter"] = {
+        "filter_args": {
+            "freqs": [60],
+            "notch_widths": [2]
+        }
+    }
+
+    # Configure resampling
+    config["resample"] = {
+        "resample_args": {
+            "sfreq": 500
+        }
+    }
+
+    config["ica"] = None  # Skip ICA for speed
+
+    # Create pipeline and manually add operations to test replay
+    pipeline = ll.LosslessPipeline(config=config)
+    pipeline.raw_original = raw.copy()
+    pipeline.raw = raw.copy()
+    pipeline.operations_log = []
+
+    # Manually log filter operation
+    pipeline.operations_log.append({
+        "operation_id": 0,
+        "operation_type": "preprocessing",
+        "operation_name": "filter",
+        "parameters": {"l_freq": 1.0, "h_freq": 40.0},
+        "timestamp": "2026-01-29T00:00:00"
+    })
+
+    # Manually log notch filter operation
+    # Note: notch_widths omitted to use MNE's default (freqs / 200.0)
+    pipeline.operations_log.append({
+        "operation_id": 1,
+        "operation_type": "preprocessing",
+        "operation_name": "notch_filter",
+        "parameters": {"freqs": [60]},
+        "timestamp": "2026-01-29T00:00:01"
+    })
+
+    # Manually log resample operation
+    pipeline.operations_log.append({
+        "operation_id": 2,
+        "operation_type": "preprocessing",
+        "operation_name": "resample",
+        "parameters": {"sfreq": 500},
+        "timestamp": "2026-01-29T00:00:02"
+    })
+
+    # Set version
+    pipeline.config["version"] = version("pylossless")
+
+    # Test replay
+    rejection_policy = ll.RejectionPolicy()
+    rejection_policy.remove_flagged_ics = False
+    cleaned = rejection_policy.apply(pipeline, version_mismatch="ignore")
+
+    # Verify operations were applied
+    assert isinstance(cleaned, mne.io.BaseRaw)
+    assert cleaned.info['sfreq'] == 500  # Check resample was applied
+
+
+def test_rejection_policy_skip_specific_operations(tmp_path):
+    """Test skipping specific preprocessing operations."""
+    fname = mne.datasets.sample.data_path() / 'MEG' / 'sample' / 'sample_audvis_raw.fif'
+    raw = mne.io.read_raw_fif(fname, preload=True)
+    raw.pick_types(eeg=True)
+    raw.resample(600)
+    raw.crop(tmax=10)
+
+    config = ll.config.Config()
+    config.load_default()
+    config["filtering"]["filter_args"]["h_freq"] = 40
+    config["ica"] = None
+
+    subject = "test"
+    datatype = "eeg"
+    task = "test"
+    suffix = "eeg"
+    bids_root = tmp_path / "derivatives" / "pylossless"
+
+    bids_path = mne_bids.BIDSPath(
+        subject=subject,
+        task=task,
+        suffix=suffix,
+        datatype=datatype,
+        root=bids_root
+    )
+
+    # Run and save pipeline
+    pipeline = ll.LosslessPipeline(config=config)
+    pipeline.run_with_raw(raw)
+    pipeline.save(bids_path, overwrite=True, format="EDF")
+
+    # Load and apply policy, skipping filter operation
+    pipeline_loaded = ll.LosslessPipeline(config=config)
+    pipeline_loaded.load_ll_derivative(bids_path)
+
+    rejection_policy = ll.RejectionPolicy()
+    rejection_policy.preprocessing_operations_to_skip = ['filter']
+    rejection_policy.remove_flagged_ics = False
+    cleaned = rejection_policy.apply(pipeline_loaded, version_mismatch="ignore")
+
+    assert isinstance(cleaned, mne.io.BaseRaw)
+
+
+def test_rejection_policy_uncorrelated_channels(tmp_path):
+    """Test handling of uncorrelated channels in artifact flagging."""
+    fname = mne.datasets.sample.data_path() / 'MEG' / 'sample' / 'sample_audvis_raw.fif'
+    raw = mne.io.read_raw_fif(fname, preload=True)
+    raw.pick_types(eeg=True)
+    raw.resample(600)
+    raw.crop(tmax=10)
+
+    config = ll.config.Config()
+    config.load_default()
+    config["ica"] = None
+
+    # Create pipeline with operations log including uncorrelated channels
+    pipeline = ll.LosslessPipeline(config=config)
+    pipeline.raw_original = raw.copy()
+    pipeline.raw = raw.copy()
+    pipeline.operations_log = []
+
+    # Add artifact flag operation with uncorrelated channels
+    pipeline.operations_log.append({
+        "operation_id": 0,
+        "operation_type": "artifact_flag",
+        "operation_name": "flag_uncorrelated_channels",
+        "parameters": {},
+        "flags": {
+            "uncorrelated_channels": ["EEG 001", "EEG 002"]
+        },
+        "timestamp": "2026-01-29T00:00:00"
+    })
+
+    pipeline.config["version"] = version("pylossless")
+
+    # Apply rejection policy that includes uncorrelated flags
+    rejection_policy = ll.RejectionPolicy(
+        ch_flags_to_reject=["uncorrelated"],
+        ch_cleaning_mode=None,
+        remove_flagged_ics=False
+    )
+    cleaned = rejection_policy.apply(pipeline, version_mismatch="ignore")
+
+    # Check that uncorrelated channels were marked as bad
+    assert "EEG 001" in cleaned.info["bads"]
+    assert "EEG 002" in cleaned.info["bads"]
+
+
+def test_rejection_policy_channels_to_exclude_at_operation(tmp_path):
+    """Test _get_channels_to_exclude_at_operation method."""
+    fname = mne.datasets.sample.data_path() / 'MEG' / 'sample' / 'sample_audvis_raw.fif'
+    raw = mne.io.read_raw_fif(fname, preload=True)
+    raw.pick_types(eeg=True)
+    raw.resample(600)
+    raw.crop(tmax=10)
+
+    config = ll.config.Config()
+    config.load_default()
+    config["ica"] = None
+
+    # Create pipeline with operations log
+    pipeline = ll.LosslessPipeline(config=config)
+    pipeline.raw_original = raw.copy()
+    pipeline.raw = raw.copy()
+    pipeline.operations_log = []
+
+    # Add artifact flags before re-referencing
+    pipeline.operations_log.append({
+        "operation_id": 0,
+        "operation_type": "artifact_flag",
+        "operation_name": "flag_noisy_channels",
+        "parameters": {},
+        "flags": {
+            "noisy_channels": ["EEG 001"],
+            "bridged_channels": ["EEG 002"]
+        },
+        "timestamp": "2026-01-29T00:00:00"
+    })
+
+    # Add re-referencing operation
+    pipeline.operations_log.append({
+        "operation_id": 1,
+        "operation_type": "preprocessing",
+        "operation_name": "set_eeg_reference",
+        "parameters": {
+            "ref_channels": "average"
+        },
+        "timestamp": "2026-01-29T00:00:01"
+    })
+
+    pipeline.config["version"] = version("pylossless")
+
+    # Apply rejection policy
+    rejection_policy = ll.RejectionPolicy(
+        ch_flags_to_reject=["noisy", "bridged"],
+        remove_flagged_ics=False
+    )
+    cleaned = rejection_policy.apply(pipeline, version_mismatch="ignore")
+
+    # Verify that excluded channels were handled
+    assert isinstance(cleaned, mne.io.BaseRaw)
+
+
+def test_rejection_policy_legacy_apply_with_drop(pipeline_fixture):
+    """Test legacy apply method with drop mode."""
+    # Create a pipeline without operations_log to test legacy path
+    pipeline = pipeline_fixture
+
+    # Remove operations_log to force legacy path
+    if hasattr(pipeline, 'operations_log'):
+        original_log = pipeline.operations_log
+        pipeline.operations_log = []
+
+    rejection_policy = ll.RejectionPolicy(
+        ch_cleaning_mode="drop",
+        remove_flagged_ics=False
+    )
+
+    # Apply should use legacy method
+    cleaned = rejection_policy.apply(pipeline, version_mismatch="ignore")
+
+    # Verify it returns a Raw object
+    assert isinstance(cleaned, mne.io.BaseRaw)
+
+    # Verify channels were dropped
+    flagged_chs = []
+    for key in rejection_policy["ch_flags_to_reject"]:
+        flagged_chs.extend(pipeline.flags["ch"][key].tolist())
+
+    # Check that dropped channels are not in the cleaned data
+    for ch in flagged_chs:
+        assert ch not in cleaned.ch_names
+
+    # Restore operations_log
+    if 'original_log' in locals():
+        pipeline.operations_log = original_log

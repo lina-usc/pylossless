@@ -82,9 +82,19 @@ class RejectionPolicy(ConfigMixin):
 
         if config_fname is not None:
             config = ConfigMixin().read(config_fname)
-            for key, value in config.items():
-                if hasattr(self, key):
-                    setattr(self, key, value)
+            # Update local variables from config before passing to super().__init__
+            ch_flags_to_reject = config.get("ch_flags_to_reject",
+                                             ch_flags_to_reject)
+            ic_flags_to_reject = config.get("ic_flags_to_reject",
+                                             ic_flags_to_reject)
+            ic_rejection_threshold = config.get("ic_rejection_threshold",
+                                                 ic_rejection_threshold)
+            ch_cleaning_mode = config.get("ch_cleaning_mode",
+                                           ch_cleaning_mode)
+            interpolate_bads_kwargs = config.get("interpolate_bads_kwargs",
+                                                  interpolate_bads_kwargs)
+            remove_flagged_ics = config.get("remove_flagged_ics",
+                                             remove_flagged_ics)
 
         super().__init__(
             config_fname=config_fname,
