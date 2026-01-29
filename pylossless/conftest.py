@@ -5,7 +5,6 @@
 # License: MIT
 
 from pathlib import Path
-import shutil
 
 import mne
 import numpy as np

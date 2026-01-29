@@ -320,7 +320,8 @@ class RejectionPolicy(ConfigMixin):
                             for ch in flagged:
                                 if ch not in raw.info["bads"]:
                                     raw.info["bads"].append(ch)
-                                    logger.debug(f"    Marked {ch} as bad (uncorrelated)")
+                                    msg = f"    Marked {ch} as bad (uncorrelated)"
+                                    logger.debug(msg)
 
             # ICA LABEL OPERATIONS
             elif op_type == "ica_label":
