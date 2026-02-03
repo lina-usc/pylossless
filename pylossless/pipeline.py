@@ -38,8 +38,6 @@ from .utils.html import _get_ics, _sum_flagged_times, _create_html_details
 from .pipeline_aux import (
     epochs_to_xr,
     get_operate_dim,
-    _get_outliers_quantile,
-    _get_outliers_trimmed,
     _detect_outliers,
     find_bads_by_threshold,
     _threshold_volt_std,
