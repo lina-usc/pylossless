@@ -32,10 +32,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - name: Get commit message
         shell: bash
         run: |
-          echo "COMMIT_MESSAGE=$(git show -s --format=%s ${{ github.event.pull_request.head.sha || github.sha }})" | tee -a "${GITHUB_ENV}"
+          commit_sha="${{ github.event.pull_request.head.sha || github.sha }}"
+          commit_message="$(git show -s --format=%s "${commit_sha}" 2>/dev/null || git show -s --format=%s HEAD)"
+          echo "Commit SHA: ${commit_sha}"
+          echo "Commit message: ${commit_message}"
+          echo "COMMIT_MESSAGE=${commit_message}" | tee -a "${GITHUB_ENV}"
       - name: Triage SSH
         shell: bash
         run: |
@@ -78,5 +84,4 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{secrets.CODECOV_TOKEN}}
-
 
