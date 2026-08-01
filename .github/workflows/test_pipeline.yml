@@ -9,6 +9,13 @@ on:
       - main
   schedule:
     - cron: '0 0 * * *' # Runs at Midnight UTC every day
+  workflow_dispatch:
+    inputs:
+      ssh:
+        description: 'Enable ssh debugging'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   test:
@@ -25,6 +32,31 @@ jobs:
 
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Get commit message
+        shell: bash
+        run: |
+          commit_sha="${{ github.event.pull_request.head.sha || github.sha }}"
+          commit_message="$(git show -s --format=%s "${commit_sha}" 2>/dev/null || git show -s --format=%s HEAD)"
+          echo "Commit SHA: ${commit_sha}"
+          echo "Commit message: ${commit_message}"
+          echo "COMMIT_MESSAGE=${commit_message}" | tee -a "${GITHUB_ENV}"
+      - name: Triage SSH
+        shell: bash
+        run: |
+          if [[ "${{ inputs.ssh }}" == "true" ]] || [[ "${COMMIT_MESSAGE}" == *"[actions ssh]"* ]]; then
+            echo "ENABLE_SSH=true" | tee -a "${GITHUB_ENV}"
+          else
+            echo "ENABLE_SSH=false" | tee -a "${GITHUB_ENV}"
+          fi
+      - name: Setup Remote SSH Connection
+        if: env.ENABLE_SSH == 'true'
+        uses: Warpbuilds/action-debugger@v1.3
+        timeout-minutes: 80
+        with:
+          detached: true
+          limit-access-to-actor: true
       - name: Set up Python 3.10
         uses: actions/setup-python@v6
         with:
@@ -52,6 +84,4 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{secrets.CODECOV_TOKEN}}
-
-
 
