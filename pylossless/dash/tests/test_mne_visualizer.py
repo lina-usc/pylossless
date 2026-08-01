@@ -5,10 +5,7 @@
 """Tests for topo_viz.py."""
 
 import mne
-import pytest
 from pylossless.dash.mne_visualizer import MNEVisualizer
-
-pytestmark = pytest.mark.skip(reason="Diagnostic skip for CI socket leak isolation.")
 
 
 # chromedriver: https://chromedriver.storage.googleapis.com/

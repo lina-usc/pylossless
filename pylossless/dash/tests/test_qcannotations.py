@@ -3,12 +3,9 @@
 
 #import json
 import plotly.graph_objects as go
-import pytest
 from dash import dcc
 
 from ..qcannotations import EEGAnnotationList, EEGAnnotation
-
-pytestmark = pytest.mark.skip(reason="Diagnostic skip for CI socket leak isolation.")
 
 
 def test_EEGAnnotationList_serialization():
