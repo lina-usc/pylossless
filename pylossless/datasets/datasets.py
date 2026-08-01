@@ -56,10 +56,7 @@ def load_openneuro_bids(subject="pd6", timeout=20):
     bids_root.mkdir(exist_ok=True)
 
     openneuro.download(
-        dataset=dataset,
-        target_dir=bids_root,
-        include=[f"sub-{subject}"],
-        max_concurrent_downloads=1,
+        dataset=dataset, target_dir=bids_root, include=[f"sub-{subject}"]
     )
 
     datatype = "eeg"
