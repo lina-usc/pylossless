@@ -11,6 +11,8 @@ from dash import html
 
 from pylossless.dash.topo_viz import TopoPlot, GridTopoPlot, TopoData, TopoViz
 
+pytestmark = pytest.mark.skip(reason="Diagnostic skip for CI socket leak isolation.")
+
 
 def get_raw_ica():
     """Get raw and ICA object."""
