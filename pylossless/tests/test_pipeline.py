@@ -3,6 +3,7 @@ import mne
 import mne_bids
 import numpy as np
 import pytest
+from scipy import signal
 
 import pylossless as ll
 
@@ -23,6 +24,75 @@ def test_pipeline_run(pipeline_fixture):
     assert "BAD_break" in pipeline_fixture.raw.annotations.description
     assert pipeline_fixture._repr_html_()
     assert pipeline_fixture.flags["ch"].__repr__()
+
+
+@pytest.mark.filterwarnings(
+    "ignore:Maximum number of iterations reached:sklearn.exceptions.ConvergenceWarning"
+)
+@pytest.mark.filterwarnings("ignore:The provided Epochs instance is not"
+                            " filtered between 1 and 100 Hz.")
+@pytest.mark.filterwarnings(
+    "ignore:The provided ICA instance was fitted with a 'imported_eeglab'"
+)
+def test_run_ica_with_amica():
+    """Test running AMICA as the final ICA method when installed."""
+    pytest.importorskip("amica")
+
+    rng = np.random.default_rng(0)
+    n_samples = 1000
+    time = np.linspace(0, 8, n_samples)
+    source_data = np.c_[
+        np.sin(2 * time),
+        np.sign(np.sin(3 * time)),
+        signal.sawtooth(2 * np.pi * time),
+    ]
+    source_data += 0.2 * rng.standard_normal(source_data.shape)
+    source_data /= source_data.std(axis=0)
+    mixing = np.array(
+        [
+            [1, 1, 1],
+            [0.5, 2, 1],
+            [1.5, 1, 2],
+            [1, 2, 0.5],
+        ]
+    )
+    mixed_data = source_data @ mixing.T
+
+    info = mne.create_info(
+        ["Fz", "Cz", "Pz", "Oz"],
+        sfreq=n_samples / 8,
+        ch_types="eeg",
+    )
+    raw = mne.io.RawArray(mixed_data.T, info)
+    montage = (
+        "colin27_1020"
+        if "colin27_1020" in mne.channels.get_builtin_montages()
+        else "standard_1020"
+    )
+    raw.set_montage(montage)
+
+    config = ll.config.Config()
+    config.load_default()
+    config["epoching"]["epochs_args"]["tmax"] = 1
+    config["ica"]["ica_args"]["run2"] = {
+        "method": "amica",
+        "n_components": 3,
+        "n_mixtures": 1,
+        "random_state": 0,
+        "verbose": 0,
+    }
+
+    pipeline = ll.LosslessPipeline(config=config)
+    pipeline.raw = raw
+
+    pipeline.run_ica("run2")
+
+    assert pipeline.ica2.n_components_ == 3
+    ica_sources = pipeline.ica2.get_sources(pipeline.get_epochs())
+    assert ica_sources.get_data().shape[1] == 3
+    assert len(pipeline.flags["ic"]) == 3
+    assert pipeline.flags["ic"]["ic_type"].notna().all()
+    assert pipeline.flags["ic"]["confidence"].notna().all()
 
 
 @pytest.mark.filterwarnings("ignore:Converting data files to EDF format")

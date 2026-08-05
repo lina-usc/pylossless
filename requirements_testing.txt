@@ -1,3 +1,4 @@
+amica-python
 codespell
 dash[testing]
 numpydoc
