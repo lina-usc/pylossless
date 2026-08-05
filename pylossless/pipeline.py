@@ -32,7 +32,7 @@ from mne_bids import get_bids_path_from_fname, BIDSPath
 from .config import Config
 from .flagging import FlaggedChs, FlaggedEpochs, FlaggedICs
 from ._logging import lossless_logger, lossless_time
-from .utils import _report_flagged_epochs
+from .utils import _report_flagged_epochs, import_optional_dependency, _validate_kwargs
 from .utils.html import _get_ics, _sum_flagged_times, _create_html_details
 
 
@@ -72,6 +72,42 @@ def epochs_to_xr(epochs, kind="ch", ica=None):
         data,
         coords={"epoch": np.arange(data.shape[0]), kind: names, "time": epochs.times},
     )
+
+
+def _fit_amica_as_mne_ica(epochs, **ica_kwargs):
+    """Fit AMICA on epochs and return an MNE-compatible ICA object."""
+    amica = import_optional_dependency(
+        "amica",
+        extra="Install amica-python to use `method: amica` for ICA.",
+    )
+    torch = import_optional_dependency("torch")
+    fit_params = ica_kwargs.pop("fit_params", {})
+    ica_kwargs = _validate_kwargs(
+        amica.AMICA,
+        ica_kwargs,
+        name="amica.AMICA",
+        strict=False,
+    )
+    fit_params = _validate_kwargs(
+        amica.AMICA.fit,
+        fit_params,
+        name="amica.AMICA.fit",
+        exclude=("self", "X"),
+        strict=False,
+    )
+
+    data = epochs.get_data()  # n_epochs, n_channels, n_times
+    data = np.moveaxis(data, 1, -1).reshape(-1, len(epochs.ch_names))
+
+    default_torch_dtype = torch.get_default_dtype()
+    try:
+        amica_ica = amica.AMICA(**ica_kwargs)
+        amica_ica.fit(data, **fit_params)
+    finally:
+        # TODO: Remove this workaround once amica-python 0.1.3 is released.
+        torch.set_default_dtype(default_torch_dtype)
+
+    return amica_ica.to_mne(epochs.info)
 
 
 def get_operate_dim(array, flag_dim):
@@ -1191,20 +1227,27 @@ class LosslessPipeline:
         picks : str (default "eeg")
             Type of channels to pick.
         """
-        ica_kwargs = self.config["ica"]["ica_args"][run]
-        if "max_iter" not in ica_kwargs:
+        ica_kwargs = dict(self.config["ica"]["ica_args"][run])
+        method = ica_kwargs.get("method", "fastica")
+        if isinstance(method, str) and method.lower() == "amica":
+            ica_kwargs.pop("method")
+        elif "max_iter" not in ica_kwargs:
             ica_kwargs["max_iter"] = "auto"
         if "random_state" not in ica_kwargs:
             ica_kwargs["random_state"] = 97
 
         epochs = self.get_epochs(picks=picks)
+        if isinstance(method, str) and method.lower() == "amica":
+            ica = _fit_amica_as_mne_ica(epochs, **ica_kwargs)
+        else:
+            ica = ICA(**ica_kwargs)
+            ica.fit(epochs)
+
         if run == "run1":
-            self.ica1 = ICA(**ica_kwargs)
-            self.ica1.fit(epochs)
+            self.ica1 = ica
 
         elif run == "run2":
-            self.ica2 = ICA(**ica_kwargs)
-            self.ica2.fit(epochs)
+            self.ica2 = ica
             if picks == "eeg":
                 self.flags["ic"].label_components(epochs, self.ica2)
         else:

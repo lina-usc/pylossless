@@ -99,7 +99,8 @@ ica:
       lower: 0.3
       upper: 0.7
 
-  # See arguments definition from mne.preprocessing.ICA
+  # See arguments definition from mne.preprocessing.ICA.
+  # Can also set `method: amica`, if amica-python is installed.
   ica_args:
     run1:
       method: fastica
