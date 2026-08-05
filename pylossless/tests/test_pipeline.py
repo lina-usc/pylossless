@@ -64,7 +64,12 @@ def test_run_ica_with_amica():
         ch_types="eeg",
     )
     raw = mne.io.RawArray(mixed_data.T, info)
-    raw.set_montage("colin27_1020")
+    montage = (
+        "colin27_1020"
+        if "colin27_1020" in mne.channels.get_builtin_montages()
+        else "standard_1020"
+    )
+    raw.set_montage(montage)
 
     config = ll.config.Config()
     config.load_default()
