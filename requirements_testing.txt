@@ -1,3 +1,4 @@
+amica-python
 codespell
 dash[testing]
 numpydoc
@@ -10,4 +11,4 @@ selenium
 tomli; python_version<'3.11'
 torch
 edfio
-openneuro-py
+openneuro-py>=2025.2.0

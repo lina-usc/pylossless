@@ -6,6 +6,7 @@
 
 from pathlib import Path
 import shutil
+import warnings
 
 import mne
 import numpy as np
@@ -55,7 +56,6 @@ def pipeline_fixture():
 
 
 @pytest.fixture(scope="session")
-@pytest.mark.filterwarnings("ignore:Converting data files to EDF format")
 def bids_dataset_fixture(tmpdir_factory):
     """Return a BIDS path for a test recording."""
     def edf_import_fct(path_in):
@@ -71,11 +71,17 @@ def bids_dataset_fixture(tmpdir_factory):
     import_args = [{"path_in": fname}]
     bids_path_args = [{'subject': '001', 'run': '01', 'session': '01',
                        "task": "test"}]
-    bids_path = ll.bids.convert_dataset_to_bids(
-        edf_import_fct,
-        import_args,
-        bids_path_args,
-        bids_root=tmp_path,
-        overwrite=True
-    )[0]
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="Converting data files to EDF format",
+            category=RuntimeWarning,
+        )
+        bids_path = ll.bids.convert_dataset_to_bids(
+            edf_import_fct,
+            import_args,
+            bids_path_args,
+            bids_root=tmp_path,
+            overwrite=True
+        )[0]
     return bids_path

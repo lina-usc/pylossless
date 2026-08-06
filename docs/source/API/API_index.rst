@@ -9,18 +9,22 @@ the ``lossless`` namespace.
 
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
    :hidden:
 
    config_class
+   config_file
    bids_funcs
    datasets
    lossless_class
    pipeline_funcs
    flag_classes
+   steps/index
+   helpers/index
 
 - :doc:`bids_funcs`
 - :doc:`config_class`
+- :doc:`config_file`
 - :doc:`datasets`
 - :doc:`lossless_class`
 - :doc:`pipeline_funcs`

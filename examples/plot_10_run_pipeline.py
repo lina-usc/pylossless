@@ -100,6 +100,19 @@ cleaned_raw = rejection_policy.apply(pipeline)
 cleaned_raw.plot()
 
 # %%
+# .. note::
+#   Below is an example of how one might customize the rejection policy to achieve a difference output.
+#
+#
+
+# %%
+rejection_policy_2 = ll.RejectionPolicy(
+    ch_flags_to_reject=["noisy"],
+    ch_cleaning_mode="interpolate",
+    ic_flags_to_reject=["eog"],
+    )
+
+# %%
 # Save the PyLossless Derivative
 # ------------------------------
 #
@@ -107,10 +120,24 @@ cleaned_raw.plot()
 # :class:`~mne_bids.BIDSPath` object to set up a derivatives path to save the
 # pipeline output to:
 derivatives_path = pipeline.get_derivative_path(bids_path)
-derivatives_path
+derivatives_path.update(suffix="eeg")
 
 # %%
 pipeline.save(derivatives_path)
+
+
+# %%
+# Loading PyLossless Derivative data
+# ----------------------------------
+#
+# If you or a colleague wants to load a previously saved PyLossless Derivative,
+# you can use the :meth:`~pylossless.LosslessPipeline.load_ll_derivative` method of the
+# :class:`pylossless.LosslessPipeline` class:
+#
+
+# %%
+finished_pipeline = ll.LosslessPipeline()
+finished_pipeline.load_ll_derivative(derivatives_path)
 
 # %%
 # Clean up

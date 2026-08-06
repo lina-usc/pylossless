@@ -38,10 +38,12 @@ Please find the full documentation at
 ## ▶️ Running the pyLossless Pipeline
 Below is a minimal example that runs the pipeline one of MNE's sample files.  
 ```python
+from pathlib import Path
 import pylossless as ll 
 import mne
+import mne_bids
 fname = mne.datasets.sample.data_path() / 'MEG' / 'sample' /  'sample_audvis_raw.fif'
-raw = mne.io.read_raw_fif(fname, preload=True)
+raw = mne.io.read_raw_fif(fname, preload=True).pick("eeg")
 
 config = ll.config.Config()
 config.load_default()
@@ -52,12 +54,13 @@ pipeline.run_with_raw(raw)
 
 Once it is completed, You can see what channels and times were flagged:
 ```python
-print(pipeline.flagged_chs)
-print(pipeline.flagged_epochs)
+print(pipeline.flags['ch']
+print(pipeline.flags['epoch']
 ```
 
 Once you are ready, you can save your file in its lossless state:
 ```python
+bpath = mne_bids.BIDSPath(root=Path.cwd(), subject="sample", task="audvis")
 pipeline.save(pipeline.get_derivative_path(bids_path), overwrite=True)
 ```
 
