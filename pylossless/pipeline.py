@@ -425,7 +425,7 @@ def chan_neighbour_r(epochs, nneigbr, method):
         )
         r_list.append(xr.corr(this_ch_xr, nearest_chs_xr, dim=["time"]))
 
-    c_neigbr_r = xr.concat(r_list, dim="ref_chan")
+    c_neigbr_r = xr.concat(r_list, dim="ref_chan", join="outer")
 
     if method == "max":
         m_neigbr_r = xr.apply_ufunc(np.abs, c_neigbr_r).max(dim="channel")
