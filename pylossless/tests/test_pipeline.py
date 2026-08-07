@@ -34,6 +34,7 @@ def test_pipeline_run(pipeline_fixture):
 @pytest.mark.filterwarnings(
     "ignore:The provided ICA instance was fitted with a 'imported_eeglab'"
 )
+@pytest.mark.filterwarnings("ignore:invalid value encountered in sqrt:RuntimeWarning")
 def test_run_ica_with_amica():
     """Test running AMICA as the final ICA method when installed."""
     pytest.importorskip("amica")
@@ -45,15 +46,16 @@ def test_run_ica_with_amica():
         np.sin(2 * time),
         np.sign(np.sin(3 * time)),
         signal.sawtooth(2 * np.pi * time),
+        signal.square(5 * time),
     ]
     source_data += 0.2 * rng.standard_normal(source_data.shape)
     source_data /= source_data.std(axis=0)
     mixing = np.array(
         [
-            [1, 1, 1],
-            [0.5, 2, 1],
-            [1.5, 1, 2],
-            [1, 2, 0.5],
+            [1, 1, 1, 0.5],
+            [0.5, 2, 1, 1.5],
+            [1.5, 1, 2, 1],
+            [1, 2, 0.5, 2],
         ]
     )
     mixed_data = source_data @ mixing.T
