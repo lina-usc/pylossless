@@ -32,3 +32,44 @@ step, as the approach and definitions are identical.
             method: infomax
         fit_params:
             extended: True
+
+
+.. _ica-random-seeds:
+
+Reproducibility and random seeds
+--------------------------------
+
+PyLossless uses the top-level ``random_seed`` configuration value for stochastic
+pipeline steps. Both ICA runs inherit this value when their run-specific
+``random_state`` is omitted. The default is ``97``, preserving the behavior of
+older PyLossless versions::
+
+    random_seed: 97
+    ica:
+      ica_args:
+        run1:
+          method: fastica
+        run2:
+          method: infomax
+          fit_params:
+            extended: true
+
+Set ``random_seed: null`` to let the ICA implementation initialize
+non-deterministically. For a deliberate per-run override, set
+``random_state`` inside that run. The local value takes precedence::
+
+    random_seed: 97
+    ica:
+      ica_args:
+        run1:
+          method: fastica
+        run2:
+          method: infomax
+          random_state: 42
+          fit_params:
+            extended: true
+
+For reproducible analyses, save the resolved configuration with the derivative
+and keep the software environment fixed. A seed controls pseudo-random
+initialization; it does not guarantee bitwise-identical results across different
+library versions, numerical backends, hardware, or thread configurations.
