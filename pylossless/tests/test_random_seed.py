@@ -66,7 +66,7 @@ def test_numpy_integer_seed_is_normalized():
     """NumPy integer scalars should be accepted and normalized to Python int."""
     _, kwargs = _pipeline(random_seed=np.int64(12))._get_ica_kwargs("run1")
     assert kwargs["random_state"] == 12
-    assert type(kwargs["random_state"]) is int
+    assert isinstance(kwargs["random_state"], int)
 
 
 def test_resolving_ica_kwargs_does_not_mutate_config():
