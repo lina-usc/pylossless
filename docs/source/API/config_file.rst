@@ -25,6 +25,21 @@ To see examples of the Configuration files, see below:
 - `Adult Example <https://github.com/lina-usc/pylossless/blob/main/pylossless/assets/ll_default_config_adults.yaml>`_
 - `Infant Example <https://github.com/lina-usc/pylossless/blob/main/pylossless/assets/ll_default_config_infants.yaml>`_
 
+Reproducible stochastic steps
+-----------------------------
+
+The optional top-level ``random_seed`` setting controls stochastic pipeline
+steps. The default configurations set it to ``97``. A configuration from an
+older PyLossless release that does not contain this key also uses ``97`` for
+backward compatibility. Use an integer for reproducible initialization or
+``null`` to request non-deterministic initialization::
+
+    random_seed: 97
+
+A ``random_state`` specified under ``ica.ica_args.run1`` or
+``ica.ica_args.run2`` overrides ``random_seed`` for that run. See the
+:ref:`ICA configuration <ica-random-seeds>` for examples and limitations.
+
 Configuring Pipeline Steps
 --------------------------
 

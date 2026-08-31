@@ -11,6 +11,7 @@ from copy import deepcopy
 from pathlib import Path
 from functools import partial
 from importlib.metadata import version
+from numbers import Integral
 
 # Math and data structures
 import numpy as np
@@ -1214,6 +1215,37 @@ class LosslessPipeline:
         )
         self.flags["epoch"].add_flag_cat("uncorrelated", bad_epoch_inds, epochs)
 
+    def _get_ica_kwargs(self, run):
+        """Resolve ICA parameters for one pipeline run.
+
+        The run-specific ``random_state`` has the highest precedence. If it is
+        omitted, the pipeline-level ``random_seed`` is used. Configurations
+        created before ``random_seed`` was introduced retain the historical
+        seed of 97.
+        """
+        if run not in ("run1", "run2"):
+            raise ValueError("The `run` argument must be 'run1' or 'run2'")
+
+        ica_kwargs = dict(self.config["ica"]["ica_args"][run])
+        if "random_state" not in ica_kwargs:
+            random_seed = self.config.get("random_seed", 97)
+            if random_seed is not None and (
+                isinstance(random_seed, bool) or not isinstance(random_seed, Integral)
+            ):
+                raise TypeError("`random_seed` must be an integer or None")
+            # Normalize NumPy integer scalars so saved runtime parameters remain
+            # straightforward to serialize and compare.
+            if random_seed is not None:
+                random_seed = int(random_seed)
+            ica_kwargs["random_state"] = random_seed
+
+        method = ica_kwargs.get("method", "fastica")
+        if isinstance(method, str) and method.lower() == "amica":
+            ica_kwargs.pop("method")
+        elif "max_iter" not in ica_kwargs:
+            ica_kwargs["max_iter"] = "auto"
+        return method, ica_kwargs
+
     @lossless_logger
     def run_ica(self, run, picks="eeg"):
         """Run ICA.
@@ -1226,15 +1258,14 @@ class LosslessPipeline:
             `mne_icalabel`.
         picks : str (default "eeg")
             Type of channels to pick.
+
+        Notes
+        -----
+        When ``random_state`` is absent from the selected run's ``ica_args``,
+        the pipeline-level ``random_seed`` is passed to the ICA implementation.
+        A run-specific ``random_state`` always overrides the global seed.
         """
-        ica_kwargs = dict(self.config["ica"]["ica_args"][run])
-        method = ica_kwargs.get("method", "fastica")
-        if isinstance(method, str) and method.lower() == "amica":
-            ica_kwargs.pop("method")
-        elif "max_iter" not in ica_kwargs:
-            ica_kwargs["max_iter"] = "auto"
-        if "random_state" not in ica_kwargs:
-            ica_kwargs["random_state"] = 97
+        method, ica_kwargs = self._get_ica_kwargs(run)
 
         epochs = self.get_epochs(picks=picks)
         if isinstance(method, str) and method.lower() == "amica":
