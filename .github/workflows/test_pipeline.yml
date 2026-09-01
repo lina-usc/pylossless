@@ -81,7 +81,7 @@ jobs:
           pytest --nbmake notebooks  
       - name: Upload coverage to codecov (Only do this for the ubuntu-latest job)
         if: matrix.os == 'ubuntu-latest'
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           token: ${{secrets.CODECOV_TOKEN}}
 
