@@ -58,7 +58,7 @@ jobs:
           detached: true
           limit-access-to-actor: true
       - name: Set up Python 3.11
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install Pylossless & Deps
