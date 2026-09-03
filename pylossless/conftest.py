@@ -5,7 +5,6 @@
 # License: MIT
 
 from pathlib import Path
-import shutil
 import warnings
 
 import mne
@@ -51,7 +50,8 @@ def pipeline_fixture():
     pipeline.run_with_raw(pipeline.raw)
 
     Path("test_config.yaml").unlink()  # delete config file
-    shutil.rmtree(bids_path.root)
+    # NOTE: Don't delete bids_path.root yet - MNE may still need to access files
+    # The directory will be cleaned up when the test session ends
     return pipeline
 
 

@@ -9,23 +9,22 @@
 
 from copy import deepcopy
 from pathlib import Path
-from functools import partial
 from importlib.metadata import version
+from datetime import datetime
+from enum import Enum
+import json
 from numbers import Integral
 
 # Math and data structures
 import numpy as np
 import pandas as pd
-import xarray as xr
 import scipy
-from scipy.spatial import distance_matrix
-from tqdm import tqdm
+from functools import partial
 
 # BIDS, MNE, and ICA
 import mne
 from mne.preprocessing import annotate_break
 from mne.preprocessing import ICA
-from mne.coreg import Coregistration
 from mne.utils import logger, warn
 import mne_bids
 from mne_bids import get_bids_path_from_fname, BIDSPath
@@ -36,6 +35,38 @@ from ._logging import lossless_logger, lossless_time
 from .utils import _report_flagged_epochs, import_optional_dependency, _validate_kwargs
 from .utils.html import _get_ics, _sum_flagged_times, _create_html_details
 
+# Import helper functions from pipeline_aux
+from .pipeline_aux import (
+    epochs_to_xr,
+    get_operate_dim,
+    _detect_outliers,
+    find_bads_by_threshold,
+    _threshold_volt_std,
+    chan_neighbour_r,
+    coregister,
+    warp_locs,
+)
+
+# Re-export for backward compatibility
+__all__ = [
+    "LosslessPipeline",
+    "OperationType",
+    "epochs_to_xr",
+    "get_operate_dim",
+    "find_bads_by_threshold",
+    "chan_neighbour_r",
+    "coregister",
+    "warp_locs",
+]
+
+
+class OperationType(Enum):
+    """Types of operations in the pipeline."""
+
+    PREPROCESSING = "preprocessing"
+    ARTIFACT_FLAG = "artifact_flag"
+    ICA_FIT = "ica_fit"
+    ICA_LABEL = "ica_label"
 
 def epochs_to_xr(epochs, kind="ch", ica=None):
     """Create an Xarray DataArray from an instance of mne.Epochs.
@@ -573,6 +604,12 @@ class LosslessPipeline:
         self.ica1 = None
         self.ica2 = None
 
+        # Store original raw data before any preprocessing
+        self.raw_original = None
+
+        # Track all operations in execution order
+        self.operations_log = []
+
     def _repr_html_(self):
         ch_flags = self.flags.get("ch", None)
         df = self.flags["ic"]
@@ -718,8 +755,8 @@ class LosslessPipeline:
         df["duration"] = 1 / epochs.info["sfreq"] * len(epochs.times[:-1])
         df["description"] = desc
 
-        # Merge close onsets to prevent a bunch of 1-second annotations of the same name
-        # find onsets close enough to be considered the same
+        # Merge close onsets to prevent a bunch of 1-second annotations of the same
+        # name find onsets close enough to be considered the same
         df["close"] = df.sort_values("onset")["onset"].diff().le(1)
         df["group"] = ~df["close"]
         df["group"] = df["group"].cumsum()
@@ -909,7 +946,8 @@ class LosslessPipeline:
         >>> import pylossless as ll
         >>> config = ll.Config().load_default()
         >>> pipeline = ll.LosslessPipeline(config=config)
-        >>> fname = mne.datasets.sample.data_path() / "MEG/sample/sample_audvis_raw.fif"
+        >>> fname = mne.datasets.sample.data_path()
+        >>> fname = fname / "MEG/sample/sample_audvis_raw.fif"
         >>> raw = mne.io.read_raw(fname)
         >>> epochs = mne.make_fixed_length_epochs(raw, preload=True)
         >>> chs_to_leave_out = pipeline.find_outlier_chs(epochs=epochs)
@@ -1062,6 +1100,19 @@ class LosslessPipeline:
 
         self.flags["ch"].add_flag_cat(kind="noisy", bad_ch_names=bad_ch_names)
 
+        # Log the operation
+        self._log_operation(
+            operation_type=OperationType.ARTIFACT_FLAG,
+            operation_name="flag_noisy_channels",
+            flags={"noisy_channels": bad_ch_names.tolist()
+                   if hasattr(bad_ch_names, 'tolist')
+                   else list(bad_ch_names)},
+            metadata={
+                "n_flagged": len(bad_ch_names),
+                "detection_method": "robust_deviations"
+            }
+        )
+
     @lossless_logger
     def flag_noisy_epochs(self, picks="eeg"):
         """Flag epochs with outlying standard deviation.
@@ -1131,6 +1182,17 @@ class LosslessPipeline:
         logger.info(f"📋 LOSSLESS: Uncorrelated channels: {bad_ch_names}")
         # Edit the channel flag info structure
         self.flags["ch"].add_flag_cat(kind="uncorrelated", bad_ch_names=bad_ch_names)
+
+        # Log the operation
+        self._log_operation(
+            operation_type=OperationType.ARTIFACT_FLAG,
+            operation_name="flag_uncorrelated_channels",
+            flags={"uncorrelated_channels": (bad_ch_names.tolist()
+                                             if hasattr(bad_ch_names, 'tolist')
+                                             else list(bad_ch_names))},
+            metadata={"n_flagged": len(bad_ch_names)}
+        )
+
         return data_r_ch
 
     @lossless_logger
@@ -1145,7 +1207,8 @@ class LosslessPipeline:
         # Uses the correlation of neighbours
         # calculated to flag bridged channels.
 
-        msr = data_r_ch.median("epoch") / data_r_ch.reduce(scipy.stats.iqr, dim="epoch")
+        msr = data_r_ch.median("epoch") / data_r_ch.reduce(scipy.stats.iqr,
+                                                           dim="epoch")
 
         trim = self.config["bridged_channels"]["bridge_trim"]
         if trim >= 1:
@@ -1163,6 +1226,16 @@ class LosslessPipeline:
         bad_ch_names = data_r_ch.ch.values[mask]
         logger.info(f"📋 LOSSLESS: Bridged channels: {bad_ch_names}")
         self.flags["ch"].add_flag_cat(kind="bridged", bad_ch_names=bad_ch_names)
+
+        # Log the operation
+        self._log_operation(
+            operation_type=OperationType.ARTIFACT_FLAG,
+            operation_name="flag_bridged_channels",
+            flags={"bridged_channels": (bad_ch_names.tolist()
+                                        if hasattr(bad_ch_names, 'tolist')
+                                        else list(bad_ch_names))},
+            metadata={"n_flagged": len(bad_ch_names)}
+        )
 
     @lossless_logger
     def flag_rank_channel(self, data_r_ch):
@@ -1277,10 +1350,59 @@ class LosslessPipeline:
         if run == "run1":
             self.ica1 = ica
 
+            # Log the ICA fit operation
+            self._log_operation(
+                operation_type=OperationType.ICA_FIT,
+                operation_name="run_ica",
+                parameters=ica_kwargs,
+                metadata={
+                    "run": run,
+                    "n_components": self.ica1.n_components_,
+                    "method": ica_kwargs.get("method", "fastica")
+                }
+            )
+
         elif run == "run2":
-            self.ica2 = ica
+            self.ica2 = ICA(**ica_kwargs)
+            self.ica2.fit(epochs)
+
+            # Log the ICA fit operation
+            self._log_operation(
+                operation_type=OperationType.ICA_FIT,
+                operation_name="run_ica",
+                parameters=ica_kwargs,
+                metadata={
+                    "run": run,
+                    "n_components": self.ica2.n_components_,
+                    "method": ica_kwargs.get("method", "fastica")
+                }
+            )
+
             if picks == "eeg":
                 self.flags["ic"].label_components(epochs, self.ica2)
+
+                # Log the ICA labeling operation
+                # Convert IC labels to a serializable format
+                ic_labels_dict = {}
+                if hasattr(self.flags["ic"], 'index') and len(self.flags["ic"]) > 0:
+                    for idx in self.flags["ic"].index:
+                        confidence = (float(self.flags["ic"].loc[idx, "confidence"])
+                                      if "confidence" in self.flags["ic"].columns
+                                      else 0.0)
+                        ic_labels_dict[str(idx)] = {
+                            "ic_type": (str(self.flags["ic"].loc[idx, "ic_type"])
+                                        if "ic_type" in self.flags["ic"].columns
+                                        else "unknown"),
+                            "confidence": confidence
+                        }
+
+                self._log_operation(
+                    operation_type=OperationType.ICA_LABEL,
+                    operation_name="label_ica_components",
+                    parameters={"method": "iclabel"},
+                    flags={"ic_labels": ic_labels_dict},
+                    metadata={"n_components_labeled": len(ic_labels_dict)}
+                )
         else:
             raise ValueError("The `run` argument must be 'run1' or 'run2'")
 
@@ -1308,8 +1430,14 @@ class LosslessPipeline:
 
         # icsd_epoch_flags=padflags(raw, icsd_epoch_flags,1,'value',.5);
 
-    def save(self, derivatives_path=None, overwrite=False, format="EDF", event_id=None):
-        """Save the file at the end of the pipeline.
+    def save(self, derivatives_path=None, overwrite=False, format="EDF",
+             event_id=None):
+        """Save the file at the end of the pipeline in a truly lossless manner.
+
+        This saves:
+        1. Original unmodified data
+        2. Complete operation log
+        3. Preprocessed version for QC
 
         Parameters
         ----------
@@ -1326,38 +1454,144 @@ class LosslessPipeline:
         if derivatives_path is None:
             derivatives_path = self.get_derivative_path(self.bids_path)
 
+        # ===================================================================
+        # STEP 1: Save ORIGINAL unmodified data
+        # ===================================================================
+        if self.raw_original is not None:
+            logger.info("LOSSLESS: Saving original (unmodified) raw data...")
+            # Copy pylossless annotations from processed raw to original
+            # so epoch flags can be reconstructed during load
+            raw_to_save = self.raw_original.copy()
+            pylossless_annots = [
+                annot for annot in self.raw.annotations
+                if annot["description"].upper().startswith("BAD_LL_")
+            ]
+            if pylossless_annots:
+                # Add pylossless annotations to the original data
+                from mne import Annotations
+                ll_descriptions = [a["description"] for a in pylossless_annots]
+                ll_onsets = [a["onset"] for a in pylossless_annots]
+                ll_durations = [a["duration"] for a in pylossless_annots]
+                new_annots = Annotations(
+                    onset=ll_onsets,
+                    duration=ll_durations,
+                    description=ll_descriptions,
+                    orig_time=self.raw.annotations.orig_time
+                )
+                raw_to_save.set_annotations(
+                    raw_to_save.annotations + new_annots
+                )
+
+            mne_bids.write_raw_bids(
+                raw_to_save,  # Original data with pylossless annotations
+                derivatives_path,
+                overwrite=overwrite,
+                format=format,
+                allow_preload=True,
+                event_id=event_id,
+            )
+        else:
+            # Fallback for backwards compatibility
+            logger.warning("LOSSLESS: No raw_original found, saving preprocessed data")
+            mne_bids.write_raw_bids(
+                self.raw,
+                derivatives_path,
+                overwrite=overwrite,
+                format=format,
+                allow_preload=True,
+                event_id=event_id,
+            )
+
+        # ===================================================================
+        # STEP 2: Save complete operation log
+        # ===================================================================
+        bpath = derivatives_path.copy()
+        # Get the root derivatives directory (parent of subject folder)
+        if hasattr(derivatives_path, 'root'):
+            derivatives_root = Path(derivatives_path.root)
+        else:
+            derivatives_root = Path(derivatives_path)
+
+        operations_file = derivatives_root / "operations_log.json"
+        operations_metadata = {
+            "description": "Complete sequential log of all pipeline operations",
+            "version": "1.0.0",
+            "note": "Operations include both preprocessing and artifact detection",
+            "operations": self.operations_log,
+            "config_file": (str(self.config_path) if hasattr(self, 'config_path')
+                            else None),
+            "software": {
+                "name": "pylossless",
+                "version": version("pylossless"),
+                "mne_version": mne.__version__,
+                "mne_bids_version": mne_bids.__version__
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+
+        logger.info(f"LOSSLESS: Saving operation log "
+                    f"({len(self.operations_log)} operations)...")
+
+        class NumPyEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if isinstance(obj, np.integer):
+                    return int(obj)
+                elif isinstance(obj, np.floating):
+                    return float(obj)
+                elif isinstance(obj, np.ndarray):
+                    return obj.tolist()
+                return super(NumPyEncoder, self).default(obj)
+
+        with open(operations_file, 'w') as f:
+            json.dump(operations_metadata, f, indent=2, cls=NumPyEncoder)
+
+        # ===================================================================
+        # STEP 3: Save preprocessed version for QC dashboard
+        # ===================================================================
+        qc_path = derivatives_root / "qc_preprocessed"
+        qc_bids_path = derivatives_path.copy()
+        if hasattr(qc_bids_path, 'root'):
+            qc_bids_path.root = qc_path
+        else:
+            # Create BIDSPath for QC directory
+            qc_path.mkdir(parents=True, exist_ok=True)
+
+        logger.info("LOSSLESS: Saving preprocessed version for QC dashboard...")
         mne_bids.write_raw_bids(
-            self.raw,
-            derivatives_path,
+            self.raw,  # Preprocessed version
+            qc_bids_path,
             overwrite=overwrite,
             format=format,
             allow_preload=True,
             event_id=event_id,
         )
-        # TODO: address derivatives support in MNE bids.
-        # use shutils ( or pathlib?) to rename file with ll suffix
 
+        # ===================================================================
+        # STEP 4: Save ICAs, IC labels, config, and channel flags
+        # ===================================================================
         # Save ICAs
-        bpath = derivatives_path.copy()
         for (
             this_ica,
             self_ica,
         ) in zip(["ica1", "ica2"], [self.ica1, self.ica2]):
-            suffix = this_ica + "_ica"
-            ica_bidspath = bpath.update(extension=".fif", suffix=suffix, check=False)
-            self_ica.save(ica_bidspath, overwrite=overwrite)
+            if self_ica is not None:
+                suffix = this_ica + "_ica"
+                ica_bidspath = bpath.update(extension=".fif", suffix=suffix,
+                                            check=False)
+                self_ica.save(ica_bidspath, overwrite=overwrite)
 
-        # Save IC labels
-        iclabels_bidspath = bpath.update(
-            extension=".tsv", suffix="iclabels", check=False
-        )
-        self.flags["ic"].save_tsv(iclabels_bidspath)
-        # TODO: epoch marks and ica marks are not currently saved into annots
-        # raw.save(derivatives_path, overwrite=True, split_naming='bids')
+        # Save IC labels (only if ICA was performed)
+        has_ica = self.ica1 is not None or self.ica2 is not None
+        if has_ica:
+            iclabels_bidspath = bpath.update(
+                extension=".tsv", suffix="iclabels", check=False
+            )
+            self.flags["ic"].save_tsv(iclabels_bidspath)
+
+        # Save config
         config_bidspath = bpath.update(
             extension=".yaml", suffix="ll_config", check=False
         )
-
         self.config.save(config_bidspath)
 
         # Save flag["ch"]
@@ -1366,11 +1600,27 @@ class LosslessPipeline:
         )
         self.flags["ch"].save_tsv(flagged_chs_fpath.fpath)
 
+        # Note: Epoch flags are saved as BAD_LL_* annotations in the raw data,
+        # not as a separate TSV file
+
+        logger.info(f"LOSSLESS: ✓ Saved truly lossless pipeline "
+                    f"output to {derivatives_path}")
+
     @lossless_logger
     def filter(self):
         """Run filter procedure based on structured config args."""
         # 5.a. Filter lowpass/highpass
-        self.raw.filter(**self.config["filtering"]["filter_args"])
+        filter_args = self.config["filtering"]["filter_args"]
+        logger.info("LOSSLESS: Applying filter...")
+        self.raw.filter(**filter_args)
+
+        # Log the operation
+        self._log_operation(
+            operation_type=OperationType.PREPROCESSING,
+            operation_name="filter",
+            parameters=filter_args,
+            metadata={"note": "Initial filtering to enable ICA"}
+        )
 
         # 5.b. Filter notch
         if "notch_filter_args" in self.config["filtering"]:
@@ -1381,6 +1631,14 @@ class LosslessPipeline:
             if notch_args["freqs"] or spectrum_fit_method:
                 # in raw.notch_filter, freqs=None is ok if method=='spectrum_fit'
                 self.raw.notch_filter(**notch_args)
+
+                # Log the notch filter operation
+                self._log_operation(
+                    operation_type=OperationType.PREPROCESSING,
+                    operation_name="notch_filter",
+                    parameters=notch_args,
+                    metadata={"note": "Notch filtering"}
+                )
             else:
                 logger.info("No notch filter arguments provided. Skipping")
         else:
@@ -1401,8 +1659,16 @@ class LosslessPipeline:
         """
         # Linter ID'd below as bad practice - likely need a structure fix
         self.bids_path = bids_path
-        self.raw = mne_bids.read_raw_bids(self.bids_path)
-        self.raw.load_data()
+        raw = mne_bids.read_raw_bids(self.bids_path)
+        raw.load_data()
+
+        # CRITICAL: Store original data before ANY modifications
+        logger.info("LOSSLESS: Storing original data before preprocessing...")
+        self.raw_original = raw.copy()
+
+        # Create working copy for preprocessing
+        self.raw = raw.copy()
+
         self._run()
 
         if save:
@@ -1411,9 +1677,48 @@ class LosslessPipeline:
     # TODO: Finish docstring
     def run_with_raw(self, raw):
         """Execute pipeline on a raw object."""
-        self.raw = raw
+        # CRITICAL: Store original data before ANY modifications
+        logger.info("LOSSLESS: Storing original data before preprocessing...")
+        self.raw_original = raw.copy()
+
+        # Create working copy for preprocessing
+        self.raw = raw.copy()
+
         self._run()
         return self.raw
+
+    def _log_operation(self, operation_type, operation_name, parameters=None,
+                       flags=None, metadata=None):
+        """
+        Log an operation in the pipeline.
+
+        This captures both preprocessing and artifact detection operations
+        in the order they are executed.
+
+        Parameters
+        ----------
+        operation_type : OperationType
+            Type of operation (PREPROCESSING, ARTIFACT_FLAG, ICA_FIT, ICA_LABEL)
+        operation_name : str
+            Name of the operation (e.g., 'filter', 'set_eeg_reference')
+        parameters : dict, optional
+            Parameters used for the operation
+        flags : dict, optional
+            Flags/annotations set by the operation
+        metadata : dict, optional
+            Additional metadata about the operation
+        """
+        operation = {
+            "operation_id": len(self.operations_log),
+            "operation_type": operation_type.value,
+            "operation_name": operation_name,
+            "timestamp": datetime.now().isoformat(),
+            "parameters": parameters or {},
+            "flags": flags or {},
+            "metadata": metadata or {}
+        }
+        self.operations_log.append(operation)
+        logger.debug(f"Logged operation {operation['operation_id']}: {operation_name}")
 
     @lossless_time
     def _run(self):
@@ -1525,19 +1830,57 @@ class LosslessPipeline:
         """
         if not isinstance(derivatives_path, BIDSPath):
             derivatives_path = get_bids_path_from_fname(derivatives_path)
-        self.raw = mne_bids.read_raw_bids(derivatives_path)
-        bpath = derivatives_path.copy()
-        # Load ICAs
-        for this_ica in ["ica1", "ica2"]:
-            suffix = this_ica + "_ica"
-            ica_bidspath = bpath.update(extension=".fif", suffix=suffix, check=False)
-            setattr(self, this_ica, mne.preprocessing.read_ica(ica_bidspath.fpath))
 
-        # Load IC labels
-        iclabels_bidspath = bpath.update(
-            extension=".tsv", suffix="iclabels", check=False
+        # Load original raw data
+        logger.info("LOSSLESS: Loading original raw data...")
+        self.raw_original = mne_bids.read_raw_bids(derivatives_path)
+        self.raw = self.raw_original.copy()
+
+        bpath = derivatives_path.copy()
+
+        # Load operation log
+        if hasattr(derivatives_path, 'root'):
+            derivatives_root = Path(derivatives_path.root)
+        else:
+            derivatives_root = Path(derivatives_path)
+
+        operations_file = derivatives_root / "operations_log.json"
+        if operations_file.exists():
+            logger.info("LOSSLESS: Loading operation log...")
+            with open(operations_file, 'r') as f:
+                operations_metadata = json.load(f)
+
+            self.operations_log = operations_metadata.get("operations", [])
+            logger.info(f"LOSSLESS: Loaded {len(self.operations_log)} operations")
+        else:
+            logger.warning("LOSSLESS: No operation log found (may be old format)")
+            self.operations_log = []
+
+        # Load ICAs (only if ICA operations were performed)
+        has_ica_ops = any(
+            op["operation_type"] in ["ica_fit", "ica_label"]
+            for op in self.operations_log
         )
-        self.flags["ic"].load_tsv(iclabels_bidspath.fpath)
+        if has_ica_ops:
+            for this_ica in ["ica1", "ica2"]:
+                suffix = this_ica + "_ica"
+                ica_bidspath = bpath.update(extension=".fif", suffix=suffix,
+                                            check=False)
+                setattr(self, this_ica, mne.preprocessing.read_ica(ica_bidspath.fpath))
+        else:
+            logger.info("LOSSLESS: No ICA operations in log, skipping ICA loading")
+            self.ica1 = None
+            self.ica2 = None
+
+        # Load IC labels (only if ICA operations were performed)
+        if has_ica_ops:
+            iclabels_bidspath = bpath.update(
+                extension=".tsv", suffix="iclabels", check=False
+            )
+            self.flags["ic"].load_tsv(iclabels_bidspath.fpath)
+        else:
+            logger.info("LOSSLESS: No ICA operations in log, "
+            "skipping IC labels loading")
 
         self.config_path = bpath.update(
             extension=".yaml", suffix="ll_config", check=False
@@ -1550,7 +1893,7 @@ class LosslessPipeline:
         )
         self.flags["ch"].load_tsv(flagged_chs_fpath.fpath)
 
-        # Load Flagged Epochs
+        # Load Flagged Epochs (from BAD_LL_* annotations in raw data)
         self.flags["epoch"].load_from_raw(self.raw, self.get_events(), self.config)
 
         return self
