@@ -1,3 +1,7 @@
+# Global seed for stochastic pipeline steps. A run-specific ICA
+# random_state overrides this value.
+random_seed: 97
+
 aref_trim: 30
 bridged_channels:
     bridge_trim: 40

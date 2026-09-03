@@ -2,6 +2,10 @@
 #ref_loc_file: derivatives/pylossless/code/misc/standard_1020_ll_ref19.elc
 #montage_info: [0.0, -16.0, 0.0, -0.02, 0.0, -1.58, 10.7, 11.5, 11.5]
 
+# Seed used by stochastic pipeline steps. Set to null for non-deterministic
+# behavior. A run-specific ica_args.<run>.random_state takes precedence.
+random_seed: 97
+
 ################## General info about the project ####################
 project:
   readme: "# Description of the dataset"
@@ -99,7 +103,8 @@ ica:
       lower: 0.3
       upper: 0.7
 
-  # See arguments definition from mne.preprocessing.ICA
+  # See arguments definition from mne.preprocessing.ICA.
+  # Can also set `method: amica`, if amica-python is installed.
   ica_args:
     run1:
       method: fastica

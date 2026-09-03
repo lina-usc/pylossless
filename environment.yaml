@@ -1,0 +1,36 @@
+name: pylossless-ci
+channels:
+  - conda-forge
+channel_priority: strict
+dependencies:
+  - python=3.11
+  - pip
+  - numpy
+  - scipy
+  - pandas
+  - xarray
+  - pyyaml
+  - scikit-learn
+  - pytorch
+  - edfio
+  - mne-base
+  - mne-bids
+  - mne-icalabel
+  - onnxruntime
+  - amica-python
+  - codespell
+  - dash
+  - dash-bootstrap-components
+  - dash-extensions
+  - gunicorn
+  - plotly
+  - colorlover
+  - numpydoc
+  - openneuro-py
+  - pre-commit
+  - pytest
+  - pytest-cov
+  - pydocstyle
+  - ruff
+  - selenium
+  - tomli
