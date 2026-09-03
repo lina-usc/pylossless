@@ -3,7 +3,7 @@ mne>=1.7
 mne_bids>=0.14
 pandas
 xarray
-scipy>=1.7.1
+scipy>=1.15.3
 mne_icalabel>=0.6.0
 pyyaml
 scikit-learn
