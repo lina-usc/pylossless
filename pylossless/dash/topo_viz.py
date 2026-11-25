@@ -27,6 +27,7 @@ from mne._fiff.constants import FIFF
 
 from .css_defaults import CSS, STYLE
 from . import ic_label_cmap
+from ..utils import _resolve_montage_name
 
 # thin lines in the background and numbers below
 axis = {"showgrid": False, "visible": False}
@@ -47,7 +48,7 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
 
     def __init__(
         self,
-        montage="standard_1020",
+        montage=None,
         data=None,
         figure=None,
         color="black",
@@ -116,8 +117,19 @@ class TopoPlot:  # TODO: Fix/finish doc comments for this class.
         self.width = width
         self.height = height
 
+        if montage is None:
+            # Default montage, resolved for the installed MNE version in
+            # the branch below: ``standard_1020`` on MNE < 1.13,
+            # ``colin27_1020`` on MNE >= 1.13.
+            montage = "standard_1020"
+
         if isinstance(montage, str):
-            self.montage = mne.channels.make_standard_montage(montage)
+            # Resolve ``standard_1020`` to ``colin27_1020`` on MNE >= 1.13
+            # (see ``_resolve_montage_name()``); a DigMontage passes
+            # through unchanged.
+            self.montage = mne.channels.make_standard_montage(
+                _resolve_montage_name(montage)
+            )
         else:
             self.montage = montage
 
@@ -341,7 +353,7 @@ class GridTopoPlot:
         self,
         rows=1,
         cols=1,
-        montage="standard_1020",
+        montage=None,
         data=None,
         figure=None,
         color="black",
@@ -379,6 +391,10 @@ class GridTopoPlot:
         **kwargs:
             Additional arguments to be passed to TopoPlot.
         """
+        if montage is None:
+            # Default montage; ``TopoPlot`` resolves ``standard_1020``
+            # to ``colin27_1020`` on MNE >= 1.13.
+            montage = "standard_1020"
         montage = __check_shape__(rows, cols, montage)
         color = __check_shape__(rows, cols, color)
 

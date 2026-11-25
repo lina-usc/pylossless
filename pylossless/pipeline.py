@@ -33,7 +33,12 @@ from mne_bids import get_bids_path_from_fname, BIDSPath
 from .config import Config
 from .flagging import FlaggedChs, FlaggedEpochs, FlaggedICs
 from ._logging import lossless_logger, lossless_time
-from .utils import _report_flagged_epochs, import_optional_dependency, _validate_kwargs
+from .utils import (
+    _report_flagged_epochs,
+    _resolve_montage_name,
+    import_optional_dependency,
+    _validate_kwargs,
+)
 from .utils.html import _get_ics, _sum_flagged_times, _create_html_details
 
 
@@ -680,6 +685,14 @@ class LosslessPipeline:
             # with a BIDS dataset automatically loaded with its corresponding
             # montage.
             return
+
+        # MNE 1.13 renamed ``standard_*`` montages to ``colin27_*`` and
+        # dropped the old names from ``get_builtin_montages()``, so a
+        # configured ``standard_1020`` would fail the check below even
+        # though MNE still accepts it (with a deprecation warning).
+        # Resolve to the name valid for the installed MNE version first;
+        # see ``_resolve_montage_name()`` for the removal condition.
+        analysis_montage = _resolve_montage_name(analysis_montage)
 
         if analysis_montage in mne.channels.montage.get_builtin_montages():
             # If chanlocs is a string of one the standard MNE montages
