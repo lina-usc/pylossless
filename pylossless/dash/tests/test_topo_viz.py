@@ -4,15 +4,19 @@
 
 """Tests for topo_viz.py."""
 
+import warnings
+
 import pytest
 
 import mne
 from dash import html
+from sklearn.exceptions import ConvergenceWarning
 
 from pylossless.dash.topo_viz import TopoPlot, GridTopoPlot, TopoData, TopoViz
 
 
-def get_raw_ica():
+@pytest.fixture(scope="module")
+def raw_ica():
     """Get raw and ICA object."""
     data_path = mne.datasets.sample.data_path()
     raw_fname = data_path / "MEG" / "sample" / "sample_audvis_raw.fif"
@@ -29,21 +33,25 @@ def get_raw_ica():
     raw.filter(l_freq=1.0, h_freq=None)
 
     ica = mne.preprocessing.ICA(max_iter="auto", random_state=97)
-    ica.fit(raw)
+    # These tests check plotting, not ICA. Whether FastICA converges on this
+    # data depends on the BLAS kernel that the runner CPU selects.
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=ConvergenceWarning)
+        ica.fit(raw)
 
     return raw, ica
 
 
-def test_TopoPlot():
+def test_TopoPlot(raw_ica):
     """Test plotting topoplots with plotly."""
-    raw, ica = get_raw_ica()
+    raw, ica = raw_ica
     data = dict(zip(ica.ch_names, ica.get_components()[:, 0]))
     TopoPlot(raw.get_montage(), data, res=200).figure
 
 
-def test_GridTopoPlot():
+def test_GridTopoPlot(raw_ica):
     """Test plotting grid of topoplots with plotly."""
-    raw, ica = get_raw_ica()
+    raw, ica = raw_ica
 
     topo_data = TopoData()
     for comp in ica.get_components().T:
@@ -70,9 +78,9 @@ def test_GridTopoPlot():
 #               index.html?path=114.0.5735.90/
 #@pytest.mark.skip(reason="an issue with chromedriver causes failure. Need to debug.")
 @pytest.mark.filterwarnings("ignore:Exception in thread")
-def test_TopoViz(dash_duo):
+def test_TopoViz(dash_duo, raw_ica):
     """Test TopoViz."""
-    raw, ica = get_raw_ica()
+    raw, ica = raw_ica
 
     topo_data = TopoData()
     for comp in ica.get_components().T:
@@ -82,3 +90,6 @@ def test_TopoViz(dash_duo):
     topo_viz.app.layout.children.append(html.Div(id="nully-wrapper", children=0))
     dash_duo.start_server(topo_viz.app)
     assert dash_duo.find_element("#nully-wrapper").text == "0"
+    # Wait for the figure callback to finish. Otherwise, the server is stopped
+    # while the callback runs, and the error in its thread fails a later test.
+    dash_duo.wait_for_style_to_equal("#ica-topo-div", "display", "block", timeout=60)
