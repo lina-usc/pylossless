@@ -384,7 +384,33 @@ def chan_neighbour_r(epochs, nneigbr, method):
     Xarray : Xarray.DataArray
         An instance of Xarray.DataArray
     """
-    chan_locs = pd.DataFrame(epochs.get_montage().get_positions()["ch_pos"]).T
+    montage = epochs.get_montage()
+    if montage is None:
+        raise ValueError(
+            "No montage is set on the data. PyLossless needs channel positions to "
+            "find nearest neighbours. If you pass a raw object, call "
+            "`raw.set_montage()` first. If you run on BIDS data, add "
+            "`electrodes.tsv`, or set `project: analysis_montage` in the config."
+        )
+    chan_locs = pd.DataFrame(montage.get_positions()["ch_pos"]).T
+    no_pos = chan_locs.index[chan_locs.isna().any(axis=1)].tolist()
+    # EEG channels in the epochs that have no entry in the montage at all
+    no_pos += [
+        ch for ch in epochs.ch_names if ch not in chan_locs.index and ch not in no_pos
+    ]
+    if no_pos:
+        raise ValueError(
+            "The following EEG channels have no valid position in the montage: "
+            f"{no_pos}. PyLossless needs positions for all EEG channels to compute "
+            "nearest-neighbour correlations. Common causes are channel names that "
+            "do not match the montage (e.g. 'FP1' vs 'Fp1'), and non-scalp channels "
+            "(e.g. EOG) typed as EEG. To fix: if you pass a raw object, rename or "
+            "retype the channels (`raw.rename_channels()`, "
+            "`raw.set_channel_types()`) before `raw.set_montage()`. If you run on "
+            "BIDS data, fix `channels.tsv` (type) and `electrodes.tsv` (names and "
+            "positions), or set `project: analysis_montage` and "
+            "`project: set_montage_kwargs` (e.g. `match_case: false`) in the config."
+        )
     chan_dist = pd.DataFrame(
         distance_matrix(chan_locs, chan_locs),
         columns=chan_locs.index,
