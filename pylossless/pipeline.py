@@ -686,12 +686,6 @@ class LosslessPipeline:
             # montage.
             return
 
-        # MNE 1.13 renamed ``standard_*`` montages to ``colin27_*`` and
-        # dropped the old names from ``get_builtin_montages()``, so a
-        # configured ``standard_1020`` would fail the check below even
-        # though MNE still accepts it (with a deprecation warning).
-        # Resolve to the name valid for the installed MNE version first;
-        # see ``_resolve_montage_name()`` for the removal condition.
         analysis_montage = _resolve_montage_name(analysis_montage)
 
         if analysis_montage in mne.channels.montage.get_builtin_montages():

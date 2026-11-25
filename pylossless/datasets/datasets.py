@@ -39,9 +39,7 @@ def load_openneuro_bids(subject="pd6", timeout=20):
     # tests accordingly.
     config.load_default("infants")
     config["project"]["bids_montage"] = ""
-    # Resolved for the installed MNE version: ``standard_1020`` on
-    # MNE < 1.13, ``colin27_1020`` on MNE >= 1.13 (see
-    # ``_resolve_montage_name()``).
+    # ``standard_1020`` on MNE < 1.13, ``colin27_1020`` on MNE >= 1.13
     config["project"]["analysis_montage"] = _resolve_montage_name("standard_1020")
     config["project"]["set_montage_kwargs"]["on_missing"] = "warn"
 
