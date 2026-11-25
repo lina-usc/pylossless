@@ -295,3 +295,22 @@ def test_no_montage_error():
     epochs = mne.make_fixed_length_epochs(raw, duration=1, preload=True)
     with pytest.raises(ValueError, match="No montage is set"):
         ll.pipeline.chan_neighbour_r(epochs, 3, "max")
+
+
+@pytest.mark.filterwarnings("ignore:Not setting position")
+def test_missing_channel_positions_error_names_montage():
+    """Test the error names the config montage when one was applied."""
+    raw = _make_raw_with_unpositioned_channels()
+    raw.set_montage(None)
+    montage = (
+        "colin27_1005"
+        if "colin27_1005" in mne.channels.get_builtin_montages()
+        else "standard_1005"
+    )
+    config = ll.config.Config()
+    config.load_default()
+    config["project"]["analysis_montage"] = montage
+    config["project"]["set_montage_kwargs"] = {"on_missing": "ignore"}
+    pipeline = ll.LosslessPipeline(config=config)
+    with pytest.raises(ValueError, match=f"in the montage '{montage}'"):
+        pipeline.run_with_raw(raw)

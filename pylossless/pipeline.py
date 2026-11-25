@@ -371,7 +371,7 @@ def _threshold_volt_std(epochs, flag_dim, threshold=5e-5):
     return volt_outlier_inds
 
 
-def chan_neighbour_r(epochs, nneigbr, method):
+def chan_neighbour_r(epochs, nneigbr, method, montage_name=None):
     """Compute nearest Neighbor R.
 
     Parameters
@@ -384,6 +384,10 @@ def chan_neighbour_r(epochs, nneigbr, method):
     method : str
         One of 'max', 'mean', or 'trimmean'. This is the function
         which aggregates the neighbours into one value.
+
+    montage_name : str | None
+        Name of the builtin montage that was applied (e.g. from the config), if
+        any. Only used to make error messages more informative.
 
     Returns
     -------
@@ -405,9 +409,10 @@ def chan_neighbour_r(epochs, nneigbr, method):
         ch for ch in epochs.ch_names if ch not in chan_locs.index and ch not in no_pos
     ]
     if no_pos:
+        montage_str = f" '{montage_name}'" if montage_name else ""
         raise ValueError(
-            "The following EEG channels have no valid position in the montage: "
-            f"{no_pos}. Check for channel names that "
+            f"The following EEG channels have no valid position in the montage"
+            f"{montage_str}: {no_pos}. Check for channel names that "
             "do not match the montage (e.g. 'FP1' vs 'Fp1'), and non-scalp channels "
             "(e.g. EOG) typed as EEG.\n To fix: if you pass a raw object, rename or "
             "retype the channels (`raw.rename_channels()`, "
@@ -1133,7 +1138,8 @@ class LosslessPipeline:
         # non-flagged channels and epochs...
         epochs = self.get_epochs(picks=picks)
         n_nbr_ch = self.config["nearest_neighbors"]["n_nbr_ch"]
-        return chan_neighbour_r(epochs, n_nbr_ch, "max"), epochs
+        montage_name = self.config["project"]["analysis_montage"] or None
+        return chan_neighbour_r(epochs, n_nbr_ch, "max", montage_name), epochs
 
     @lossless_logger
     def flag_uncorrelated_channels(self, picks="eeg"):
