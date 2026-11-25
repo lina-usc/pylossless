@@ -237,3 +237,61 @@ def test_load_flags(pipeline_fixture, tmp_path):
     assert pipeline_fixture.flags['epoch'] == pipeline.flags['epoch']
     pipeline.flags['epoch']["bridged"] = ["noisy"]
     assert pipeline_fixture.flags['epoch'] == pipeline.flags['epoch']
+
+
+def _make_raw_with_unpositioned_channels():
+    """Make EEG data with two channels that have no montage position.
+
+    'FP1' (case mismatch) and 'HEOG' (EOG typed as EEG) have no position.
+    """
+    rng = np.random.default_rng(0)
+    ch_names = ["Fz", "Cz", "Pz", "Oz", "C3", "C4", "F3", "F4", "P3", "P4",
+                "FP1", "HEOG"]
+    sfreq = 250
+    info = mne.create_info(ch_names, sfreq=sfreq, ch_types="eeg")
+    data = rng.standard_normal((len(ch_names), 60 * sfreq)) * 1e-5
+    raw = mne.io.RawArray(data, info)
+    montage = (
+        "colin27_1005"
+        if "colin27_1005" in mne.channels.get_builtin_montages()
+        else "standard_1005"
+    )
+    raw.set_montage(montage, on_missing="ignore")
+    return raw
+
+
+@pytest.mark.filterwarnings("ignore:Not setting position")
+@pytest.mark.filterwarnings("ignore:There are channels without locations")
+@pytest.mark.filterwarnings("ignore:Converting data files to EDF format")
+@pytest.mark.parametrize("route", ["raw", "bids"])
+def test_missing_channel_positions_error(route, tmp_path):
+    """Test an informative error names EEG channels without a position."""
+    raw = _make_raw_with_unpositioned_channels()
+    config = ll.config.Config()
+    config.load_default()
+    pipeline = ll.LosslessPipeline(config=config)
+    match = r"no valid position in the montage.*FP1.*HEOG|no valid position.*HEOG.*FP1"
+    if route == "raw":
+        with pytest.raises(ValueError, match=match):
+            pipeline.run_with_raw(raw)
+    else:
+        bids_path = mne_bids.BIDSPath(
+            subject="001", task="rest", root=tmp_path / "bids", datatype="eeg"
+        )
+        mne_bids.write_raw_bids(raw, bids_path, format="EDF", overwrite=True,
+                                allow_preload=True, verbose=False)
+        with pytest.raises(ValueError, match=match) as excinfo:
+            pipeline.run(bids_path, save=False)
+        # The hint must be actionable for BIDS users too
+        assert "electrodes.tsv" in str(excinfo.value)
+        assert "analysis_montage" in str(excinfo.value)
+
+
+def test_no_montage_error():
+    """Test an informative error when no montage is set."""
+    info = mne.create_info(["Fz", "Cz", "Pz", "Oz"], sfreq=100, ch_types="eeg")
+    rng = np.random.default_rng(0)
+    raw = mne.io.RawArray(rng.standard_normal((4, 1000)) * 1e-5, info)
+    epochs = mne.make_fixed_length_epochs(raw, duration=1, preload=True)
+    with pytest.raises(ValueError, match="No montage is set"):
+        ll.pipeline.chan_neighbour_r(epochs, 3, "max")
