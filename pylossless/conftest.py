@@ -14,6 +14,7 @@ from mne import Annotations
 
 import pylossless as ll
 from pylossless.datasets import load_openneuro_bids
+from pylossless.utils import _resolve_montage_name
 
 import pytest
 
@@ -62,7 +63,11 @@ def bids_dataset_fixture(tmpdir_factory):
         # read in a file
         raw = mne.io.read_raw_edf(path_in, preload=True)
         match_alias = {ch_name: ch_name.strip(".") for ch_name in raw.ch_names}
-        raw.set_montage("standard_1005", match_alias=match_alias, match_case=False)
+        raw.set_montage(
+            _resolve_montage_name("standard_1005"),
+            match_alias=match_alias,
+            match_case=False,
+        )
         return raw, np.array([[0, 0, 0]]), {"test": 0, "T0": 1, "T1": 2, "T2": 3}
 
     tmp_path = tmpdir_factory.mktemp('bids_dataset')

@@ -1,3 +1,7 @@
-from ._utils import _icalabel_to_data_frame, _report_flagged_epochs
+from ._utils import (
+    _icalabel_to_data_frame,
+    _report_flagged_epochs,
+    _resolve_montage_name,
+)
 from .check import import_optional_dependency, _validate_kwargs
 from .html import _get_ics, _sum_flagged_times, _create_html_details

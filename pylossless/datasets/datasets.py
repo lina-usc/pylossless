@@ -4,6 +4,7 @@ from pathlib import Path
 import mne_bids
 
 import pylossless as ll
+from pylossless.utils import _resolve_montage_name
 
 
 def load_openneuro_bids(subject="pd6", timeout=20):
@@ -38,7 +39,8 @@ def load_openneuro_bids(subject="pd6", timeout=20):
     # tests accordingly.
     config.load_default("infants")
     config["project"]["bids_montage"] = ""
-    config["project"]["analysis_montage"] = "standard_1020"
+    # ``standard_1020`` on MNE < 1.13, ``colin27_1020`` on MNE >= 1.13
+    config["project"]["analysis_montage"] = _resolve_montage_name("standard_1020")
     config["project"]["set_montage_kwargs"]["on_missing"] = "warn"
 
     # Shamelessly copied from

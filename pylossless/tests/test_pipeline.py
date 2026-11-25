@@ -6,6 +6,7 @@ import pytest
 from scipy import signal
 
 import pylossless as ll
+from pylossless.utils import _resolve_montage_name
 
 
 def test_empty_repr(tmp_path):
@@ -66,12 +67,7 @@ def test_run_ica_with_amica():
         ch_types="eeg",
     )
     raw = mne.io.RawArray(mixed_data.T, info)
-    montage = (
-        "colin27_1020"
-        if "colin27_1020" in mne.channels.get_builtin_montages()
-        else "standard_1020"
-    )
-    raw.set_montage(montage)
+    raw.set_montage(_resolve_montage_name("standard_1020"))
 
     config = ll.config.Config()
     config.load_default()
