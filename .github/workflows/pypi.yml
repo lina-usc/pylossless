@@ -1,11 +1,16 @@
 name: Release
 
-# Push a tag "v<version>" on main to publish that version on PyPI. The tag
-# must match the version in setup.py.
+# Publish a GitHub release with the tag "v<version>" to upload that version to
+# PyPI. The tag must match the version in setup.py. Pull requests and pushes to
+# main only build and check the package.
 # PyPI's trusted publisher is bound to this filename. Do not rename it.
 on:
+  release:
+    types: [published]
   push:
-    tags: ["v*"]
+    branches: [main]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
@@ -21,22 +26,29 @@ jobs:
       - run: python -m pip install build twine
       - run: python -m build
       - run: python -m twine check --strict dist/*
-      - name: check that the wheel installs, imports, and has the tag version
+      - name: check that the wheel installs and imports
         env:
-          TAG: ${{ github.ref_name }}
           # CPU-only torch, to avoid downloading the CUDA wheels
           PIP_EXTRA_INDEX_URL: https://download.pytorch.org/whl/cpu
         run: |
           python -m venv /tmp/venv
           /tmp/venv/bin/pip install dist/*.whl
           cd /tmp
-          /tmp/venv/bin/python -c "import os, pylossless; from importlib.metadata import version; v = version('pylossless'); assert 'v' + v == os.environ['TAG'], v"
+          /tmp/venv/bin/python -c "import pylossless"
+      - name: check that the version matches the release tag
+        if: github.event_name == 'release'
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          cd /tmp
+          /tmp/venv/bin/python -c "import os; from importlib.metadata import version; v = version('pylossless'); assert 'v' + v == os.environ['TAG'], v"
       - uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
 
   publish:
+    if: github.event_name == 'release'
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -51,16 +63,3 @@ jobs:
           name: dist
           path: dist/
       - uses: pypa/gh-action-pypi-publish@v1.14.3
-
-  github-release:
-    needs: publish
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: create the GitHub release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.ref_name }}
-        run: gh release create "$TAG" --verify-tag --generate-notes
