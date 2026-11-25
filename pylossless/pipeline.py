@@ -371,7 +371,7 @@ def _threshold_volt_std(epochs, flag_dim, threshold=5e-5):
     return volt_outlier_inds
 
 
-def chan_neighbour_r(epochs, nneigbr, method):
+def chan_neighbour_r(epochs, nneigbr, method, montage_name=None):
     """Compute nearest Neighbor R.
 
     Parameters
@@ -385,12 +385,42 @@ def chan_neighbour_r(epochs, nneigbr, method):
         One of 'max', 'mean', or 'trimmean'. This is the function
         which aggregates the neighbours into one value.
 
+    montage_name : str | None
+        Name of the builtin montage that was applied (e.g. from the config), if
+        any. Only used to make error messages more informative.
+
     Returns
     -------
     Xarray : Xarray.DataArray
         An instance of Xarray.DataArray
     """
-    chan_locs = pd.DataFrame(epochs.get_montage().get_positions()["ch_pos"]).T
+    montage = epochs.get_montage()
+    if montage is None:
+        raise ValueError(
+            "No montage is set on the data. PyLossless needs channel positions to "
+            "find nearest neighbours. If you pass a raw object, call "
+            "`raw.set_montage()` first. If you run on BIDS data, set "
+            "`project: analysis_montage` in the config."
+        )
+    chan_locs = pd.DataFrame(montage.get_positions()["ch_pos"]).T
+    no_pos = chan_locs.index[chan_locs.isna().any(axis=1)].tolist()
+    # EEG channels in the epochs that have no entry in the montage at all
+    no_pos += [
+        ch for ch in epochs.ch_names if ch not in chan_locs.index and ch not in no_pos
+    ]
+    if no_pos:
+        montage_str = f" '{montage_name}'" if montage_name else ""
+        raise ValueError(
+            f"The following EEG channels have no valid position in the montage"
+            f"{montage_str}: {no_pos}. Check for channel names that "
+            "do not match the montage (e.g. 'FP1' vs 'Fp1'), and non-scalp channels "
+            "(e.g. EOG) typed as EEG.\n To fix: if you pass a raw object, rename or "
+            "retype the channels (`raw.rename_channels()`, "
+            "`raw.set_channel_types()`) before `raw.set_montage()`. If you run on "
+            "BIDS data, fix `channels.tsv` (type) and `electrodes.tsv` (names and "
+            "positions), or set `project: analysis_montage` and "
+            "`project: set_montage_kwargs` (e.g. `match_case: false`) in the config."
+        )
     chan_dist = pd.DataFrame(
         distance_matrix(chan_locs, chan_locs),
         columns=chan_locs.index,
@@ -1108,7 +1138,8 @@ class LosslessPipeline:
         # non-flagged channels and epochs...
         epochs = self.get_epochs(picks=picks)
         n_nbr_ch = self.config["nearest_neighbors"]["n_nbr_ch"]
-        return chan_neighbour_r(epochs, n_nbr_ch, "max"), epochs
+        montage_name = self.config["project"]["analysis_montage"] or None
+        return chan_neighbour_r(epochs, n_nbr_ch, "max", montage_name), epochs
 
     @lossless_logger
     def flag_uncorrelated_channels(self, picks="eeg"):
