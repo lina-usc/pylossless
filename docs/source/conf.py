@@ -12,7 +12,7 @@ import sys
 project = "pyLossless"
 copyright = "2023, Huberty, Scott; O'Reilly, Christian; Desjardins, James"
 author = "Huberty, Scott; O'reilly, Christian"
-release = "0.1"
+release = "0.3.0"
 
 
 # Point Sphinx.ext.autodoc to the our python modules (two parent directories
