@@ -1,6 +1,6 @@
 numpy>=2.2.6
 mne>=1.7
-mne_bids>=0.14
+mne_bids>=0.17.0
 pandas
 xarray
 scipy>=1.7.1
