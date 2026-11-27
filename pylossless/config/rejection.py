@@ -156,17 +156,18 @@ class RejectionPolicy(ConfigMixin):
         #       step that add select types of flags as bad_ annotations.
 
         # Clean the ics
-        ic_labels = pipeline.flags["ic"]
-        mask = np.array([False] * len(ic_labels["confidence"]))
-        for label in self["ic_flags_to_reject"]:
-            mask |= ic_labels["ic_type"] == label
-        mask &= ic_labels["confidence"] > self["ic_rejection_threshold"]
+        if self["remove_flagged_ics"]:
+            ic_labels = pipeline.flags["ic"]
+            mask = np.array([False] * len(ic_labels["confidence"]))
+            for label in self["ic_flags_to_reject"]:
+                mask |= ic_labels["ic_type"] == label
+            mask &= ic_labels["confidence"] > self["ic_rejection_threshold"]
 
-        flagged_ics = ic_labels.loc[mask]
-        if not flagged_ics.empty:
-            flagged_ics = flagged_ics.index.tolist()
-            pipeline.ica2.exclude.extend(flagged_ics)
-            pipeline.ica2.apply(raw)
+            flagged_ics = ic_labels.loc[mask]
+            if not flagged_ics.empty:
+                flagged_ics = flagged_ics.index.tolist()
+                pipeline.ica2.exclude.extend(flagged_ics)
+                pipeline.ica2.apply(raw)
 
         if return_ica:
             return raw, pipeline.ica2
