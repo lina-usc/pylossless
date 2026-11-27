@@ -1,6 +1,9 @@
 from pathlib import Path
 
-from numpy.testing import assert_array_equal
+import mne
+import numpy as np
+from numpy.testing import assert_allclose, assert_array_equal
+import pandas as pd
 
 import pytest
 
@@ -51,3 +54,48 @@ def test_rejection_policy(clean_ch_mode, pipeline_fixture):
     threshold = rejection_config["ic_rejection_threshold"]
     assert (df.loc[ica.exclude]["confidence"] > threshold).all()
     rejection_config_path.unlink()
+
+
+def test_rejection_policy_remove_flagged_ics_false():
+    """Test that remove_flagged_ics=False skips IC subtraction."""
+    rng = np.random.default_rng(42)
+    sfreq = 100.0
+    ch_names = ["Fp1", "Fp2", "F3", "F4", "C3", "C4", "P3", "P4", "O1", "O2"]
+    info = mne.create_info(ch_names=ch_names, sfreq=sfreq, ch_types="eeg")
+    data = rng.normal(0.0, 1e-5, size=(len(ch_names), int(sfreq * 10)))
+    raw = mne.io.RawArray(data, info, verbose=False)
+    raw.filter(l_freq=1.0, h_freq=None, verbose=False)
+    ica = mne.preprocessing.ICA(n_components=4, random_state=42, verbose=False)
+    ica.fit(raw, verbose=False)
+
+    pipeline = ll.LosslessPipeline()
+    pipeline.config = ll.Config().load_default()
+    pipeline.raw = raw
+    pipeline.ica2 = ica.copy()
+    pipeline.flags["ic"] = ll.flagging.FlaggedICs(
+        pd.DataFrame(
+            {
+                "component": ica._ica_names,
+                "annotator": ["ic_label"] * 4,
+                "ic_type": ["eog", "muscle", "brain", "brain"],
+                "confidence": [0.95, 0.90, 0.85, 0.80],
+            }
+        )
+    )
+
+    policy_keep = ll.RejectionPolicy(remove_flagged_ics=False)
+    cleaned_keep, returned_ica = policy_keep.apply(pipeline, return_ica=True)
+    assert_allclose(cleaned_keep.get_data(), raw.get_data())
+    assert returned_ica.exclude == []
+
+    # Also works when ICA was skipped (pipeline.ica2 is None)
+    pipeline.ica2 = None
+    cleaned_no_ica = policy_keep.apply(pipeline)
+    assert_allclose(cleaned_no_ica.get_data(), raw.get_data())
+
+    # With remove_flagged_ics=True, flagged ICs are subtracted as expected
+    pipeline.ica2 = ica.copy()
+    policy_remove = ll.RejectionPolicy(remove_flagged_ics=True)
+    cleaned_remove, removed_ica = policy_remove.apply(pipeline, return_ica=True)
+    assert removed_ica.exclude == [0, 1]
+    assert not np.allclose(cleaned_remove.get_data(), raw.get_data())
